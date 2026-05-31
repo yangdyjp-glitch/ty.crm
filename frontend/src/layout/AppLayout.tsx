@@ -66,7 +66,7 @@ export default function AppLayout() {
 
   return (
     <Layout style={{ height: '100%' }}>
-      <Layout.Sider width={224} style={{ background: 'linear-gradient(180deg, #3b5bf6 0%, #7c3aed 100%)' }}>
+      <Layout.Sider width={224} style={{ background: 'linear-gradient(180deg, #3b5bf6 0%, #7c3aed 100%)', boxShadow: '4px 0 24px rgba(47, 33, 120, 0.2)', position: 'relative', zIndex: 2 }}>
         <div style={{ padding: '20px 18px 16px' }}>
           <div style={{ color: '#fff', fontWeight: 900, fontSize: 22, letterSpacing: 1 }}>矩阵 CRM</div>
           <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, letterSpacing: 3, marginTop: 2 }}>MATRIX CRM</div>
@@ -91,7 +91,7 @@ export default function AppLayout() {
         </div>
       </Layout.Sider>
       <Layout>
-        <Layout.Header style={{ background: '#fff', padding: '0 24px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', borderBottom: '1px solid #e9dcab' }}>
+        <Layout.Header style={{ background: 'transparent', padding: '0 24px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
           <NotificationBell />
         </Layout.Header>
         <Layout.Content style={{ margin: 16, padding: 24, overflow: 'auto' }}>

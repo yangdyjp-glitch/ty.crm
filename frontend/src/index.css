@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700;900&display=swap');
-
 /*
  * 数字专用字体：只把「数字与数字相关符号」映射到 Times New Roman，
  * 其余汉字/英文仍走 Noto Serif SC（靠 unicode-range 精确接管字形）。
@@ -14,8 +12,10 @@
 }
 
 :root {
-  /* 数字(TNR) → 主字体(Noto Serif SC) → 系统衬线兜底 */
-  --app-font: 'NumTNR', 'Noto Serif SC', Georgia, 'Songti SC', 'SimSun', serif;
+  /* 思源宋体：标题/正文主字体 */
+  --font-serif: 'Noto Serif SC', Georgia, 'Songti SC', 'SimSun', serif;
+  /* 数字(TNR) → 思源宋体 → 系统衬线兜底 */
+  --app-font: 'NumTNR', var(--font-serif);
   --line: #d4bb63; /* 淡金色线条 */
   --line-soft: #e9dcab; /* 更淡的金色 */
   --bg-app: #e9f5ec; /* 淡绿背景 */

@@ -8,8 +8,7 @@ import './index.css'
 import App from './App'
 import { AuthProvider } from './auth/AuthContext'
 
-const FONT =
-  "'NumTNR', 'Noto Serif SC', Georgia, 'Songti SC', 'SimSun', serif"
+const FONT = "'NumTNR', var(--font-serif)"
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -34,7 +33,7 @@ createRoot(document.getElementById('root')!).render(
         },
         components: {
           Layout: {
-            headerBg: '#ffffff',
+            headerBg: 'transparent',
             siderBg: '#3b5bf6',
             bodyBg: '#e9f5ec',
             headerHeight: 56,
