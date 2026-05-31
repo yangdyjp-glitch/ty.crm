@@ -26,7 +26,7 @@ const NAV: Item[] = [
 const rowLabel = (cn: string, en: string) => (
   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
     <span>{cn}</span>
-    <span style={{ fontSize: 10, color: '#5f6b7d', letterSpacing: 1 }}>{en}</span>
+    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', letterSpacing: 1 }}>{en}</span>
   </div>
 )
 
@@ -43,10 +43,10 @@ export default function AppLayout() {
     ...main.map((n) => ({ key: n.key, label: rowLabel(n.cn, n.en) })),
     ...(admin.length
       ? [
-          { type: 'divider' as const, style: { borderColor: '#2b3547', margin: '10px 16px' } },
+          { type: 'divider' as const, style: { borderColor: 'rgba(255,255,255,0.18)', margin: '10px 16px' } },
           {
             type: 'group' as const,
-            label: <span style={{ fontSize: 10, letterSpacing: 2, color: '#5f6b7d' }}>管理 · ADMIN</span>,
+            label: <span style={{ fontSize: 10, letterSpacing: 2, color: 'rgba(255,255,255,0.55)' }}>管理 · ADMIN</span>,
             children: admin.map((n) => ({ key: n.key, label: rowLabel(n.cn, n.en) })),
           },
         ]
@@ -66,10 +66,10 @@ export default function AppLayout() {
 
   return (
     <Layout style={{ height: '100%' }}>
-      <Layout.Sider width={224} style={{ background: '#1e2433' }}>
+      <Layout.Sider width={224} style={{ background: 'linear-gradient(180deg, #3b5bf6 0%, #7c3aed 100%)' }}>
         <div style={{ padding: '20px 18px 16px' }}>
           <div style={{ color: '#fff', fontWeight: 900, fontSize: 22, letterSpacing: 1 }}>矩阵 CRM</div>
-          <div style={{ color: '#5f6b7d', fontSize: 11, letterSpacing: 3, marginTop: 2 }}>MATRIX CRM</div>
+          <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, letterSpacing: 3, marginTop: 2 }}>MATRIX CRM</div>
         </div>
         <Menu
           theme="dark"
@@ -79,15 +79,15 @@ export default function AppLayout() {
           onClick={({ key }) => nav(key)}
           style={{ background: 'transparent', borderInlineEnd: 'none', paddingBottom: 90 }}
         />
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, borderTop: '1px solid #2b3547', background: '#1e2433' }}>
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, borderTop: '1px solid rgba(255,255,255,0.18)', background: 'rgba(0,0,0,0.12)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Avatar shape="square" style={{ background: '#2563eb', fontWeight: 700 }}>矩</Avatar>
+            <Avatar shape="square" style={{ background: '#ffffff', color: '#6d28d9', fontWeight: 700 }}>矩</Avatar>
             <div style={{ overflow: 'hidden' }}>
               <div style={{ color: '#fff', fontSize: 13, fontWeight: 600 }}>{user?.name}</div>
-              <div style={{ color: '#5f6b7d', fontSize: 11 }}>{user?.username} · {ROLE_LABEL[role]}</div>
+              <div style={{ color: 'rgba(255,255,255,0.62)', fontSize: 11 }}>{user?.username} · {ROLE_LABEL[role]}</div>
             </div>
           </div>
-          <a onClick={logout} style={{ color: '#8b95a5', fontSize: 12, display: 'inline-block', marginTop: 12 }}>退出登录</a>
+          <a onClick={logout} style={{ color: 'rgba(255,255,255,0.72)', fontSize: 12, display: 'inline-block', marginTop: 12 }}>退出登录</a>
         </div>
       </Layout.Sider>
       <Layout>

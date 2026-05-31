@@ -27,12 +27,12 @@ export default function Login() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#f0f2f5',
+        background: '#e9f5ec',
       }}
     >
       <Card style={{ width: 360 }}>
         <div style={{ textAlign: 'center', marginBottom: 6 }}>
-          <span style={{ background: 'linear-gradient(135deg,#2563eb,#06b6d4)', color: '#fff', borderRadius: 10, padding: '4px 14px', fontWeight: 900, fontSize: 22, letterSpacing: 2 }}>
+          <span style={{ background: 'linear-gradient(135deg,#3b5bf6,#7c3aed)', color: '#fff', borderRadius: 10, padding: '4px 14px', fontWeight: 900, fontSize: 22, letterSpacing: 2 }}>
             矩阵 CRM
           </span>
         </div>

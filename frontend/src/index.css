@@ -1,10 +1,26 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700;900&display=swap');
+
+/*
+ * 数字专用字体：只把「数字与数字相关符号」映射到 Times New Roman，
+ * 其余汉字/英文仍走 Noto Serif SC（靠 unicode-range 精确接管字形）。
+ */
+@font-face {
+  font-family: 'NumTNR';
+  src: local('Times New Roman'), local('TimesNewRomanPSMT'), local('Times');
+  font-weight: 400 900;
+  font-style: normal;
+  unicode-range: U+0030-0039, U+002B, U+002D, U+002E, U+002C, U+0025,
+    U+0024, U+00A5, U+FFE5, U+FF04, U+003A;
+}
 
 :root {
-  --app-font: 'Noto Sans SC', -apple-system, 'Segoe UI', 'PingFang SC',
-    'Microsoft YaHei', sans-serif;
+  /* 数字(TNR) → 主字体(Noto Serif SC) → 系统衬线兜底 */
+  --app-font: 'NumTNR', 'Noto Serif SC', Georgia, 'Songti SC', 'SimSun', serif;
   --line: #c3ccda;
   --line-soft: #e6ebf2;
+  --bg-app: #e9f5ec; /* 淡绿背景 */
+  --blue: #3b5bf6;
+  --purple: #7c3aed;
 }
 
 * {
@@ -18,12 +34,13 @@ body,
 }
 body {
   font-family: var(--app-font);
-  background: #eef2f7;
+  background: var(--bg-app);
   font-variant-numeric: tabular-nums;
   color: #1e2433;
+  font-weight: 400;
 }
 
-/* 主字体 + 标题加粗 */
+/* 主字体：标题加粗，其余常规 */
 h1,
 h2,
 h3,
@@ -32,7 +49,13 @@ h4,
 .ant-typography,
 .ant-menu,
 .ant-table,
-.ant-btn {
+.ant-btn,
+.ant-statistic-content,
+.ant-statistic-title,
+input,
+button,
+.ant-select,
+.ant-input {
   font-family: var(--app-font);
 }
 h1,
@@ -44,24 +67,24 @@ h4,
   letter-spacing: 0.3px;
 }
 
-/* 数字更突出 */
+/* 数字：Times New Roman 接管字形；常规粗细（标题级数字在组件里单独加粗） */
 .ant-statistic-content {
   font-variant-numeric: tabular-nums;
-  font-weight: 800 !important;
+  font-weight: 500;
 }
 td.ant-table-cell[align='right'] {
-  font-weight: 700;
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
 }
 
 /* 线条更明显：卡片描边 + 表格网格 */
 .ant-layout .ant-card {
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 8px;
 }
 .ant-table-wrapper .ant-table {
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 8px;
   overflow: hidden;
 }
 .ant-table-tbody > tr > td,

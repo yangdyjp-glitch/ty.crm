@@ -9,7 +9,7 @@ import App from './App'
 import { AuthProvider } from './auth/AuthContext'
 
 const FONT =
-  "'Noto Sans SC', -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif"
+  "'NumTNR', 'Noto Serif SC', Georgia, 'Songti SC', 'SimSun', serif"
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -17,47 +17,47 @@ createRoot(document.getElementById('root')!).render(
       locale={zhCN}
       theme={{
         token: {
-          colorPrimary: '#2563eb',
-          colorInfo: '#2563eb',
+          colorPrimary: '#3b5bf6',
+          colorInfo: '#7c3aed',
           colorSuccess: '#10b981',
           colorWarning: '#f59e0b',
           colorError: '#ef4444',
-          colorLink: '#2563eb',
-          borderRadius: 6,
+          colorLink: '#3b5bf6',
+          borderRadius: 8,
           fontFamily: FONT,
           fontSize: 14,
           colorBorder: '#c3ccda',
           colorBorderSecondary: '#e6ebf2',
           colorTextHeading: '#0f172a',
           colorText: '#1e2433',
-          colorBgLayout: '#eef2f7',
+          colorBgLayout: '#e9f5ec',
         },
         components: {
           Layout: {
             headerBg: '#ffffff',
-            siderBg: '#ffffff',
-            bodyBg: '#eef2f7',
+            siderBg: '#3b5bf6',
+            bodyBg: '#e9f5ec',
             headerHeight: 56,
           },
           Card: { headerFontSize: 16 },
           Table: {
-            headerBg: '#eaf1ff',
-            headerColor: '#1e40af',
+            headerBg: '#eef0ff',
+            headerColor: '#4338ca',
             borderColor: '#e6ebf2',
             cellFontSize: 14,
-            rowHoverBg: '#f4f8ff',
+            rowHoverBg: '#f3f4ff',
           },
           Statistic: { contentFontSize: 30, titleFontSize: 14 },
           Menu: {
             itemHeight: 46,
             fontSize: 14,
             itemMarginInline: 8,
-            darkItemBg: '#1e2433',
-            darkSubMenuItemBg: '#1e2433',
-            darkItemColor: '#c9d1dc',
-            darkItemHoverBg: '#2a3344',
+            darkItemBg: 'transparent',
+            darkSubMenuItemBg: 'transparent',
+            darkItemColor: 'rgba(255,255,255,0.78)',
+            darkItemHoverBg: 'rgba(255,255,255,0.14)',
             darkItemHoverColor: '#ffffff',
-            darkItemSelectedBg: '#2b3547',
+            darkItemSelectedBg: 'rgba(255,255,255,0.22)',
             darkItemSelectedColor: '#ffffff',
           },
           Button: { fontWeight: 500 },

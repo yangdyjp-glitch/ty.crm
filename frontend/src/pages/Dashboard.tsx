@@ -10,7 +10,7 @@ function PageHead({ eyebrow, title }: { eyebrow: string; title: string }) {
   const d = `${today.getFullYear()}/${today.getMonth() + 1}/${today.getDate()}`
   return (
     <div style={{ borderBottom: '1px solid #c3ccda', paddingBottom: 16, marginBottom: 22 }}>
-      <div style={{ fontSize: 11, letterSpacing: 3, color: '#9aa3b2', textTransform: 'uppercase', marginBottom: 4 }}>{eyebrow}</div>
+      <div style={{ fontSize: 11, letterSpacing: 3, color: '#6366f1', textTransform: 'uppercase', marginBottom: 4, fontWeight: 700 }}>{eyebrow}</div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div style={{ fontSize: 30, fontWeight: 900, letterSpacing: 1, color: '#0f172a' }}>{title}</div>
         <div style={{ color: '#9aa3b2', fontSize: 13 }}>数据快照 · {d}</div>
@@ -22,7 +22,7 @@ function PageHead({ eyebrow, title }: { eyebrow: string; title: string }) {
 function SectionTitle({ eyebrow, title }: { eyebrow: string; title: string }) {
   return (
     <div style={{ margin: '24px 0 12px' }}>
-      <div style={{ fontSize: 10, letterSpacing: 2, color: '#9aa3b2', textTransform: 'uppercase' }}>{eyebrow}</div>
+      <div style={{ fontSize: 10, letterSpacing: 2, color: '#6366f1', textTransform: 'uppercase', fontWeight: 700 }}>{eyebrow}</div>
       <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>{title}</div>
     </div>
   )
@@ -33,7 +33,7 @@ function Stat({ title, value, unit, color }: { title: string; value: ReactNode; 
     <Card styles={{ body: { padding: '16px 18px' } }}>
       <div style={{ color: '#6b7280', fontSize: 13, marginBottom: 10 }}>{title}</div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-        <span style={{ fontSize: 34, fontWeight: 900, color, lineHeight: 1 }}>{value}</span>
+        <span style={{ fontSize: 36, fontWeight: 700, color, lineHeight: 1 }}>{value}</span>
         {unit && <span style={{ color: '#9ca3af', fontSize: 13 }}>{unit}</span>}
       </div>
     </Card>
@@ -71,10 +71,10 @@ export default function Dashboard() {
   if (data.role === 'ADMIN') {
     const c = data.counts
     const cards: [string, number, string, string][] = [
-      ['客户总数', c.custTotal, '位', '#1e2433'],
-      ['今日新增', c.newToday, '', '#06b6d4'],
-      ['本月新增', c.newMonth, '', '#8b5cf6'],
-      ['本月签约', c.signedMonth, '单', '#2563eb'],
+      ['客户总数', c.custTotal, '位', '#3b5bf6'],
+      ['今日新增', c.newToday, '', '#7c3aed'],
+      ['本月新增', c.newMonth, '', '#3b5bf6'],
+      ['本月签约', c.signedMonth, '单', '#7c3aed'],
       ['待审核分成', c.pendingReview, '', '#f59e0b'],
       ['待确认收款', c.pendingPay, '', '#10b981'],
       ['问题客户', c.problem, '', '#ef4444'],
@@ -107,9 +107,9 @@ export default function Dashboard() {
       <div>
         <PageHead eyebrow="总览 · OVERVIEW" title="我的业绩" />
         <Row gutter={[14, 14]}>
-          <Col xs={12} lg={8}><Stat title="我的客户" value={c.myCustomers} unit="位" color="#2563eb" /></Col>
+          <Col xs={12} lg={8}><Stat title="我的客户" value={c.myCustomers} unit="位" color="#3b5bf6" /></Col>
           <Col xs={12} lg={8}><Stat title="逾期未跟进" value={c.overdue} color="#ef4444" /></Col>
-          <Col xs={12} lg={8}><Stat title="本月签约" value={c.signedMonth} unit="单" color="#10b981" /></Col>
+          <Col xs={12} lg={8}><Stat title="本月签约" value={c.signedMonth} unit="单" color="#7c3aed" /></Col>
         </Row>
         <SectionTitle eyebrow="FINANCE" title="我的订单金额（分币种）" />
         <Card size="small">
@@ -146,8 +146,8 @@ export default function Dashboard() {
     <div>
       <PageHead eyebrow="总览 · OVERVIEW" title="我登记的线索" />
       <Row gutter={[14, 14]}>
-        <Col xs={12} lg={8}><Stat title="我登记的客户" value={c.total} unit="位" color="#2563eb" /></Col>
-        <Col xs={12} lg={8}><Stat title="本月登记" value={c.newMonth} color="#8b5cf6" /></Col>
+        <Col xs={12} lg={8}><Stat title="我登记的客户" value={c.total} unit="位" color="#3b5bf6" /></Col>
+        <Col xs={12} lg={8}><Stat title="本月登记" value={c.newMonth} color="#7c3aed" /></Col>
       </Row>
       <SectionTitle eyebrow="STATUS" title="按状态分布" />
       <Card size="small">
