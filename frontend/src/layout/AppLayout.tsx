@@ -94,11 +94,11 @@ export default function AppLayout() {
         <Layout.Header style={{ background: 'transparent', padding: '0 24px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
           <NotificationBell />
         </Layout.Header>
-        <Layout.Content style={{ margin: 16, padding: 24, overflow: 'auto' }}>
+        <Layout.Content style={{ margin: 12, padding: 16, overflow: 'auto' }}>
           {showHeader ? (
             <>
               <PageHeader eyebrow={current!.en} title={current!.cn} />
-              <Card styles={{ body: { padding: 16 } }}>
+              <Card styles={{ body: { padding: 12 } }}>
                 <Outlet />
               </Card>
             </>

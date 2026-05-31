@@ -10,7 +10,7 @@ function PageHead({ eyebrow, title }: { eyebrow: string; title: string }) {
   const today = new Date()
   const d = `${today.getFullYear()}/${today.getMonth() + 1}/${today.getDate()}`
   return (
-    <div style={{ borderBottom: '1px solid #d4bb63', paddingBottom: 16, marginBottom: 22 }}>
+    <div style={{ borderBottom: '1px solid #d4bb63', paddingBottom: 10, marginBottom: 14 }}>
       <div style={{ fontSize: 11, letterSpacing: 3, color: '#6366f1', textTransform: 'uppercase', marginBottom: 4, fontWeight: 700 }}>{eyebrow}</div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div style={{ fontSize: 30, fontWeight: 900, letterSpacing: 1, color: '#0f172a' }}>{title}</div>
@@ -22,7 +22,7 @@ function PageHead({ eyebrow, title }: { eyebrow: string; title: string }) {
 
 function SectionTitle({ eyebrow, title }: { eyebrow: string; title: string }) {
   return (
-    <div style={{ margin: '24px 0 12px' }}>
+    <div style={{ margin: '14px 0 8px' }}>
       <div style={{ fontSize: 10, letterSpacing: 2, color: '#6366f1', textTransform: 'uppercase', fontWeight: 700 }}>{eyebrow}</div>
       <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>{title}</div>
     </div>
@@ -31,8 +31,8 @@ function SectionTitle({ eyebrow, title }: { eyebrow: string; title: string }) {
 
 function Stat({ title, value, unit, color }: { title: string; value: ReactNode; unit?: string; color: string }) {
   return (
-    <Card styles={{ body: { padding: '16px 18px' } }}>
-      <div style={{ color: '#6b7280', fontSize: 13, marginBottom: 10 }}>{title}</div>
+    <Card styles={{ body: { padding: '11px 16px' } }}>
+      <div style={{ color: '#6b7280', fontSize: 13, marginBottom: 6 }}>{title}</div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
         <span style={{ fontSize: 36, fontWeight: 700, color, lineHeight: 1 }}>{value}</span>
         {unit && <span style={{ color: '#9ca3af', fontSize: 13 }}>{unit}</span>}
@@ -86,7 +86,7 @@ export default function Dashboard() {
     return (
       <div>
         <PageHead eyebrow="总览 · OVERVIEW" title="数据总览" />
-        <Row gutter={[14, 14]}>
+        <Row gutter={[14, 10]}>
           {cards.map(([t, v, unit, color]) => (
             <Col key={t} xs={12} sm={8} lg={6} xxl={3}>
               <Stat title={t} value={v} unit={unit} color={color} />
@@ -110,7 +110,7 @@ export default function Dashboard() {
     return (
       <div>
         <PageHead eyebrow="总览 · OVERVIEW" title="我的业绩" />
-        <Row gutter={[14, 14]}>
+        <Row gutter={[14, 10]}>
           <Col xs={12} lg={8}><Stat title="我的客户" value={c.myCustomers} unit="位" color="#3b5bf6" /></Col>
           <Col xs={12} lg={8}><Stat title="逾期未跟进" value={c.overdue} color="#ef4444" /></Col>
           <Col xs={12} lg={8}><Stat title="本月签约" value={c.signedMonth} unit="单" color="#7c3aed" /></Col>
@@ -149,7 +149,7 @@ export default function Dashboard() {
   return (
     <div>
       <PageHead eyebrow="总览 · OVERVIEW" title="我登记的线索" />
-      <Row gutter={[14, 14]}>
+      <Row gutter={[14, 10]}>
         <Col xs={12} lg={8}><Stat title="我登记的客户" value={c.total} unit="位" color="#3b5bf6" /></Col>
         <Col xs={12} lg={8}><Stat title="本月登记" value={c.newMonth} color="#7c3aed" /></Col>
       </Row>
