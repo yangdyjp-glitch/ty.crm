@@ -41,8 +41,9 @@ export default function AppLayout() {
   return (
     <Layout style={{ height: '100%' }}>
       <Layout.Sider theme="light" width={200} style={{ borderRight: '1px solid #f0f0f0' }}>
-        <div style={{ height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 18, color: '#1677ff' }}>
-          TY CRM
+        <div style={{ height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontWeight: 900, fontSize: 19, color: '#2563eb', letterSpacing: 1, borderBottom: '1px solid #e6ebf2' }}>
+          <span style={{ background: 'linear-gradient(135deg,#2563eb,#06b6d4)', color: '#fff', borderRadius: 8, padding: '2px 8px', fontSize: 15 }}>矩阵</span>
+          CRM
         </div>
         <Menu
           mode="inline"

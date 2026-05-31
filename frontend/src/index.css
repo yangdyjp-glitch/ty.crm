@@ -1,3 +1,12 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap');
+
+:root {
+  --app-font: 'Noto Sans SC', -apple-system, 'Segoe UI', 'PingFang SC',
+    'Microsoft YaHei', sans-serif;
+  --line: #c3ccda;
+  --line-soft: #e6ebf2;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -8,7 +17,71 @@ body,
   margin: 0;
 }
 body {
-  font-family:
-    -apple-system, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei',
-    sans-serif;
+  font-family: var(--app-font);
+  background: #eef2f7;
+  font-variant-numeric: tabular-nums;
+  color: #1e2433;
+}
+
+/* 主字体 + 标题加粗 */
+h1,
+h2,
+h3,
+h4,
+.ant-card-head-title,
+.ant-typography,
+.ant-menu,
+.ant-table,
+.ant-btn {
+  font-family: var(--app-font);
+}
+h1,
+h2,
+h3,
+h4,
+.ant-card-head-title {
+  font-weight: 700 !important;
+  letter-spacing: 0.3px;
+}
+
+/* 数字更突出 */
+.ant-statistic-content {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800 !important;
+}
+td.ant-table-cell[align='right'] {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 线条更明显：卡片描边 + 表格网格 */
+.ant-layout .ant-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.ant-table-wrapper .ant-table {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.ant-table-tbody > tr > td,
+.ant-table-thead > tr > th {
+  border-inline-end: 1px solid var(--line-soft) !important;
+}
+.ant-table-thead > tr > th {
+  border-bottom: 1.5px solid var(--line) !important;
+  font-weight: 700 !important;
+}
+
+/* 滚动条 */
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+::-webkit-scrollbar-thumb {
+  background: #b9c2d0;
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #97a3b5;
 }

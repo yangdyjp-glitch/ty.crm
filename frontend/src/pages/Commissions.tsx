@@ -4,6 +4,7 @@ import client from '../api/client'
 import {
   COMMISSION_STATUS_COLOR,
   COMMISSION_STATUS_LABEL,
+  CURRENCY_LABEL,
   FUND_MODE_LABEL,
   fmtMoney,
 } from '../api/types'
@@ -74,7 +75,7 @@ export default function Commissions() {
           { title: '订单', render: (_, r) => r.order?.orderNo },
           { title: '渠道(快照)', dataIndex: 'channelNameSnapshot' },
           { title: '资金模式', dataIndex: 'fundSettlementMode', render: (m) => FUND_MODE_LABEL[m] },
-          { title: '币种', dataIndex: 'currency' },
+          { title: '币种', dataIndex: 'currency', render: (c: string) => CURRENCY_LABEL[c] || c },
           { title: '应付', dataIndex: 'payableAmount', render: fmtMoney, align: 'right' },
           { title: '已付', dataIndex: 'paidAmount', render: fmtMoney, align: 'right' },
           {

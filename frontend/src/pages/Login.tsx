@@ -31,9 +31,14 @@ export default function Login() {
       }}
     >
       <Card style={{ width: 360 }}>
-        <Typography.Title level={3} style={{ textAlign: 'center' }}>
-          TY CRM
-        </Typography.Title>
+        <div style={{ textAlign: 'center', marginBottom: 6 }}>
+          <span style={{ background: 'linear-gradient(135deg,#2563eb,#06b6d4)', color: '#fff', borderRadius: 10, padding: '4px 14px', fontWeight: 900, fontSize: 22, letterSpacing: 2 }}>
+            矩阵 CRM
+          </span>
+        </div>
+        <Typography.Paragraph style={{ textAlign: 'center', color: '#64748b', marginBottom: 20 }}>
+          客户与渠道管理系统
+        </Typography.Paragraph>
         <Form onFinish={onFinish} layout="vertical" initialValues={{ username: 'admin', password: 'admin123' }}>
           <Form.Item name="username" label="账号" rules={[{ required: true }]}>
             <Input size="large" placeholder="admin / market / sales / downstream" />
