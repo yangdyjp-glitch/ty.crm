@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "CRM 客户与渠道管理系统 - 后端 (NestJS)",
   "private": true,
+  "engines": {
+    "node": "22"
+  },
   "scripts": {
     "build": "nest build",
     "start": "nest start",
