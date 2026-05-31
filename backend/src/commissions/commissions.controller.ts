@@ -30,6 +30,16 @@ export class CommissionsController {
     return this.commissions.list(q);
   }
 
+  @Post('batch-review')
+  batchReview(@Body() body: { ids: number[] }) {
+    return this.commissions.batchReview(body?.ids || []);
+  }
+
+  @Post('batch-pay')
+  batchPay(@CurrentUser() user: AuthUser, @Body() body: { ids: number[] }) {
+    return this.commissions.batchPay(user, body?.ids || []);
+  }
+
   @Post(':id/review')
   review(@Param('id', ParseIntPipe) id: number) {
     return this.commissions.review(id);

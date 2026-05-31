@@ -43,7 +43,19 @@ enum FundSettlementMode {
 
 enum CommissionMethod {
   NET_RECEIVED_RATIO // 按实收比例
+  SIGNED_RATIO // 按签约金额比例
   FIXED_AMOUNT // 固定金额
+}
+
+enum SalesStage {
+  NOT_CONTACTED // 未联系
+  CONTACTED // 已联系
+  NEEDS_CONFIRMED // 需求确认
+  PROPOSAL // 方案介绍
+  PRICING // 价格沟通
+  CLOSING // 促单中
+  WON // 已成交
+  LOST // 未成交
 }
 
 enum SettlementCondition {
@@ -206,6 +218,8 @@ model Customer {
   // 状态
   mainStatus       CustomerMainStatus @default(NEW_LEAD)
   intentionLevel   IntentionLevel?
+  salesStage       SalesStage? // 二期：销售阶段漏斗
+  score            Int? // 二期：客户评分
   hasProblem       Boolean            @default(false)
   problemNote      String?
   problemHandlerId Int?
@@ -516,6 +530,21 @@ model Attachment {
   createdAt    DateTime @default(now())
 
   @@index([relatedType, relatedId])
+}
+
+// 站内通知（二期）
+model Notification {
+  id          Int      @id @default(autoincrement())
+  userId      Int // 接收人
+  type        String // OVERDUE_FOLLOWUP / COMMISSION_REVIEW / UNPAID_BALANCE …
+  title       String
+  content     String?
+  relatedType String?
+  relatedId   Int?
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([userId, isRead])
 }
 
 // 操作日志

@@ -25,9 +25,9 @@ function computePayable(
   rateOrAmount: number,
   base: number,
 ): number {
-  return method === CommissionMethod.NET_RECEIVED_RATIO
-    ? r2((base * rateOrAmount) / 100)
-    : r2(rateOrAmount);
+  return method === CommissionMethod.FIXED_AMOUNT
+    ? r2(rateOrAmount)
+    : r2((base * rateOrAmount) / 100); // 实收比例 / 签约比例 同公式，基数不同
 }
 
 @Injectable()
@@ -85,8 +85,11 @@ export class CommissionsService {
         },
       });
     } else {
-      // 模式二：公司代收返佣 → 走结算流程，以实收为基数
-      const base = Number(order.paidAmount);
+      // 模式二：公司代收返佣 → 走结算流程；按签约比例以应收为基数，否则以实收为基数
+      const base =
+        method === CommissionMethod.SIGNED_RATIO
+          ? Number(order.receivableAmount)
+          : Number(order.paidAmount);
       const payable = computePayable(method, rateOrAmount, base);
       const dueNow = ch.settlementCondition === SettlementCondition.ON_SIGN;
       await this.prisma.commission.create({
@@ -101,7 +104,11 @@ export class CommissionsService {
           commissionRateSnapshot: rateOrAmount,
           fundSettlementMode: mode,
           calcBaseType:
-            method === CommissionMethod.NET_RECEIVED_RATIO ? '实收' : '固定',
+            method === CommissionMethod.FIXED_AMOUNT
+              ? '固定'
+              : method === CommissionMethod.SIGNED_RATIO
+                ? '签约'
+                : '实收',
           calcBaseAmount: base,
           payableAmount: payable,
           paidAmount: 0,
@@ -308,6 +315,32 @@ export class CommissionsService {
       where: { id },
       data: { status: CommissionStatus.CANCELLED, unpaidAmount: 0 },
     });
+  }
+
+  // 批量审核 / 批量支付（结算页批量操作）
+  async batchReview(ids: number[]) {
+    let ok = 0;
+    for (const id of ids) {
+      try {
+        await this.review(id);
+        ok++;
+      } catch {
+        /* 跳过不满足条件的 */
+      }
+    }
+    return { reviewed: ok, total: ids.length };
+  }
+
+  async batchPay(user: AuthUser, ids: number[]) {
+    const results: { id: number; payable: number; offset: number; cashOut: number }[] = [];
+    for (const id of ids) {
+      try {
+        results.push(await this.pay(user, id));
+      } catch {
+        /* 跳过 */
+      }
+    }
+    return { paid: results.length, total: ids.length, results };
   }
 
   // ============ 退款等比例追回（供退款流程调用） ============

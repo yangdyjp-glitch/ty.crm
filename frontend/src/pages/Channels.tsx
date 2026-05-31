@@ -11,12 +11,14 @@ import {
   Tag,
   message,
 } from 'antd'
+import dayjs from 'dayjs'
 import client from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import {
   CHANNEL_TYPE_LABEL,
   COMMISSION_METHOD_LABEL,
   FUND_MODE_LABEL,
+  LEDGER_TYPE_LABEL,
   SETTLEMENT_COND_LABEL,
 } from '../api/types'
 
@@ -30,6 +32,11 @@ export default function Channels() {
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Any | null>(null)
   const [form] = Form.useForm()
+  const [ledger, setLedger] = useState<Any | null>(null)
+  const openLedger = async (id: number) => {
+    const { data } = await client.get(`/channels/${id}/ledger`)
+    setLedger(data)
+  }
 
   const load = () => {
     setLoading(true)
@@ -71,9 +78,42 @@ export default function Channels() {
           { title: '计算方式', dataIndex: 'commissionMethod', render: (m) => COMMISSION_METHOD_LABEL[m] },
           { title: '资金模式', dataIndex: 'fundSettlementMode', render: (m) => FUND_MODE_LABEL[m] },
           { title: '结算条件', dataIndex: 'settlementCondition', render: (s) => SETTLEMENT_COND_LABEL[s] },
-          { title: '操作', render: (_, r) => (isAdmin ? <a onClick={() => openForm(r)}>编辑</a> : null) },
+          {
+            title: '操作',
+            render: (_, r) =>
+              isAdmin ? (
+                <Space>
+                  <a onClick={() => openForm(r)}>编辑</a>
+                  <a onClick={() => openLedger(r.id)}>台账</a>
+                </Space>
+              ) : null,
+          },
         ]}
       />
+
+      <Modal title="往来 / 抵扣台账（按币种）" open={!!ledger} onCancel={() => setLedger(null)} footer={null} width={760}>
+        {ledger && (
+          <>
+            <div style={{ marginBottom: 12 }}>
+              当前余额（正=第三方欠公司，负=公司欠第三方）： CNY <b>{ledger.balances.CNY}</b> ， JPY <b>{ledger.balances.JPY}</b>
+            </div>
+            <Table
+              size="small"
+              rowKey="id"
+              pagination={false}
+              dataSource={ledger.entries}
+              columns={[
+                { title: '时间', dataIndex: 'createdAt', render: (t: string) => dayjs(t).format('MM-DD HH:mm') },
+                { title: '币种', dataIndex: 'currency' },
+                { title: '类型', dataIndex: 'entryType', render: (e: string) => LEDGER_TYPE_LABEL[e] || e },
+                { title: '金额', dataIndex: 'amount', align: 'right' },
+                { title: '余额', dataIndex: 'balanceAfter', align: 'right' },
+                { title: '说明', dataIndex: 'note' },
+              ]}
+            />
+          </>
+        )}
+      </Modal>
       <Modal title={editing ? '编辑渠道' : '新增渠道'} open={open} onCancel={() => setOpen(false)} onOk={submit} destroyOnClose>
         <Form form={form} layout="vertical">
           <Form.Item name="name" label="渠道名称" rules={[{ required: true }]}><Input /></Form.Item>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Modal, Select, Space, Table, Tag, message } from 'antd'
+import { Button, Modal, Select, Space, Table, Tag, message } from 'antd'
 import client from '../api/client'
 import {
   COMMISSION_STATUS_COLOR,
@@ -15,6 +15,17 @@ export default function Commissions() {
   const [page, setPage] = useState(1)
   const [status, setStatus] = useState<string>()
   const [loading, setLoading] = useState(false)
+  const [selected, setSelected] = useState<number[]>([])
+
+  const batch = async (action: 'batch-review' | 'batch-pay') => {
+    if (!selected.length) return
+    const { data: res } = await client.post(`/commissions/${action}`, { ids: selected })
+    message.success(
+      action === 'batch-review' ? `已审核 ${res.reviewed}/${res.total}` : `已支付 ${res.paid}/${res.total}`,
+    )
+    setSelected([])
+    load()
+  }
 
   const load = () => {
     setLoading(true)
@@ -43,11 +54,20 @@ export default function Commissions() {
           onChange={(v) => { setPage(1); setStatus(v) }}
           options={Object.entries(COMMISSION_STATUS_LABEL).map(([k, v]) => ({ value: k, label: v }))}
         />
+        <Button disabled={!selected.length} onClick={() => batch('batch-review')}>批量审核（{selected.length}）</Button>
+        <Button type="primary" disabled={!selected.length} onClick={() => batch('batch-pay')}>批量支付（{selected.length}）</Button>
       </Space>
       <Table
         rowKey="id"
         loading={loading}
         dataSource={data.items}
+        rowSelection={{
+          selectedRowKeys: selected,
+          onChange: (k) => setSelected(k as number[]),
+          getCheckboxProps: (r: Any) => ({
+            disabled: !['PENDING_REVIEW', 'PENDING_PAYMENT'].includes(r.status) || r.suspended,
+          }),
+        }}
         pagination={{ current: page, pageSize: 10, total: data.total, onChange: setPage, showSizeChanger: false }}
         columns={[
           { title: '客户', render: (_, r) => r.customer?.name },

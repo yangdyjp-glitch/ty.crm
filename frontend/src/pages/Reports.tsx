@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Card, Table, Tabs } from 'antd'
 import client from '../api/client'
-import { CURRENCY_LABEL, FUND_MODE_LABEL, fmtMoney } from '../api/types'
+import {
+  CURRENCY_LABEL,
+  FUND_MODE_LABEL,
+  SALES_STAGE_LABEL,
+  fmtMoney,
+} from '../api/types'
 
 type Any = Record<string, any>
 
@@ -9,11 +14,13 @@ export default function Reports() {
   const [finance, setFinance] = useState<Any | null>(null)
   const [channels, setChannels] = useState<Any[]>([])
   const [sales, setSales] = useState<Any[]>([])
+  const [funnel, setFunnel] = useState<Any[]>([])
 
   useEffect(() => {
     client.get('/reports/finance').then((r) => setFinance(r.data))
     client.get('/reports/channels').then((r) => setChannels(r.data))
     client.get('/reports/sales').then((r) => setSales(r.data))
+    client.get('/reports/funnel').then((r) => setFunnel(r.data))
   }, [])
 
   return (
@@ -92,6 +99,44 @@ export default function Reports() {
               ]}
             />
           ),
+        },
+        {
+          key: 'funnel',
+          label: '销售漏斗',
+          children: (() => {
+            const map: Record<string, number> = Object.fromEntries(
+              funnel.map((f) => [f.salesStage, f._count]),
+            )
+            const max = Math.max(1, ...funnel.map((f) => f._count))
+            return (
+              <div style={{ maxWidth: 520 }}>
+                {Object.entries(SALES_STAGE_LABEL).map(([k, v]) => {
+                  const cnt = map[k] || 0
+                  return (
+                    <div key={k} style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+                      <div style={{ width: 84, textAlign: 'right', marginRight: 12 }}>{v}</div>
+                      <div style={{ flex: 1, background: '#f0f0f0', borderRadius: 4 }}>
+                        <div
+                          style={{
+                            width: `${(cnt / max) * 100}%`,
+                            minWidth: cnt ? 28 : 0,
+                            background: '#1677ff',
+                            color: '#fff',
+                            padding: '2px 8px',
+                            borderRadius: 4,
+                            fontSize: 12,
+                            textAlign: 'right',
+                          }}
+                        >
+                          {cnt || ''}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })(),
         },
       ]}
     />

@@ -31,4 +31,10 @@ export class ReportsController {
   sales() {
     return this.reports.sales();
   }
+
+  @Get('funnel')
+  @Roles(UserRole.ADMIN)
+  funnel() {
+    return this.reports.funnel();
+  }
 }

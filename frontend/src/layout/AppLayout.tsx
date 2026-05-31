@@ -3,6 +3,7 @@ import { UserOutlined, DownOutlined } from '@ant-design/icons'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { ROLE_LABEL } from '../api/types'
+import NotificationBell from '../components/NotificationBell'
 
 const NAV: { key: string; label: string; roles: string[] }[] = [
   { key: '/', label: '仪表盘', roles: ['ADMIN', 'SALES', 'MARKET', 'DOWNSTREAM_SALES'] },
@@ -52,6 +53,7 @@ export default function AppLayout() {
       </Layout.Sider>
       <Layout>
         <Layout.Header style={{ background: '#fff', padding: '0 24px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', borderBottom: '1px solid #f0f0f0' }}>
+          <NotificationBell />
           <Dropdown
             menu={{ items: [{ key: 'logout', label: '退出登录', onClick: logout }] }}
           >

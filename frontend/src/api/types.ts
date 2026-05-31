@@ -135,5 +135,24 @@ export const FOLLOW_METHOD_LABEL: Record<string, string> = {
   OTHER: '其他',
 };
 
+export const LEDGER_TYPE_LABEL: Record<string, string> = {
+  MODE1_ADVANCE_REFUND: '模式一·第三方垫付退款',
+  MODE2_ADVANCE_COMMISSION: '模式二·公司垫付佣金',
+  NEW_ORDER_OFFSET: '新单抵扣',
+  TRANSFER_TO_RECEIVABLE: '转应收·追现金',
+  MANUAL_ADJUST: '人工调整',
+}
+
+export const SALES_STAGE_LABEL: Record<string, string> = {
+  NOT_CONTACTED: '未联系',
+  CONTACTED: '已联系',
+  NEEDS_CONFIRMED: '需求确认',
+  PROPOSAL: '方案介绍',
+  PRICING: '价格沟通',
+  CLOSING: '促单中',
+  WON: '已成交',
+  LOST: '未成交',
+}
+
 export const fmtMoney = (v: unknown) =>
   v == null ? '0' : Number(v).toLocaleString();

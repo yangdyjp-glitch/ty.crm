@@ -16,6 +16,9 @@ import { RefundsModule } from './refunds/refunds.module';
 import { ReferralsModule } from './referrals/referrals.module';
 import { ReportsModule } from './reports/reports.module';
 import { AuditModule } from './audit/audit.module';
+import { AttachmentsModule } from './attachments/attachments.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { ScheduleModule } from '@nestjs/schedule';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { RolesGuard } from './auth/roles.guard';
 
@@ -36,6 +39,9 @@ import { RolesGuard } from './auth/roles.guard';
     ReferralsModule,
     ReportsModule,
     AuditModule,
+    AttachmentsModule,
+    NotificationsModule,
+    ScheduleModule.forRoot(),
   ],
   controllers: [AppController],
   providers: [

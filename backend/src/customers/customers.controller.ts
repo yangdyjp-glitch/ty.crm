@@ -21,6 +21,7 @@ import {
   CreateCustomerDto,
   FollowUpDto,
   SetProblemDto,
+  SetSalesStageDto,
   SetStatusDto,
   UpdateCustomerDto,
 } from './dto/customer.dto';
@@ -135,5 +136,32 @@ export class CustomersController {
     @Body() dto: SetStatusDto,
   ) {
     return this.customers.setStatus(user, id, dto);
+  }
+
+  @Post(':id/sales-stage')
+  @Roles(UserRole.SALES, UserRole.ADMIN)
+  setSalesStage(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: SetSalesStageDto,
+  ) {
+    return this.customers.setSalesStage(user, id, dto.salesStage);
+  }
+
+  @Post(':id/score')
+  @Roles(UserRole.SALES, UserRole.ADMIN)
+  computeScore(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.customers.computeScore(user, id);
+  }
+
+  @Get(':id/ai-summary')
+  aiSummary(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.customers.aiSummary(user, id);
   }
 }

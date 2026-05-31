@@ -54,7 +54,7 @@ export class OrdersService {
           fundSettlementMode: fundMode,
           signedById: user.id,
           signedAt: dto.signedAt ? new Date(dto.signedAt) : new Date(),
-          contractNo: dto.contractNo,
+          contractNo: dto.contractNo || genNo('HT'), // 自动合同号
           originalPrice: dto.originalPrice,
           discountAmount: discount,
           receivableAmount: receivable,

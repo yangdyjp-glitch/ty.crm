@@ -199,6 +199,14 @@ export class ReportsService {
     }));
   }
 
+  async funnel() {
+    return this.prisma.customer.groupBy({
+      by: ['salesStage'],
+      where: { deletedAt: null, salesStage: { not: null } },
+      _count: true,
+    });
+  }
+
   async sales() {
     const byOwner = await this.prisma.customer.groupBy({
       by: ['ownerUserId'],

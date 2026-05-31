@@ -12,8 +12,10 @@ import {
   Table,
   Tabs,
   Tag,
+  Upload,
   message,
 } from 'antd'
+import { UploadOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import client from '../api/client'
 import { useAuth } from '../auth/AuthContext'
@@ -23,6 +25,7 @@ import {
   FOLLOW_METHOD_LABEL,
   INTENTION_LABEL,
   ORDER_STATUS_LABEL,
+  SALES_STAGE_LABEL,
   SOURCE_LABEL,
   fmtMoney,
 } from '../api/types'
@@ -34,11 +37,18 @@ export default function CustomerDetail() {
   const { user } = useAuth()
   const [c, setC] = useState<Any | null>(null)
   const [followOpen, setFollowOpen] = useState(false)
+  const [aiSummary, setAiSummary] = useState<string | null>(null)
+  const [attachments, setAttachments] = useState<Any[]>([])
   const [form] = Form.useForm()
   const canFollow = user?.role === 'SALES' || user?.role === 'ADMIN'
 
   const load = () => client.get(`/customers/${id}`).then((r) => setC(r.data))
-  useEffect(() => { load() }, [id])
+  const loadAtt = () =>
+    client.get('/attachments', { params: { relatedType: 'Customer', relatedId: id } }).then((r) => setAttachments(r.data))
+  useEffect(() => {
+    load()
+    loadAtt()
+  }, [id])
   if (!c) return null
 
   const addFollow = async () => {
@@ -52,17 +62,49 @@ export default function CustomerDetail() {
     form.resetFields()
     load()
   }
+  const setStage = async (salesStage: string) => {
+    await client.post(`/customers/${id}/sales-stage`, { salesStage })
+    message.success('已更新销售阶段')
+    load()
+  }
+  const doScore = async () => {
+    const { data } = await client.post(`/customers/${id}/score`)
+    message.success(`客户评分：${data.score}`)
+    load()
+  }
+  const doAi = async () => {
+    const { data } = await client.get(`/customers/${id}/ai-summary`)
+    setAiSummary(data.summary)
+  }
 
   return (
     <div>
       <Card
         title={
-          <Space>
+          <Space wrap>
             {c.name}
             <Tag color={CUSTOMER_STATUS_COLOR[c.mainStatus]}>{CUSTOMER_STATUS_LABEL[c.mainStatus]}</Tag>
             {c.intentionLevel && <Tag color="purple">{INTENTION_LABEL[c.intentionLevel]}</Tag>}
+            {c.salesStage && <Tag color="geekblue">{SALES_STAGE_LABEL[c.salesStage]}</Tag>}
+            {c.score != null && <Tag color="gold">评分 {c.score}</Tag>}
             {c.hasProblem && <Tag color="red">有问题</Tag>}
           </Space>
+        }
+        extra={
+          canFollow && (
+            <Space>
+              <Select
+                size="small"
+                placeholder="销售阶段"
+                style={{ width: 120 }}
+                value={c.salesStage || undefined}
+                onChange={setStage}
+                options={Object.entries(SALES_STAGE_LABEL).map(([k, v]) => ({ value: k, label: v }))}
+              />
+              <Button size="small" onClick={doScore}>评分</Button>
+              <Button size="small" onClick={doAi}>AI 摘要</Button>
+            </Space>
+          )
         }
         style={{ marginBottom: 16 }}
       >
@@ -150,6 +192,45 @@ export default function CustomerDetail() {
               />
             ),
           },
+          {
+            key: 'attachments',
+            label: `附件 (${attachments.length})`,
+            children: (
+              <>
+                <Upload
+                  showUploadList={false}
+                  customRequest={async ({ file }) => {
+                    const fd = new FormData()
+                    fd.append('file', file as File)
+                    fd.append('relatedType', 'Customer')
+                    fd.append('relatedId', String(id))
+                    await client.post('/attachments', fd)
+                    message.success('已上传')
+                    loadAtt()
+                  }}
+                >
+                  <Button icon={<UploadOutlined />} style={{ marginBottom: 12 }}>上传合同 / 凭证</Button>
+                </Upload>
+                <Table
+                  rowKey="id"
+                  size="small"
+                  dataSource={attachments}
+                  pagination={false}
+                  columns={[
+                    { title: '文件名', dataIndex: 'fileName' },
+                    { title: '类型', dataIndex: 'fileType' },
+                    { title: '上传时间', dataIndex: 'createdAt', render: (t) => dayjs(t).format('MM-DD HH:mm') },
+                    {
+                      title: '操作',
+                      render: (_: any, r: Any) => (
+                        <a href={`/api/attachments/${r.id}/file`} target="_blank" rel="noreferrer">下载</a>
+                      ),
+                    },
+                  ]}
+                />
+              </>
+            ),
+          },
         ]}
       />
 
@@ -166,6 +247,10 @@ export default function CustomerDetail() {
             <Input type="datetime-local" />
           </Form.Item>
         </Form>
+      </Modal>
+
+      <Modal title="AI 跟进摘要" open={!!aiSummary} onCancel={() => setAiSummary(null)} footer={null}>
+        <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>{aiSummary}</pre>
       </Modal>
     </div>
   )

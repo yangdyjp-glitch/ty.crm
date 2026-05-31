@@ -10,6 +10,7 @@ import {
   IntentionLevel,
   OrderStatus,
   Prisma,
+  SalesStage,
   SourceCategory,
   UserRole,
 } from '@prisma/client';
@@ -316,6 +317,50 @@ export class CustomersService {
       where: { id: customerId },
       data: { mainStatus: main },
     });
+  }
+
+  // ===== 二期：销售阶段 / 评分 / AI 摘要 =====
+
+  async setSalesStage(user: AuthUser, id: number, salesStage: SalesStage) {
+    await this.loadScoped(user, id);
+    return this.prisma.customer.update({ where: { id }, data: { salesStage } });
+  }
+
+  /** 客户评分（框架级启发式：意向 + 跟进近度 + 是否成交） */
+  async computeScore(user: AuthUser, id: number) {
+    await this.loadScoped(user, id);
+    const c = await this.prisma.customer.findUnique({
+      where: { id },
+      include: { followUps: true, orders: { where: { deletedAt: null } } },
+    });
+    if (!c) return { score: 0 };
+    const intent: Record<string, number> = { A: 40, B: 30, C: 20, D: 5 };
+    let score = intent[c.intentionLevel ?? ''] ?? 10;
+    score += Math.min(20, c.followUps.length * 5);
+    if (
+      c.latestFollowUpAt &&
+      Date.now() - new Date(c.latestFollowUpAt).getTime() < 7 * 86400000
+    ) {
+      score += 15;
+    }
+    if (c.orders.length) score += 25;
+    score = Math.min(100, score);
+    await this.prisma.customer.update({ where: { id }, data: { score } });
+    return { score };
+  }
+
+  /** AI 跟进摘要（框架级：汇总近 10 条跟进；接入大模型后增强） */
+  async aiSummary(user: AuthUser, id: number) {
+    await this.loadScoped(user, id);
+    const c = await this.prisma.customer.findUnique({
+      where: { id },
+      include: { followUps: { orderBy: { followedAt: 'desc' }, take: 10 } },
+    });
+    if (!c || !c.followUps.length) return { summary: '暂无跟进记录。' };
+    const lines = c.followUps.map((f) => `· ${f.content}`).join('\n');
+    return {
+      summary: `近 ${c.followUps.length} 次跟进要点（框架级，接入大模型后自动总结）：\n${lines}`,
+    };
   }
 
   // ===== 导入 / 导出 =====

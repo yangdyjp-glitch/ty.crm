@@ -10,6 +10,7 @@ import {
   CustomerMainStatus,
   FollowMethod,
   IntentionLevel,
+  SalesStage,
   SourceCategory,
 } from '@prisma/client';
 
@@ -76,4 +77,8 @@ export class SetProblemDto {
 
 export class SetStatusDto {
   @IsEnum(CustomerMainStatus) mainStatus: CustomerMainStatus;
+}
+
+export class SetSalesStageDto {
+  @IsEnum(SalesStage) salesStage: SalesStage;
 }
