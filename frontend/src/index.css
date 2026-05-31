@@ -57,11 +57,11 @@ td.ant-table-cell[align='right'] {
 /* 线条更明显：卡片描边 + 表格网格 */
 .ant-layout .ant-card {
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 6px;
 }
 .ant-table-wrapper .ant-table {
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 6px;
   overflow: hidden;
 }
 .ant-table-tbody > tr > td,

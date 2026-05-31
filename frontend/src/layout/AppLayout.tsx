@@ -1,37 +1,57 @@
-import { Layout, Menu, Dropdown, Avatar, Tag } from 'antd'
-import { UserOutlined, DownOutlined } from '@ant-design/icons'
+import { Layout, Menu, Avatar } from 'antd'
+import type { MenuProps } from 'antd'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { ROLE_LABEL } from '../api/types'
 import NotificationBell from '../components/NotificationBell'
 
-const NAV: { key: string; label: string; roles: string[] }[] = [
-  { key: '/', label: '仪表盘', roles: ['ADMIN', 'SALES', 'MARKET', 'DOWNSTREAM_SALES'] },
-  { key: '/customers', label: '客户 / 线索', roles: ['ADMIN', 'SALES', 'MARKET'] },
-  { key: '/orders', label: '订单 / 签约', roles: ['ADMIN', 'SALES'] },
-  { key: '/payments', label: '收款', roles: ['ADMIN', 'SALES'] },
-  { key: '/refunds', label: '退款', roles: ['ADMIN', 'SALES'] },
-  { key: '/commissions', label: '分成结算', roles: ['ADMIN'] },
-  { key: '/channels', label: '渠道管理', roles: ['ADMIN', 'MARKET'] },
-  { key: '/products', label: '项目管理', roles: ['ADMIN'] },
-  { key: '/referrals', label: '转介绍收佣', roles: ['ADMIN', 'DOWNSTREAM_SALES'] },
-  { key: '/reports', label: '报表', roles: ['ADMIN'] },
-  { key: '/users', label: '用户管理', roles: ['ADMIN'] },
-  { key: '/audit-logs', label: '操作日志', roles: ['ADMIN'] },
+type Item = { key: string; cn: string; en: string; roles: string[]; admin?: boolean }
+
+const NAV: Item[] = [
+  { key: '/', cn: '仪表盘', en: 'DASHBOARD', roles: ['ADMIN', 'SALES', 'MARKET', 'DOWNSTREAM_SALES'] },
+  { key: '/customers', cn: '客户 / 线索', en: 'CUSTOMERS', roles: ['ADMIN', 'SALES', 'MARKET'] },
+  { key: '/orders', cn: '订单 / 签约', en: 'ORDERS', roles: ['ADMIN', 'SALES'] },
+  { key: '/payments', cn: '收款', en: 'PAYMENTS', roles: ['ADMIN', 'SALES'] },
+  { key: '/refunds', cn: '退款', en: 'REFUNDS', roles: ['ADMIN', 'SALES'] },
+  { key: '/commissions', cn: '分成结算', en: 'SETTLEMENT', roles: ['ADMIN'] },
+  { key: '/channels', cn: '渠道管理', en: 'CHANNELS', roles: ['ADMIN', 'MARKET'] },
+  { key: '/referrals', cn: '转介绍收佣', en: 'REFERRALS', roles: ['ADMIN', 'DOWNSTREAM_SALES'] },
+  { key: '/products', cn: '项目管理', en: 'PRODUCTS', roles: ['ADMIN'], admin: true },
+  { key: '/reports', cn: '报表', en: 'REPORTS', roles: ['ADMIN'], admin: true },
+  { key: '/users', cn: '用户管理', en: 'USERS', roles: ['ADMIN'], admin: true },
+  { key: '/audit-logs', cn: '操作日志', en: 'LOGS', roles: ['ADMIN'], admin: true },
 ]
+
+const rowLabel = (cn: string, en: string) => (
+  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <span>{cn}</span>
+    <span style={{ fontSize: 10, color: '#5f6b7d', letterSpacing: 1 }}>{en}</span>
+  </div>
+)
 
 export default function AppLayout() {
   const { user, logout } = useAuth()
   const loc = useLocation()
   const nav = useNavigate()
   const role = user?.role ?? ''
+  const visible = NAV.filter((n) => n.roles.includes(role))
+  const main = visible.filter((n) => !n.admin)
+  const admin = visible.filter((n) => n.admin)
 
-  const items = NAV.filter((n) => n.roles.includes(role)).map((n) => ({
-    key: n.key,
-    label: n.label,
-  }))
+  const items: MenuProps['items'] = [
+    ...main.map((n) => ({ key: n.key, label: rowLabel(n.cn, n.en) })),
+    ...(admin.length
+      ? [
+          { type: 'divider' as const, style: { borderColor: '#2b3547', margin: '10px 16px' } },
+          {
+            type: 'group' as const,
+            label: <span style={{ fontSize: 10, letterSpacing: 2, color: '#5f6b7d' }}>管理 · ADMIN</span>,
+            children: admin.map((n) => ({ key: n.key, label: rowLabel(n.cn, n.en) })),
+          },
+        ]
+      : []),
+  ]
 
-  // 当前选中项：精确或前缀匹配（客户详情高亮“客户”）
   const selected =
     NAV.map((n) => n.key)
       .filter((k) => k !== '/' && loc.pathname.startsWith(k))
@@ -40,32 +60,35 @@ export default function AppLayout() {
 
   return (
     <Layout style={{ height: '100%' }}>
-      <Layout.Sider theme="light" width={200} style={{ borderRight: '1px solid #f0f0f0' }}>
-        <div style={{ height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontWeight: 900, fontSize: 19, color: '#2563eb', letterSpacing: 1, borderBottom: '1px solid #e6ebf2' }}>
-          <span style={{ background: 'linear-gradient(135deg,#2563eb,#06b6d4)', color: '#fff', borderRadius: 8, padding: '2px 8px', fontSize: 15 }}>矩阵</span>
-          CRM
+      <Layout.Sider width={224} style={{ background: '#1e2433' }}>
+        <div style={{ padding: '20px 18px 16px' }}>
+          <div style={{ color: '#fff', fontWeight: 900, fontSize: 22, letterSpacing: 1 }}>矩阵 CRM</div>
+          <div style={{ color: '#5f6b7d', fontSize: 11, letterSpacing: 3, marginTop: 2 }}>MATRIX CRM</div>
         </div>
         <Menu
+          theme="dark"
           mode="inline"
           selectedKeys={[selected]}
           items={items}
           onClick={({ key }) => nav(key)}
+          style={{ background: 'transparent', borderInlineEnd: 'none', paddingBottom: 90 }}
         />
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, borderTop: '1px solid #2b3547', background: '#1e2433' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Avatar shape="square" style={{ background: '#2563eb', fontWeight: 700 }}>矩</Avatar>
+            <div style={{ overflow: 'hidden' }}>
+              <div style={{ color: '#fff', fontSize: 13, fontWeight: 600 }}>{user?.name}</div>
+              <div style={{ color: '#5f6b7d', fontSize: 11 }}>{user?.username} · {ROLE_LABEL[role]}</div>
+            </div>
+          </div>
+          <a onClick={logout} style={{ color: '#8b95a5', fontSize: 12, display: 'inline-block', marginTop: 12 }}>退出登录</a>
+        </div>
       </Layout.Sider>
       <Layout>
-        <Layout.Header style={{ background: '#fff', padding: '0 24px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', borderBottom: '1px solid #f0f0f0' }}>
+        <Layout.Header style={{ background: '#fff', padding: '0 24px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', borderBottom: '1px solid #e6ebf2' }}>
           <NotificationBell />
-          <Dropdown
-            menu={{ items: [{ key: 'logout', label: '退出登录', onClick: logout }] }}
-          >
-            <span style={{ cursor: 'pointer' }}>
-              <Avatar size="small" icon={<UserOutlined />} style={{ marginRight: 8 }} />
-              {user?.name} <Tag color="blue" style={{ marginLeft: 4 }}>{ROLE_LABEL[role]}</Tag>
-              <DownOutlined style={{ fontSize: 10 }} />
-            </span>
-          </Dropdown>
         </Layout.Header>
-        <Layout.Content style={{ margin: 16, padding: 16, background: '#fff', overflow: 'auto' }}>
+        <Layout.Content style={{ margin: 16, padding: 24, background: '#fff', overflow: 'auto', border: '1px solid #e6ebf2', borderRadius: 8 }}>
           <Outlet />
         </Layout.Content>
       </Layout>
