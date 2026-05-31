@@ -29,13 +29,13 @@ createRoot(document.getElementById('root')!).render(
           colorBorderSecondary: '#e9dcab',
           colorTextHeading: '#0f172a',
           colorText: '#1e2433',
-          colorBgLayout: '#eaf2fc',
+          colorBgLayout: '#e9f5ec',
         },
         components: {
           Layout: {
             headerBg: 'transparent',
             siderBg: '#3b5bf6',
-            bodyBg: '#eaf2fc',
+            bodyBg: '#e9f5ec',
             headerHeight: 56,
           },
           Card: { headerFontSize: 16 },
@@ -63,9 +63,9 @@ createRoot(document.getElementById('root')!).render(
           },
           Button: {
             fontWeight: 500,
-            colorPrimary: '#1e40af',
-            colorPrimaryHover: '#2952c8',
-            colorPrimaryActive: '#163172',
+            colorPrimary: '#166534',
+            colorPrimaryHover: '#15803d',
+            colorPrimaryActive: '#14532d',
             primaryShadow: 'none',
           },
         },
