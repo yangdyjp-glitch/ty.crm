@@ -17,7 +17,7 @@ import {
 } from 'antd'
 import { UploadOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
-import client from '../api/client'
+import client, { downloadFile } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import {
   CUSTOMER_STATUS_COLOR,
@@ -223,7 +223,7 @@ export default function CustomerDetail() {
                     {
                       title: '操作',
                       render: (_: any, r: Any) => (
-                        <a href={`/api/attachments/${r.id}/file`} target="_blank" rel="noreferrer">下载</a>
+                        <a onClick={() => downloadFile(`/attachments/${r.id}/file`, r.fileName)}>下载</a>
                       ),
                     },
                   ]}

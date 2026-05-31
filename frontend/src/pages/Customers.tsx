@@ -13,7 +13,7 @@ import {
   message,
 } from 'antd'
 import { UploadOutlined } from '@ant-design/icons'
-import client from '../api/client'
+import client, { downloadFile } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import {
   loadAcqChannels,
@@ -165,7 +165,7 @@ export default function Customers() {
             <Button icon={<UploadOutlined />}>导入</Button>
           </Upload>
         )}
-        <Button onClick={() => window.open('/api/customers/export?_t=' + Date.now())}>导出</Button>
+        <Button onClick={() => downloadFile('/customers/export', '客户.xlsx')}>导出</Button>
       </Space>
 
       <Table
