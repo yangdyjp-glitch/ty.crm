@@ -16,8 +16,8 @@
 :root {
   /* 数字(TNR) → 主字体(Noto Serif SC) → 系统衬线兜底 */
   --app-font: 'NumTNR', 'Noto Serif SC', Georgia, 'Songti SC', 'SimSun', serif;
-  --line: #c3ccda;
-  --line-soft: #e6ebf2;
+  --line: #d4bb63; /* 淡金色线条 */
+  --line-soft: #e9dcab; /* 更淡的金色 */
   --bg-app: #e9f5ec; /* 淡绿背景 */
   --blue: #3b5bf6;
   --purple: #7c3aed;
@@ -77,14 +77,14 @@ td.ant-table-cell[align='right'] {
   font-variant-numeric: tabular-nums;
 }
 
-/* 线条更明显：卡片描边 + 表格网格 */
+/* 直角框体 + 淡金色线条：卡片描边 + 表格网格 */
 .ant-layout .ant-card {
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 0;
 }
 .ant-table-wrapper .ant-table {
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 0;
   overflow: hidden;
 }
 .ant-table-tbody > tr > td,
@@ -102,9 +102,9 @@ td.ant-table-cell[align='right'] {
   height: 9px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #b9c2d0;
-  border-radius: 8px;
+  background: #cdbb84;
+  border-radius: 0;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #97a3b5;
+  background: #b8a35f;
 }

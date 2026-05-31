@@ -40,7 +40,7 @@ export default function NotificationBell() {
   }
 
   const panel = (
-    <div style={{ width: 340, background: '#fff', boxShadow: '0 2px 12px rgba(0,0,0,0.15)', borderRadius: 8, padding: 8, maxHeight: 420, overflow: 'auto' }}>
+    <div style={{ width: 340, background: '#fff', boxShadow: '0 2px 12px rgba(0,0,0,0.15)', borderRadius: 0, padding: 8, maxHeight: 420, overflow: 'auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 8px' }}>
         <b>通知</b>
         <span style={{ fontSize: 13 }}>

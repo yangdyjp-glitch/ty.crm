@@ -19,6 +19,7 @@ import {
   REFUND_STATUS_LABEL,
   fmtMoney,
 } from '../api/types'
+import { moneyOut } from '../api/money'
 
 type Any = Record<string, any>
 
@@ -75,9 +76,9 @@ export default function Refunds() {
           { title: '退款号', dataIndex: 'refundNo', width: 130 },
           { title: '客户', render: (_, r) => r.customer?.name },
           { title: '订单', render: (_, r) => r.order?.orderNo },
-          { title: '名义额', dataIndex: 'nominalAmount', render: fmtMoney, align: 'right' },
-          { title: '实退现金', dataIndex: 'cashAmount', render: fmtMoney, align: 'right' },
-          { title: '抵减', dataIndex: 'offsetAmount', render: fmtMoney, align: 'right' },
+          { title: '名义额', dataIndex: 'nominalAmount', render: moneyOut, align: 'right' },
+          { title: '实退现金', dataIndex: 'cashAmount', render: moneyOut, align: 'right' },
+          { title: '抵减', dataIndex: 'offsetAmount', render: moneyOut, align: 'right' },
           { title: '原因', dataIndex: 'reason', render: (r) => REFUND_REASON_LABEL[r] },
           { title: '承担方', dataIndex: 'bearer', render: (b) => REFUND_BEARER_LABEL[b] },
           {

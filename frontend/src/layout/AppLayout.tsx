@@ -91,7 +91,7 @@ export default function AppLayout() {
         </div>
       </Layout.Sider>
       <Layout>
-        <Layout.Header style={{ background: '#fff', padding: '0 24px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', borderBottom: '1px solid #e6ebf2' }}>
+        <Layout.Header style={{ background: '#fff', padding: '0 24px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', borderBottom: '1px solid #e9dcab' }}>
           <NotificationBell />
         </Layout.Header>
         <Layout.Content style={{ margin: 16, padding: 24, overflow: 'auto' }}>

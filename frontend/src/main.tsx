@@ -23,11 +23,11 @@ createRoot(document.getElementById('root')!).render(
           colorWarning: '#f59e0b',
           colorError: '#ef4444',
           colorLink: '#3b5bf6',
-          borderRadius: 8,
+          borderRadius: 0,
           fontFamily: FONT,
           fontSize: 14,
-          colorBorder: '#c3ccda',
-          colorBorderSecondary: '#e6ebf2',
+          colorBorder: '#d4bb63',
+          colorBorderSecondary: '#e9dcab',
           colorTextHeading: '#0f172a',
           colorText: '#1e2433',
           colorBgLayout: '#e9f5ec',
@@ -43,7 +43,7 @@ createRoot(document.getElementById('root')!).render(
           Table: {
             headerBg: '#eef0ff',
             headerColor: '#4338ca',
-            borderColor: '#e6ebf2',
+            borderColor: '#e9dcab',
             cellFontSize: 14,
             rowHoverBg: '#f3f4ff',
           },
@@ -60,7 +60,13 @@ createRoot(document.getElementById('root')!).render(
             darkItemSelectedBg: 'rgba(255,255,255,0.22)',
             darkItemSelectedColor: '#ffffff',
           },
-          Button: { fontWeight: 500 },
+          Button: {
+            fontWeight: 500,
+            colorPrimary: '#1e40af',
+            colorPrimaryHover: '#2952c8',
+            colorPrimaryActive: '#163172',
+            primaryShadow: 'none',
+          },
         },
       }}
     >

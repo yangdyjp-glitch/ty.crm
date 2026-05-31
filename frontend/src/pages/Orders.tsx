@@ -14,6 +14,7 @@ import {
 import client from '../api/client'
 import { loadProducts } from '../api/options'
 import { CURRENCY_LABEL, ORDER_STATUS_LABEL, fmtMoney } from '../api/types'
+import { moneyIn } from '../api/money'
 
 type Any = Record<string, any>
 
@@ -64,7 +65,7 @@ export default function Orders() {
     { title: '项目', render: (_: any, r: Any) => r.product?.name },
     { title: '币种', dataIndex: 'currency', render: (c: string) => CURRENCY_LABEL[c] },
     { title: '应收', dataIndex: 'receivableAmount', render: fmtMoney, align: 'right' as const },
-    { title: '已收', dataIndex: 'paidAmount', render: fmtMoney, align: 'right' as const },
+    { title: '已收', dataIndex: 'paidAmount', render: moneyIn, align: 'right' as const },
     { title: '未收', dataIndex: 'unpaidAmount', render: fmtMoney, align: 'right' as const },
     { title: '状态', dataIndex: 'status', render: (s: string) => <Tag>{ORDER_STATUS_LABEL[s]}</Tag> },
     {

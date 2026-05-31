@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Card, Col, Row, Spin, Table, Tag } from 'antd'
 import client from '../api/client'
 import { CURRENCY_LABEL, CUSTOMER_STATUS_LABEL, fmtMoney } from '../api/types'
+import { moneyIn, moneyOut } from '../api/money'
 
 type Any = Record<string, any>
 
@@ -9,7 +10,7 @@ function PageHead({ eyebrow, title }: { eyebrow: string; title: string }) {
   const today = new Date()
   const d = `${today.getFullYear()}/${today.getMonth() + 1}/${today.getDate()}`
   return (
-    <div style={{ borderBottom: '1px solid #c3ccda', paddingBottom: 16, marginBottom: 22 }}>
+    <div style={{ borderBottom: '1px solid #d4bb63', paddingBottom: 16, marginBottom: 22 }}>
       <div style={{ fontSize: 11, letterSpacing: 3, color: '#6366f1', textTransform: 'uppercase', marginBottom: 4, fontWeight: 700 }}>{eyebrow}</div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div style={{ fontSize: 30, fontWeight: 900, letterSpacing: 1, color: '#0f172a' }}>{title}</div>
@@ -40,7 +41,7 @@ function Stat({ title, value, unit, color }: { title: string; value: ReactNode; 
   )
 }
 
-function MoneyByCurrency({ rows, fields }: { rows: Any[]; fields: [string, string][] }) {
+function MoneyByCurrency({ rows, fields }: { rows: Any[]; fields: [string, string, ('in' | 'out')?][] }) {
   return (
     <Table
       size="small"
@@ -49,10 +50,13 @@ function MoneyByCurrency({ rows, fields }: { rows: Any[]; fields: [string, strin
       dataSource={rows || []}
       columns={[
         { title: '币种', dataIndex: 'currency', render: (c) => <b>{CURRENCY_LABEL[c] || c}</b> },
-        ...fields.map(([key, title]) => ({
+        ...fields.map(([key, title, tone]) => ({
           title,
           align: 'right' as const,
-          render: (_: any, r: Any) => fmtMoney(r._sum?.[key]),
+          render: (_: any, r: Any) => {
+            const val = r._sum?.[key]
+            return tone === 'in' ? moneyIn(val) : tone === 'out' ? moneyOut(val) : fmtMoney(val)
+          },
         })),
       ]}
     />
@@ -91,7 +95,7 @@ export default function Dashboard() {
         </Row>
         <SectionTitle eyebrow="FINANCE" title="订单金额（分币种）" />
         <Card size="small">
-          <MoneyByCurrency rows={data.byCurrency?.orders} fields={[['receivableAmount', '应收'], ['paidAmount', '已收'], ['unpaidAmount', '未收'], ['refundAmount', '退款']]} />
+          <MoneyByCurrency rows={data.byCurrency?.orders} fields={[['receivableAmount', '应收'], ['paidAmount', '已收', 'in'], ['unpaidAmount', '未收'], ['refundAmount', '退款', 'out']]} />
         </Card>
         <SectionTitle eyebrow="COMMISSION" title="渠道分成（模式二·分币种）" />
         <Card size="small">
@@ -113,7 +117,7 @@ export default function Dashboard() {
         </Row>
         <SectionTitle eyebrow="FINANCE" title="我的订单金额（分币种）" />
         <Card size="small">
-          <MoneyByCurrency rows={data.byCurrency?.orders} fields={[['receivableAmount', '应收'], ['paidAmount', '已收']]} />
+          <MoneyByCurrency rows={data.byCurrency?.orders} fields={[['receivableAmount', '应收'], ['paidAmount', '已收', 'in']]} />
         </Card>
       </div>
     )

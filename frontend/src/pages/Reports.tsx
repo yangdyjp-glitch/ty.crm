@@ -115,15 +115,15 @@ export default function Reports() {
                   return (
                     <div key={k} style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
                       <div style={{ width: 84, textAlign: 'right', marginRight: 12 }}>{v}</div>
-                      <div style={{ flex: 1, background: '#f0f0f0', borderRadius: 4 }}>
+                      <div style={{ flex: 1, background: '#f0f0f0', borderRadius: 0 }}>
                         <div
                           style={{
                             width: `${(cnt / max) * 100}%`,
                             minWidth: cnt ? 28 : 0,
-                            background: '#1677ff',
+                            background: '#3b5bf6',
                             color: '#fff',
                             padding: '2px 8px',
-                            borderRadius: 4,
+                            borderRadius: 0,
                             fontSize: 12,
                             textAlign: 'right',
                           }}

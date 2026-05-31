@@ -12,6 +12,7 @@ import {
 import client from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import { CURRENCY_LABEL, PAYMENT_CONFIRM_LABEL, fmtMoney } from '../api/types'
+import { moneyIn } from '../api/money'
 
 type Any = Record<string, any>
 
@@ -62,7 +63,7 @@ export default function Payments() {
           { title: '收款号', dataIndex: 'paymentNo', width: 130 },
           { title: '客户', render: (_, r) => r.customer?.name },
           { title: '订单', render: (_, r) => r.order?.orderNo },
-          { title: '金额', dataIndex: 'amount', render: fmtMoney, align: 'right' },
+          { title: '金额', dataIndex: 'amount', render: moneyIn, align: 'right' },
           { title: '币种', dataIndex: 'currency', render: (c) => CURRENCY_LABEL[c] },
           {
             title: '确认状态',

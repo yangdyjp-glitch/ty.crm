@@ -29,6 +29,7 @@ import {
   SOURCE_LABEL,
   fmtMoney,
 } from '../api/types'
+import { moneyIn } from '../api/money'
 
 type Any = Record<string, any>
 
@@ -166,7 +167,7 @@ export default function CustomerDetail() {
                   { title: '订单号', dataIndex: 'orderNo' },
                   { title: '币种', dataIndex: 'currency' },
                   { title: '应收', dataIndex: 'receivableAmount', render: fmtMoney, align: 'right' },
-                  { title: '已收', dataIndex: 'paidAmount', render: fmtMoney, align: 'right' },
+                  { title: '已收', dataIndex: 'paidAmount', render: moneyIn, align: 'right' },
                   { title: '未收', dataIndex: 'unpaidAmount', render: fmtMoney, align: 'right' },
                   { title: '状态', dataIndex: 'status', render: (s) => <Tag>{ORDER_STATUS_LABEL[s]}</Tag> },
                 ]}

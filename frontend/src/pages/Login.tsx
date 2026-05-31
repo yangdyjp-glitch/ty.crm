@@ -32,7 +32,7 @@ export default function Login() {
     >
       <Card style={{ width: 360 }}>
         <div style={{ textAlign: 'center', marginBottom: 6 }}>
-          <span style={{ background: 'linear-gradient(135deg,#3b5bf6,#7c3aed)', color: '#fff', borderRadius: 10, padding: '4px 14px', fontWeight: 900, fontSize: 22, letterSpacing: 2 }}>
+          <span style={{ background: 'linear-gradient(135deg,#3b5bf6,#7c3aed)', color: '#fff', borderRadius: 0, padding: '4px 14px', fontWeight: 900, fontSize: 22, letterSpacing: 2 }}>
             矩阵 CRM
           </span>
         </div>

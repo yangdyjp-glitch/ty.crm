@@ -2,7 +2,7 @@ export default function PageHeader({ eyebrow, title }: { eyebrow: string; title:
   const t = new Date()
   const d = `${t.getFullYear()}/${t.getMonth() + 1}/${t.getDate()}`
   return (
-    <div style={{ borderBottom: '1px solid #c3ccda', paddingBottom: 14, marginBottom: 18 }}>
+    <div style={{ borderBottom: '1px solid #d4bb63', paddingBottom: 14, marginBottom: 18 }}>
       <div style={{ fontSize: 11, letterSpacing: 3, color: '#6366f1', textTransform: 'uppercase', marginBottom: 4, fontWeight: 700 }}>
         {eyebrow}
       </div>
