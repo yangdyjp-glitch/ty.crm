@@ -8,6 +8,11 @@ import { UsersModule } from './users/users.module';
 import { ProductsModule } from './products/products.module';
 import { ChannelsModule } from './channels/channels.module';
 import { CustomersModule } from './customers/customers.module';
+import { OrdersModule } from './orders/orders.module';
+import { PaymentsModule } from './payments/payments.module';
+import { CommissionsModule } from './commissions/commissions.module';
+import { LedgerModule } from './ledger/ledger.module';
+import { RefundsModule } from './refunds/refunds.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { RolesGuard } from './auth/roles.guard';
 
@@ -20,6 +25,11 @@ import { RolesGuard } from './auth/roles.guard';
     ProductsModule,
     ChannelsModule,
     CustomersModule,
+    OrdersModule,
+    PaymentsModule,
+    CommissionsModule,
+    LedgerModule,
+    RefundsModule,
   ],
   controllers: [AppController],
   providers: [

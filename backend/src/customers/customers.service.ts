@@ -8,6 +8,7 @@ import {
   AssignmentStatus,
   CustomerMainStatus,
   IntentionLevel,
+  OrderStatus,
   Prisma,
   SourceCategory,
   UserRole,
@@ -274,6 +275,45 @@ export class CustomersService {
     return this.prisma.customer.update({
       where: { id },
       data: { mainStatus: dto.mainStatus },
+    });
+  }
+
+  /**
+   * 按订单聚合重算客户主状态：退款只停被退订单，其他订单照常。
+   * 优先级：服务中 > 已签约(有活动订单) > 已完成服务 > 已退款。
+   * 无订单则不动（保留线索/跟进中）。
+   */
+  async recomputeMainStatus(customerId: number) {
+    const orders = await this.prisma.order.findMany({
+      where: { customerId, deletedAt: null },
+      select: { status: true },
+    });
+    if (!orders.length) return;
+    const active = orders.filter((o) =>
+      (
+        [
+          OrderStatus.PENDING_PAYMENT,
+          OrderStatus.PARTIAL_PAID,
+          OrderStatus.FULLY_PAID,
+          OrderStatus.IN_SERVICE,
+        ] as OrderStatus[]
+      ).includes(o.status),
+    );
+    let main: CustomerMainStatus;
+    if (active.some((o) => o.status === OrderStatus.IN_SERVICE)) {
+      main = CustomerMainStatus.IN_SERVICE;
+    } else if (active.length) {
+      main = CustomerMainStatus.SIGNED;
+    } else if (orders.some((o) => o.status === OrderStatus.COMPLETED)) {
+      main = CustomerMainStatus.COMPLETED;
+    } else if (orders.some((o) => o.status === OrderStatus.REFUNDED)) {
+      main = CustomerMainStatus.REFUNDED;
+    } else {
+      return;
+    }
+    await this.prisma.customer.update({
+      where: { id: customerId },
+      data: { mainStatus: main },
     });
   }
 }

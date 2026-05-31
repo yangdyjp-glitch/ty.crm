@@ -1,0 +1,64 @@
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+  Query,
+} from '@nestjs/common';
+import { CommissionStatus, UserRole } from '@prisma/client';
+import { CommissionsService } from './commissions.service';
+import { Roles } from '../auth/roles.decorator';
+import { CurrentUser, AuthUser } from '../auth/current-user.decorator';
+
+@Controller('commissions')
+@Roles(UserRole.ADMIN)
+export class CommissionsController {
+  constructor(private commissions: CommissionsService) {}
+
+  @Get()
+  list(
+    @Query()
+    q: {
+      channelId?: string;
+      status?: CommissionStatus;
+      page?: string;
+      pageSize?: string;
+    },
+  ) {
+    return this.commissions.list(q);
+  }
+
+  @Post(':id/review')
+  review(@Param('id', ParseIntPipe) id: number) {
+    return this.commissions.review(id);
+  }
+
+  @Post(':id/pay')
+  pay(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { voucherAttachmentId?: number },
+  ) {
+    return this.commissions.pay(user, id, body?.voucherAttachmentId);
+  }
+
+  @Post(':id/suspend')
+  suspend(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { note?: string },
+  ) {
+    return this.commissions.suspend(id, body?.note);
+  }
+
+  @Post(':id/resume')
+  resume(@Param('id', ParseIntPipe) id: number) {
+    return this.commissions.resume(id);
+  }
+
+  @Post(':id/cancel')
+  cancel(@Param('id', ParseIntPipe) id: number) {
+    return this.commissions.cancel(id);
+  }
+}
