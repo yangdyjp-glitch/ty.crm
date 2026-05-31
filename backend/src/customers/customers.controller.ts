@@ -7,7 +7,12 @@ import {
   Patch,
   Post,
   Query,
+  Res,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { Response } from 'express';
 import { UserRole } from '@prisma/client';
 import { CustomersService, CustomerListQuery } from './customers.service';
 import {
@@ -39,6 +44,27 @@ export class CustomersController {
     @Query('email') email?: string,
   ) {
     return this.customers.findDuplicates(phone, wechat, email);
+  }
+
+  @Get('export')
+  async export(@CurrentUser() user: AuthUser, @Res() res: Response) {
+    const buf = await this.customers.exportExcel(user);
+    res.set({
+      'Content-Type':
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': 'attachment; filename="customers.xlsx"',
+    });
+    res.send(buf);
+  }
+
+  @Post('import')
+  @Roles(UserRole.MARKET, UserRole.ADMIN)
+  @UseInterceptors(FileInterceptor('file'))
+  importExcel(
+    @CurrentUser() user: AuthUser,
+    @UploadedFile() file: { buffer: Buffer },
+  ) {
+    return this.customers.importExcel(user, file.buffer);
   }
 
   @Get(':id')

@@ -13,6 +13,9 @@ import { PaymentsModule } from './payments/payments.module';
 import { CommissionsModule } from './commissions/commissions.module';
 import { LedgerModule } from './ledger/ledger.module';
 import { RefundsModule } from './refunds/refunds.module';
+import { ReferralsModule } from './referrals/referrals.module';
+import { ReportsModule } from './reports/reports.module';
+import { AuditModule } from './audit/audit.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { RolesGuard } from './auth/roles.guard';
 
@@ -30,6 +33,9 @@ import { RolesGuard } from './auth/roles.guard';
     CommissionsModule,
     LedgerModule,
     RefundsModule,
+    ReferralsModule,
+    ReportsModule,
+    AuditModule,
   ],
   controllers: [AppController],
   providers: [

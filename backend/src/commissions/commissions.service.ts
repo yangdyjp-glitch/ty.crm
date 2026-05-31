@@ -14,6 +14,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { LedgerService } from '../ledger/ledger.service';
+import { AuditService } from '../audit/audit.service';
 import { AuthUser } from '../auth/current-user.decorator';
 import { genNo } from '../common/util';
 
@@ -34,6 +35,7 @@ export class CommissionsService {
   constructor(
     private prisma: PrismaService,
     private ledger: LedgerService,
+    private audit: AuditService,
   ) {}
 
   // ============ 生成（实时触发） ============
@@ -273,6 +275,13 @@ export class CommissionsService {
         paymentVoucherAttachmentId: voucherAttachmentId,
         remark: offset > 0 ? `含往来抵扣 ${offset}，实付现金 ${cashOut}` : null,
       },
+    });
+    await this.audit.log({
+      operatorId: user.id,
+      relatedType: 'Commission',
+      relatedId: id,
+      action: 'PAY_COMMISSION',
+      newValue: `应付=${payable} 往来抵扣=${offset} 实付现金=${cashOut}`,
     });
     return { id, payable, offset, cashOut };
   }

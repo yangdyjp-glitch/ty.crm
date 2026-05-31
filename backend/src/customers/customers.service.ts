@@ -25,6 +25,7 @@ import {
   SetStatusDto,
   UpdateCustomerDto,
 } from './dto/customer.dto';
+import * as ExcelJS from 'exceljs';
 
 export interface CustomerListQuery {
   search?: string;
@@ -316,4 +317,116 @@ export class CustomersService {
       data: { mainStatus: main },
     });
   }
+
+  // ===== 导入 / 导出 =====
+
+  async exportExcel(user: AuthUser): Promise<Buffer> {
+    const customers = await this.prisma.customer.findMany({
+      where: { deletedAt: null, ...customerScopeWhere(user) },
+      orderBy: { id: 'desc' },
+      include: {
+        channel: { select: { name: true } },
+        acquisitionChannel: { select: { name: true } },
+      },
+    });
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('客户');
+    ws.columns = [
+      { header: '客户编号', key: 'customerNo', width: 16 },
+      { header: '姓名', key: 'name', width: 14 },
+      { header: '电话', key: 'phone', width: 16 },
+      { header: '微信', key: 'wechat', width: 16 },
+      { header: '邮箱', key: 'email', width: 20 },
+      { header: '来源', key: 'source', width: 18 },
+      { header: '渠道/获取渠道', key: 'chan', width: 18 },
+      { header: '状态', key: 'status', width: 14 },
+      { header: '意向', key: 'intention', width: 8 },
+      { header: '创建时间', key: 'createdAt', width: 12 },
+    ];
+    for (const c of customers) {
+      ws.addRow({
+        customerNo: c.customerNo,
+        name: c.name,
+        phone: c.phone ?? '',
+        wechat: c.wechat ?? '',
+        email: c.email ?? '',
+        source: c.sourceCategory,
+        chan: c.channel?.name ?? c.acquisitionChannel?.name ?? '',
+        status: c.mainStatus,
+        intention: c.intentionLevel ?? '',
+        createdAt: c.createdAt.toISOString().slice(0, 10),
+      });
+    }
+    return (await wb.xlsx.writeBuffer()) as unknown as Buffer;
+  }
+
+  async importExcel(user: AuthUser, buffer: Buffer) {
+    const wb = new ExcelJS.Workbook();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await wb.xlsx.load(buffer as any);
+    const ws = wb.worksheets[0];
+    if (!ws) {
+      return { success: 0, duplicates: 0, failed: 0, errors: ['无工作表'] };
+    }
+    const headers: Record<string, number> = {};
+    ws.getRow(1).eachCell((c, col) => {
+      headers[String(c.value).trim()] = col;
+    });
+    const pick = (row: ExcelJS.Row, ...names: string[]) => {
+      for (const n of names) {
+        if (headers[n]) return cellStr(row.getCell(headers[n]).value);
+      }
+      return undefined;
+    };
+    let success = 0;
+    let duplicates = 0;
+    let failed = 0;
+    const errors: string[] = [];
+    for (let i = 2; i <= ws.rowCount; i++) {
+      const row = ws.getRow(i);
+      const name = pick(row, '姓名', '客户姓名');
+      if (!name) continue;
+      const phone = pick(row, '电话', '手机号');
+      const wechat = pick(row, '微信', '微信号');
+      const email = pick(row, '邮箱');
+      try {
+        const dups = await this.findDuplicates(phone, wechat, email);
+        if (dups.length) {
+          duplicates++;
+          continue;
+        }
+        await this.prisma.customer.create({
+          data: {
+            customerNo: genNo('C'),
+            name,
+            phone,
+            wechat,
+            email,
+            sourceCategory: SourceCategory.SELF,
+            enteredById: user.id,
+            discoveredAt: new Date(),
+            mainStatus: CustomerMainStatus.NEW_LEAD,
+            remark: pick(row, '备注'),
+          },
+        });
+        success++;
+      } catch (e) {
+        failed++;
+        errors.push(`行${i}: ${(e as Error).message}`);
+      }
+    }
+    return { success, duplicates, failed, errors: errors.slice(0, 20) };
+  }
+}
+
+function cellStr(v: unknown): string | undefined {
+  if (v === null || v === undefined) return undefined;
+  if (typeof v === 'object') {
+    const o = v as { text?: unknown; result?: unknown };
+    if (o.text != null) return String(o.text).trim() || undefined;
+    if (o.result != null) return String(o.result).trim() || undefined;
+    return undefined;
+  }
+  const s = String(v).trim();
+  return s === '' ? undefined : s;
 }

@@ -14,6 +14,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CustomersService } from '../customers/customers.service';
 import { CommissionsService } from '../commissions/commissions.service';
 import { LedgerService } from '../ledger/ledger.service';
+import { AuditService } from '../audit/audit.service';
 import { AuthUser } from '../auth/current-user.decorator';
 import { customerScopeWhere } from '../common/scope';
 import { genNo } from '../common/util';
@@ -28,6 +29,7 @@ export class RefundsService {
     private customers: CustomersService,
     private commissions: CommissionsService,
     private ledger: LedgerService,
+    private audit: AuditService,
   ) {}
 
   async create(user: AuthUser, dto: CreateRefundDto) {
@@ -144,6 +146,13 @@ export class RefundsService {
 
     // 客户主状态按订单聚合（退款仅停被退订单）
     await this.customers.recomputeMainStatus(refund.customerId);
+    await this.audit.log({
+      operatorId: user.id,
+      relatedType: 'Refund',
+      relatedId: id,
+      action: 'APPROVE_REFUND',
+      newValue: `名义=${refund.nominalAmount} 现金=${refund.cashAmount} 抵减=${refund.offsetAmount} 承担=${refund.bearer}`,
+    });
     return this.prisma.refund.findUnique({ where: { id } });
   }
 
