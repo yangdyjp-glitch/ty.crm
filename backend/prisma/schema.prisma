@@ -1,0 +1,536 @@
+// CRM 客户与渠道管理系统 — 完整数据模型（精简版一期）
+// 对应方案第十节。关键约束：双币种不折算、两种资金结算模式、退款必终止+三额、第三方往来台账。
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ============ 枚举 ============
+
+enum UserRole {
+  MARKET // 市场
+  SALES // 销售
+  DOWNSTREAM_SALES // 下游销售
+  ADMIN // 管理员
+}
+
+enum Currency {
+  CNY
+  JPY
+}
+
+enum SourceCategory {
+  SELF // 自获取
+  INDIVIDUAL_THIRD_PARTY // 个人第三方
+  ENTERPRISE_THIRD_PARTY // 企业第三方
+}
+
+enum ChannelType {
+  INDIVIDUAL // 个人
+  ENTERPRISE // 企业
+}
+
+enum FundSettlementMode {
+  AGENT_NET // 第三方代收·净额结算
+  COMPANY_REBATE // 公司代收·返佣结算
+}
+
+enum CommissionMethod {
+  NET_RECEIVED_RATIO // 按实收比例
+  FIXED_AMOUNT // 固定金额
+}
+
+enum SettlementCondition {
+  ON_SIGN // 签约后
+  ON_FULL_PAYMENT // 缴清后
+  ON_SERVICE_COMPLETE // 服务完成后
+  AFTER_REFUND_WINDOW // 过退款期后
+  MANUAL // 人工
+}
+
+enum CooperationStatus {
+  ACTIVE // 合作中
+  PAUSED // 暂停合作
+  TERMINATED // 已终止
+}
+
+enum CustomerMainStatus {
+  NEW_LEAD // 新线索
+  FOLLOWING // 跟进中
+  SIGNED // 已签约
+  IN_SERVICE // 服务中
+  COMPLETED // 已完成服务
+  LOST // 已流失
+  REFUNDING // 退款中
+  REFUNDED // 已退款
+}
+
+enum IntentionLevel {
+  A
+  B
+  C
+  D
+}
+
+enum AssignmentStatus {
+  UNASSIGNED // 待分配
+  ASSIGNED // 已分配
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT // 待付款
+  PARTIAL_PAID // 部分付款
+  FULLY_PAID // 已缴清
+  IN_SERVICE // 服务中
+  COMPLETED // 已完成服务
+  REFUNDED // 已退款
+  CANCELLED // 已取消
+}
+
+enum PaymentConfirmStatus {
+  PENDING // 待确认
+  CONFIRMED // 已确认
+  PROBLEM // 有问题
+}
+
+enum RefundReason {
+  SERVICE_FAILURE // 服务失败/不佳
+  CUSTOMER // 客户原因
+  VISA // 签证原因
+  APPLICATION_FAILED // 申请失败
+  OTHER // 其他
+}
+
+enum RefundStatus {
+  PENDING // 待处理
+  REFUNDED // 已退款
+  REJECTED // 已拒绝
+  ABNORMAL // 异常
+}
+
+enum RefundBearer {
+  COMPANY // 公司
+  THIRD_PARTY // 第三方
+}
+
+enum CommissionStatus {
+  SELF_DEDUCTED // 模式一·已自扣（终态，仅报表）
+  NOT_DUE // 未到结算
+  PENDING_REVIEW // 待审核
+  PENDING_PAYMENT // 待支付
+  PAID // 已支付
+  CANCELLED // 已取消
+}
+
+enum LedgerEntryType {
+  MODE1_ADVANCE_REFUND // 模式一·第三方垫付退款（公司欠第三方）
+  MODE2_ADVANCE_COMMISSION // 模式二·公司垫付佣金（第三方欠公司）
+  NEW_ORDER_OFFSET // 新单抵扣
+  TRANSFER_TO_RECEIVABLE // 转应收·追现金
+  MANUAL_ADJUST // 人工调整
+}
+
+enum ReferralCollectionStatus {
+  PENDING // 待收款
+  COLLECTED // 已收款
+}
+
+enum FollowMethod {
+  WECHAT
+  PHONE
+  EMAIL
+  MEETING
+  ONLINE
+  OTHER
+}
+
+// ============ 模型 ============
+
+model User {
+  id           Int      @id @default(autoincrement())
+  username     String   @unique
+  name         String
+  phone        String?  @unique
+  email        String?  @unique
+  passwordHash String
+  role         UserRole
+  status       String   @default("active") // active / disabled
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([role])
+}
+
+// 获取渠道字典（自获取用：小红书/公众号/抖音…）
+model AcquisitionChannel {
+  id        Int        @id @default(autoincrement())
+  name      String     @unique
+  active    Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  customers Customer[]
+}
+
+// 客户 / 线索
+model Customer {
+  id              Int     @id @default(autoincrement())
+  customerNo      String  @unique
+  name            String
+  nickname        String?
+  phone           String?
+  wechat          String?
+  email           String?
+  countryRegion   String?
+  educationLevel  String?
+  targetStage     String?
+  targetStartTime String?
+
+  // 来源
+  sourceCategory         SourceCategory
+  acquisitionChannelId   Int? // 自获取
+  channelId              Int? // 第三方
+  channelNameSnapshot    String?
+  commissionRateSnapshot Decimal?       @db.Decimal(6, 3)
+
+  // 录入 / 负责人
+  enteredById           Int // 录入人(市场)
+  ownerUserId           Int? // 负责销售
+  downstreamSalesUserId Int? // 下游销售(转介绍)
+  assignmentStatus      AssignmentStatus @default(UNASSIGNED)
+
+  // 状态
+  mainStatus       CustomerMainStatus @default(NEW_LEAD)
+  intentionLevel   IntentionLevel?
+  hasProblem       Boolean            @default(false)
+  problemNote      String?
+  problemHandlerId Int?
+
+  // 跟进
+  latestFollowUpAt DateTime?
+  nextFollowUpAt   DateTime?
+
+  remark       String?
+  discoveredAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  channel            Channel?             @relation(fields: [channelId], references: [id])
+  acquisitionChannel AcquisitionChannel?  @relation(fields: [acquisitionChannelId], references: [id])
+  orders             Order[]
+  payments           Payment[]
+  refunds            Refund[]
+  commissions        Commission[]
+  followUps          FollowUpLog[]
+  referrals          DownstreamReferral[]
+
+  @@index([ownerUserId])
+  @@index([enteredById])
+  @@index([downstreamSalesUserId])
+  @@index([channelId])
+  @@index([mainStatus])
+  @@index([phone])
+  @@index([wechat])
+  @@index([email])
+}
+
+// 第三方渠道
+model Channel {
+  id                    Int                 @id @default(autoincrement())
+  channelNo             String              @unique
+  name                  String
+  channelType           ChannelType
+  contactName           String?
+  contactInfo           String?
+  defaultCommissionRate Decimal?            @db.Decimal(6, 3)
+  commissionMethod      CommissionMethod    @default(NET_RECEIVED_RATIO)
+  fundSettlementMode    FundSettlementMode  @default(COMPANY_REBATE)
+  settlementCondition   SettlementCondition @default(ON_SERVICE_COMPLETE)
+  cooperationStatus     CooperationStatus   @default(ACTIVE)
+  remark                String?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  deletedAt             DateTime?
+
+  customers       Customer[]
+  commissions     Commission[]
+  ledgers         ChannelLedger[]
+  commissionRules ChannelCommissionRule[]
+
+  @@index([channelType])
+}
+
+// 渠道分成规则（MVP：实收比例 + 固定金额）
+model ChannelCommissionRule {
+  id               Int              @id @default(autoincrement())
+  channelId        Int
+  productId        Int? // null = 全部项目
+  commissionMethod CommissionMethod
+  commissionRate   Decimal?         @db.Decimal(6, 3)
+  fixedAmount      Decimal?         @db.Decimal(14, 2)
+  currency         Currency? // 固定金额时
+  isDefault        Boolean          @default(false)
+  effectiveFrom    DateTime?
+  effectiveTo      DateTime?
+  createdAt        DateTime         @default(now())
+
+  channel Channel  @relation(fields: [channelId], references: [id])
+  product Product? @relation(fields: [productId], references: [id])
+
+  @@index([channelId])
+}
+
+// 项目 / 产品
+model Product {
+  id                    Int       @id @default(autoincrement())
+  name                  String
+  category              String?
+  standardPrice         Decimal   @db.Decimal(14, 2)
+  minPrice              Decimal?  @db.Decimal(14, 2)
+  currency              Currency  @default(JPY)
+  allowDiscount         Boolean   @default(true)
+  participateCommission Boolean   @default(true)
+  servicePeriodDays     Int?
+  status                String    @default("active") // active / inactive
+  remark                String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  deletedAt             DateTime?
+
+  orders          Order[]
+  commissionRules ChannelCommissionRule[]
+}
+
+// 订单 / 签约
+model Order {
+  id                 Int                @id @default(autoincrement())
+  orderNo            String             @unique
+  customerId         Int
+  productId          Int
+  currency           Currency
+  fundSettlementMode FundSettlementMode // 继承渠道、可覆盖
+  signedById         Int? // 签约销售
+  signedAt           DateTime
+  contractNo         String?
+  originalPrice      Decimal            @db.Decimal(14, 2) // 应缴
+  discountAmount     Decimal            @default(0) @db.Decimal(14, 2)
+  receivableAmount   Decimal            @db.Decimal(14, 2) // 实际应收 = 应缴 - 优惠
+  paidAmount         Decimal            @default(0) @db.Decimal(14, 2)
+  unpaidAmount       Decimal            @db.Decimal(14, 2)
+  refundAmount       Decimal            @default(0) @db.Decimal(14, 2) // 名义退款累计
+  status             OrderStatus        @default(PENDING_PAYMENT)
+  hasCommission      Boolean            @default(false)
+  remark             String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  deletedAt          DateTime?
+
+  customer   Customer    @relation(fields: [customerId], references: [id])
+  product    Product     @relation(fields: [productId], references: [id])
+  payments   Payment[]
+  refunds    Refund[]
+  commission Commission?
+
+  @@index([customerId])
+  @@index([status])
+}
+
+// 收款
+model Payment {
+  id                  Int                  @id @default(autoincrement())
+  paymentNo           String               @unique
+  customerId          Int
+  orderId             Int
+  amount              Decimal              @db.Decimal(14, 2)
+  currency            Currency
+  method              String? // 银行/现金/支付宝/微信/PayPay…
+  paidAt              DateTime
+  confirmStatus       PaymentConfirmStatus @default(PENDING)
+  confirmedById       Int?
+  confirmedAt         DateTime?
+  voucherAttachmentId Int?
+  remark              String?
+  createdById         Int? // 录入人(销售)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  deletedAt           DateTime?
+
+  order    Order    @relation(fields: [orderId], references: [id])
+  customer Customer @relation(fields: [customerId], references: [id])
+
+  @@index([orderId])
+  @@index([customerId])
+  @@index([confirmStatus])
+}
+
+// 退款（一律终止订单；三额：名义/现金/抵减）
+model Refund {
+  id                       Int          @id @default(autoincrement())
+  refundNo                 String       @unique
+  customerId               Int
+  orderId                  Int
+  currency                 Currency
+  nominalAmount            Decimal      @db.Decimal(14, 2) // 名义退款额
+  cashAmount               Decimal      @db.Decimal(14, 2) // 实际现金退款额
+  offsetAmount             Decimal      @default(0) @db.Decimal(14, 2) // 抵减额
+  refundRatio              Decimal?     @db.Decimal(6, 3) // 退款比例（基于合同）
+  reason                   RefundReason
+  reasonNote               String?
+  status                   RefundStatus @default(PENDING)
+  bearer                   RefundBearer @default(COMPANY) // 退款承担方
+  commissionClawbackAmount Decimal      @default(0) @db.Decimal(14, 2) // 本次佣金等比例追回额
+  appliedById              Int?
+  reviewedById             Int?
+  appliedAt                DateTime     @default(now())
+  completedAt              DateTime?
+  voucherAttachmentId      Int?
+  remark                   String?
+  createdAt                DateTime     @default(now())
+  updatedAt                DateTime     @updatedAt
+  deletedAt                DateTime?
+
+  order    Order    @relation(fields: [orderId], references: [id])
+  customer Customer @relation(fields: [customerId], references: [id])
+
+  @@index([orderId])
+  @@index([customerId])
+}
+
+// 上游渠道分成
+model Commission {
+  id                         Int                 @id @default(autoincrement())
+  commissionNo               String              @unique
+  customerId                 Int
+  orderId                    Int                 @unique
+  channelId                  Int
+  currency                   Currency
+  channelNameSnapshot        String
+  commissionMethodSnapshot   CommissionMethod
+  commissionRateSnapshot     Decimal?            @db.Decimal(6, 3)
+  fundSettlementMode         FundSettlementMode
+  calcBaseType               String // 实收 / 签约 …
+  calcBaseAmount             Decimal             @db.Decimal(14, 2)
+  payableAmount              Decimal             @db.Decimal(14, 2)
+  paidAmount                 Decimal             @default(0) @db.Decimal(14, 2)
+  unpaidAmount               Decimal             @db.Decimal(14, 2)
+  clawbackAmount             Decimal             @default(0) @db.Decimal(14, 2) // 已追回累计
+  status                     CommissionStatus    @default(NOT_DUE)
+  suspended                  Boolean             @default(false) // 挂起(有问题)
+  settlementCondition        SettlementCondition
+  expectedSettlementAt       DateTime?
+  actualSettlementAt         DateTime?
+  reviewedById               Int?
+  paidById                   Int?
+  paymentVoucherAttachmentId Int?
+  problemNote                String?
+  remark                     String?
+  createdAt                  DateTime            @default(now())
+  updatedAt                  DateTime            @updatedAt
+  deletedAt                  DateTime?
+
+  order    Order    @relation(fields: [orderId], references: [id])
+  customer Customer @relation(fields: [customerId], references: [id])
+  channel  Channel  @relation(fields: [channelId], references: [id])
+
+  @@index([channelId])
+  @@index([status])
+}
+
+// 第三方往来 / 抵扣台账（按币种；+ 第三方净欠公司，- 公司净欠第三方）
+model ChannelLedger {
+  id                  Int             @id @default(autoincrement())
+  channelId           Int
+  currency            Currency
+  entryType           LedgerEntryType
+  amount              Decimal         @db.Decimal(14, 2) // 有符号
+  balanceAfter        Decimal         @db.Decimal(14, 2) // 该渠道该币种累计余额
+  relatedRefundId     Int?
+  relatedOrderId      Int?
+  relatedCommissionId Int?
+  note                String?
+  operatorId          Int?
+  createdAt           DateTime        @default(now())
+
+  channel Channel @relation(fields: [channelId], references: [id])
+
+  @@index([channelId, currency])
+}
+
+// 转介绍收佣（下游·应收佣金，轻量独立）
+model DownstreamReferral {
+  id                    Int                      @id @default(autoincrement())
+  customerId            Int
+  serviceType           String // 住房/电话卡/保险/其他（可配置）
+  downstreamCompany     String
+  commissionAmount      Decimal                  @db.Decimal(14, 2)
+  currency              Currency
+  settlementDate        DateTime? // 结款时间
+  collectionStatus      ReferralCollectionStatus @default(PENDING)
+  collectedAt           DateTime?
+  downstreamSalesUserId Int?
+  remark                String?
+  createdById           Int?
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+  deletedAt             DateTime?
+
+  customer Customer @relation(fields: [customerId], references: [id])
+
+  @@index([customerId])
+  @@index([downstreamSalesUserId])
+  @@index([collectionStatus])
+}
+
+// 跟进记录
+model FollowUpLog {
+  id               Int          @id @default(autoincrement())
+  customerId       Int
+  followUserId     Int
+  followedAt       DateTime
+  method           FollowMethod
+  content          String
+  customerFeedback String?
+  result           String?
+  nextFollowUpAt   DateTime?
+  createdAt        DateTime     @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id])
+
+  @@index([customerId])
+}
+
+// 附件（多态）
+model Attachment {
+  id           Int      @id @default(autoincrement())
+  relatedType  String
+  relatedId    Int
+  fileName     String
+  fileUrl      String
+  fileType     String?
+  uploadedById Int?
+  createdAt    DateTime @default(now())
+
+  @@index([relatedType, relatedId])
+}
+
+// 操作日志
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  operatorId  Int?
+  relatedType String
+  relatedId   Int?
+  action      String
+  fieldName   String?
+  oldValue    String?
+  newValue    String?
+  reason      String?
+  createdAt   DateTime @default(now())
+
+  @@index([relatedType, relatedId])
+  @@index([operatorId])
+}
