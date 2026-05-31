@@ -1,9 +1,10 @@
-import { Layout, Menu, Avatar } from 'antd'
+import { Layout, Menu, Avatar, Card } from 'antd'
 import type { MenuProps } from 'antd'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { ROLE_LABEL } from '../api/types'
 import NotificationBell from '../components/NotificationBell'
+import PageHeader from '../components/PageHeader'
 
 type Item = { key: string; cn: string; en: string; roles: string[]; admin?: boolean }
 
@@ -58,6 +59,11 @@ export default function AppLayout() {
       .sort((a, b) => b.length - a.length)[0] ||
     (loc.pathname === '/' ? '/' : '')
 
+  // 列表页自动套统一页头 + 白卡片；仪表盘 / 客户详情保留自己的布局
+  const current = NAV.find((n) => n.key !== '/' && loc.pathname.startsWith(n.key))
+  const isDetail = loc.pathname.startsWith('/customers/')
+  const showHeader = !!current && !isDetail
+
   return (
     <Layout style={{ height: '100%' }}>
       <Layout.Sider width={224} style={{ background: '#1e2433' }}>
@@ -88,8 +94,17 @@ export default function AppLayout() {
         <Layout.Header style={{ background: '#fff', padding: '0 24px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', borderBottom: '1px solid #e6ebf2' }}>
           <NotificationBell />
         </Layout.Header>
-        <Layout.Content style={{ margin: 16, padding: 24, background: '#fff', overflow: 'auto', border: '1px solid #e6ebf2', borderRadius: 8 }}>
-          <Outlet />
+        <Layout.Content style={{ margin: 16, padding: 24, overflow: 'auto' }}>
+          {showHeader ? (
+            <>
+              <PageHeader eyebrow={current!.en} title={current!.cn} />
+              <Card styles={{ body: { padding: 16 } }}>
+                <Outlet />
+              </Card>
+            </>
+          ) : (
+            <Outlet />
+          )}
         </Layout.Content>
       </Layout>
     </Layout>
