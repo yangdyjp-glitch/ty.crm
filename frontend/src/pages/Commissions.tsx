@@ -1,0 +1,98 @@
+import { useEffect, useState } from 'react'
+import { Modal, Select, Space, Table, Tag, message } from 'antd'
+import client from '../api/client'
+import {
+  COMMISSION_STATUS_COLOR,
+  COMMISSION_STATUS_LABEL,
+  FUND_MODE_LABEL,
+  fmtMoney,
+} from '../api/types'
+
+type Any = Record<string, any>
+
+export default function Commissions() {
+  const [data, setData] = useState<{ items: Any[]; total: number }>({ items: [], total: 0 })
+  const [page, setPage] = useState(1)
+  const [status, setStatus] = useState<string>()
+  const [loading, setLoading] = useState(false)
+
+  const load = () => {
+    setLoading(true)
+    client.get('/commissions', { params: { page, pageSize: 10, status } }).then((r) => setData(r.data)).finally(() => setLoading(false))
+  }
+  useEffect(load, [page, status])
+
+  const act = async (id: number, action: string) => {
+    const { data: res } = await client.post(`/commissions/${id}/${action}`)
+    if (action === 'pay') {
+      message.success(`已支付：应付 ${fmtMoney(res.payable)}，往来抵扣 ${fmtMoney(res.offset)}，实付现金 ${fmtMoney(res.cashOut)}`)
+    } else {
+      message.success('已更新')
+    }
+    load()
+  }
+
+  return (
+    <div>
+      <Space style={{ marginBottom: 16 }}>
+        <Select
+          allowClear
+          placeholder="状态筛选"
+          style={{ width: 160 }}
+          value={status}
+          onChange={(v) => { setPage(1); setStatus(v) }}
+          options={Object.entries(COMMISSION_STATUS_LABEL).map(([k, v]) => ({ value: k, label: v }))}
+        />
+      </Space>
+      <Table
+        rowKey="id"
+        loading={loading}
+        dataSource={data.items}
+        pagination={{ current: page, pageSize: 10, total: data.total, onChange: setPage, showSizeChanger: false }}
+        columns={[
+          { title: '客户', render: (_, r) => r.customer?.name },
+          { title: '订单', render: (_, r) => r.order?.orderNo },
+          { title: '渠道(快照)', dataIndex: 'channelNameSnapshot' },
+          { title: '资金模式', dataIndex: 'fundSettlementMode', render: (m) => FUND_MODE_LABEL[m] },
+          { title: '币种', dataIndex: 'currency' },
+          { title: '应付', dataIndex: 'payableAmount', render: fmtMoney, align: 'right' },
+          { title: '已付', dataIndex: 'paidAmount', render: fmtMoney, align: 'right' },
+          {
+            title: '状态',
+            render: (_, r) => (
+              <Space>
+                <Tag color={COMMISSION_STATUS_COLOR[r.status]}>{COMMISSION_STATUS_LABEL[r.status]}</Tag>
+                {r.suspended && <Tag color="red">挂起</Tag>}
+              </Space>
+            ),
+          },
+          {
+            title: '操作',
+            render: (_, r) => (
+              <Space>
+                {r.status === 'PENDING_REVIEW' && !r.suspended && <a onClick={() => act(r.id, 'review')}>审核</a>}
+                {r.status === 'PENDING_PAYMENT' && !r.suspended && <a onClick={() => act(r.id, 'pay')}>支付</a>}
+                {!['PAID', 'CANCELLED', 'SELF_DEDUCTED'].includes(r.status) &&
+                  (r.suspended ? (
+                    <a onClick={() => act(r.id, 'resume')}>解除挂起</a>
+                  ) : (
+                    <a onClick={() => act(r.id, 'suspend')}>挂起</a>
+                  ))}
+                {!['PAID', 'CANCELLED', 'SELF_DEDUCTED'].includes(r.status) && (
+                  <a
+                    style={{ color: '#cf1322' }}
+                    onClick={() =>
+                      Modal.confirm({ title: '确认取消该分成？', onOk: () => act(r.id, 'cancel') })
+                    }
+                  >
+                    取消
+                  </a>
+                )}
+              </Space>
+            ),
+          },
+        ]}
+      />
+    </div>
+  )
+}
