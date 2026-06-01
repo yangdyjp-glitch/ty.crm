@@ -16,12 +16,12 @@ createRoot(document.getElementById('root')!).render(
       locale={zhCN}
       theme={{
         token: {
-          colorPrimary: '#3b5bf6',
-          colorInfo: '#7c3aed',
+          colorPrimary: '#15803d',
+          colorInfo: '#15803d',
           colorSuccess: '#10b981',
           colorWarning: '#f59e0b',
           colorError: '#ef4444',
-          colorLink: '#3b5bf6',
+          colorLink: '#15803d',
           borderRadius: 0,
           fontFamily: FONT,
           fontSize: 14,
@@ -34,19 +34,19 @@ createRoot(document.getElementById('root')!).render(
         components: {
           Layout: {
             headerBg: 'transparent',
-            siderBg: '#3b5bf6',
+            siderBg: '#15803d',
             bodyBg: '#e9f5ec',
             headerHeight: 56,
           },
           Card: { headerFontSize: 16 },
           Form: { itemMarginBottom: 14 },
           Table: {
-            headerBg: '#eef0ff',
-            headerColor: '#4338ca',
+            headerBg: '#e3f3ea',
+            headerColor: '#15603a',
             borderColor: '#e9dcab',
             cellFontSize: 14,
             cellPaddingBlock: 9,
-            rowHoverBg: '#f3f4ff',
+            rowHoverBg: '#eef8f1',
           },
           Statistic: { contentFontSize: 30, titleFontSize: 14 },
           Menu: {

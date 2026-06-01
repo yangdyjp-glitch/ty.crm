@@ -120,7 +120,7 @@ export default function Reports() {
                           style={{
                             width: `${(cnt / max) * 100}%`,
                             minWidth: cnt ? 28 : 0,
-                            background: '#3b5bf6',
+                            background: '#15803d',
                             color: '#fff',
                             padding: '2px 8px',
                             borderRadius: 0,

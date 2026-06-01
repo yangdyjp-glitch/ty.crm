@@ -11,7 +11,7 @@ function PageHead({ eyebrow, title }: { eyebrow: string; title: string }) {
   const d = `${today.getFullYear()}/${today.getMonth() + 1}/${today.getDate()}`
   return (
     <div style={{ borderBottom: '1px solid #d4bb63', paddingBottom: 10, marginBottom: 14 }}>
-      <div style={{ fontSize: 11, letterSpacing: 3, color: '#6366f1', textTransform: 'uppercase', marginBottom: 4, fontWeight: 700 }}>{eyebrow}</div>
+      <div style={{ fontSize: 11, letterSpacing: 3, color: '#15803d', textTransform: 'uppercase', marginBottom: 4, fontWeight: 700 }}>{eyebrow}</div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div style={{ fontSize: 30, fontWeight: 900, letterSpacing: 1, color: '#0f172a' }}>{title}</div>
         <div style={{ color: '#9aa3b2', fontSize: 13 }}>数据快照 · {d}</div>
@@ -23,7 +23,7 @@ function PageHead({ eyebrow, title }: { eyebrow: string; title: string }) {
 function SectionTitle({ eyebrow, title }: { eyebrow: string; title: string }) {
   return (
     <div style={{ margin: '14px 0 8px' }}>
-      <div style={{ fontSize: 10, letterSpacing: 2, color: '#6366f1', textTransform: 'uppercase', fontWeight: 700 }}>{eyebrow}</div>
+      <div style={{ fontSize: 10, letterSpacing: 2, color: '#15803d', textTransform: 'uppercase', fontWeight: 700 }}>{eyebrow}</div>
       <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>{title}</div>
     </div>
   )
@@ -75,10 +75,10 @@ export default function Dashboard() {
   if (data.role === 'ADMIN') {
     const c = data.counts
     const cards: [string, number, string, string][] = [
-      ['客户总数', c.custTotal, '位', '#3b5bf6'],
-      ['今日新增', c.newToday, '', '#7c3aed'],
-      ['本月新增', c.newMonth, '', '#3b5bf6'],
-      ['本月签约', c.signedMonth, '单', '#7c3aed'],
+      ['客户总数', c.custTotal, '位', '#166534'],
+      ['今日新增', c.newToday, '', '#15803d'],
+      ['本月新增', c.newMonth, '', '#059669'],
+      ['本月签约', c.signedMonth, '单', '#b8860b'],
       ['待审核分成', c.pendingReview, '', '#f59e0b'],
       ['待确认收款', c.pendingPay, '', '#10b981'],
       ['问题客户', c.problem, '', '#ef4444'],
@@ -111,9 +111,9 @@ export default function Dashboard() {
       <div>
         <PageHead eyebrow="总览 · OVERVIEW" title="我的业绩" />
         <Row gutter={[14, 10]}>
-          <Col xs={12} lg={8}><Stat title="我的客户" value={c.myCustomers} unit="位" color="#3b5bf6" /></Col>
+          <Col xs={12} lg={8}><Stat title="我的客户" value={c.myCustomers} unit="位" color="#166534" /></Col>
           <Col xs={12} lg={8}><Stat title="逾期未跟进" value={c.overdue} color="#ef4444" /></Col>
-          <Col xs={12} lg={8}><Stat title="本月签约" value={c.signedMonth} unit="单" color="#7c3aed" /></Col>
+          <Col xs={12} lg={8}><Stat title="本月签约" value={c.signedMonth} unit="单" color="#15803d" /></Col>
         </Row>
         <SectionTitle eyebrow="FINANCE" title="我的订单金额（分币种）" />
         <Card size="small">
@@ -150,8 +150,8 @@ export default function Dashboard() {
     <div>
       <PageHead eyebrow="总览 · OVERVIEW" title="我登记的线索" />
       <Row gutter={[14, 10]}>
-        <Col xs={12} lg={8}><Stat title="我登记的客户" value={c.total} unit="位" color="#3b5bf6" /></Col>
-        <Col xs={12} lg={8}><Stat title="本月登记" value={c.newMonth} color="#7c3aed" /></Col>
+        <Col xs={12} lg={8}><Stat title="我登记的客户" value={c.total} unit="位" color="#166534" /></Col>
+        <Col xs={12} lg={8}><Stat title="本月登记" value={c.newMonth} color="#15803d" /></Col>
       </Row>
       <SectionTitle eyebrow="STATUS" title="按状态分布" />
       <Card size="small">
