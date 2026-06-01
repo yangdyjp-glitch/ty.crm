@@ -11,8 +11,8 @@ export const CURRENCY_LABEL: Record<string, string> = { CNY: '人民币', JPY: '
 
 export const SOURCE_LABEL: Record<string, string> = {
   SELF: '自获取',
-  INDIVIDUAL_THIRD_PARTY: '个人第三方',
-  ENTERPRISE_THIRD_PARTY: '企业第三方',
+  INDIVIDUAL_THIRD_PARTY: '个人',
+  ENTERPRISE_THIRD_PARTY: '企业',
 };
 
 export const CHANNEL_TYPE_LABEL: Record<string, string> = {
