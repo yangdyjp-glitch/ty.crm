@@ -125,23 +125,20 @@ export default function Customers() {
     { title: '意向', dataIndex: 'intentionLevel', render: (i: string) => (i ? INTENTION_LABEL[i] : '—') },
     {
       title: '分配',
-      render: (_: any, r: Any) => (r.ownerName ? <Tag color="green">{r.ownerName}</Tag> : <Tag>未分配</Tag>),
+      render: (_: any, r: Any) => {
+        const label = r.ownerName ? <Tag color="green">{r.ownerName}</Tag> : <Tag>未分配</Tag>
+        return canCreate ? (
+          <a onClick={async () => { setSales(await loadUserOptions('SALES').catch(() => [])); setAssignTarget(r) }}>{label}</a>
+        ) : (
+          label
+        )
+      },
     },
     {
       title: '操作',
       render: (_: any, r: Any) => (
         <Space>
           <a onClick={() => nav(`/customers/${r.id}`)}>详情</a>
-          {canCreate && (
-            <a
-              onClick={async () => {
-                setSales(await loadUserOptions('SALES').catch(() => []))
-                setAssignTarget(r)
-              }}
-            >
-              指派
-            </a>
-          )}
           {user?.role === 'ADMIN' && (
             <Popconfirm title="确认删除该客户？" okText="删除" cancelText="取消" okButtonProps={{ danger: true }} onConfirm={() => doDelete(r.id)}>
               <a style={{ color: '#dc2626' }}>删除</a>

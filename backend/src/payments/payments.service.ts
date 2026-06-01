@@ -135,13 +135,14 @@ export class PaymentsService {
       where: { id, deletedAt: null, customer: customerScopeWhere(user) },
     });
     if (!p) throw new NotFoundException('收款记录不存在或无权访问');
-    if (p.confirmStatus === PaymentConfirmStatus.CONFIRMED) {
-      throw new BadRequestException('已确认的收款不允许删除');
-    }
     await this.prisma.payment.update({
       where: { id },
       data: { deletedAt: new Date() },
     });
+    // 删除「已确认」收款 → 重算订单已收/未收
+    if (p.confirmStatus === PaymentConfirmStatus.CONFIRMED) {
+      await this.recomputeOrderPaid(p.orderId);
+    }
     return { ok: true };
   }
 

@@ -6,6 +6,7 @@ import {
 import {
   LedgerEntryType,
   OrderStatus,
+  PaymentConfirmStatus,
   Prisma,
   RefundBearer,
   RefundStatus,
@@ -168,6 +169,53 @@ export class RefundsService {
       where: { id },
       data: { status: RefundStatus.REJECTED, reviewedById: user.id },
     });
+  }
+
+  /** 删除退款：待处理/已拒绝直接删；已退款删除会回退订单退款额与状态（佣金/台账不自动回滚，请人工复核） */
+  async remove(user: AuthUser, id: number) {
+    const refund = await this.prisma.refund.findFirst({
+      where: { id, deletedAt: null, customer: customerScopeWhere(user) },
+    });
+    if (!refund) throw new NotFoundException('退款记录不存在或无权访问');
+    const wasExecuted = refund.status === RefundStatus.REFUNDED;
+    await this.prisma.refund.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+    if (wasExecuted) {
+      const order = await this.prisma.order.findUnique({
+        where: { id: refund.orderId },
+      });
+      if (order) {
+        const agg = await this.prisma.payment.aggregate({
+          where: {
+            orderId: refund.orderId,
+            deletedAt: null,
+            confirmStatus: PaymentConfirmStatus.CONFIRMED,
+          },
+          _sum: { amount: true },
+        });
+        const paid = Number(agg._sum.amount ?? 0);
+        const unpaid = Number(order.receivableAmount) - paid;
+        const status =
+          unpaid <= 0
+            ? OrderStatus.FULLY_PAID
+            : paid > 0
+              ? OrderStatus.PARTIAL_PAID
+              : OrderStatus.PENDING_PAYMENT;
+        await this.prisma.order.update({
+          where: { id: refund.orderId },
+          data: {
+            refundAmount: r2(
+              Math.max(0, Number(order.refundAmount) - Number(refund.nominalAmount)),
+            ),
+            status,
+          },
+        });
+      }
+      await this.customers.recomputeMainStatus(refund.customerId);
+    }
+    return { ok: true };
   }
 
   list(user: AuthUser, q: { orderId?: string; status?: RefundStatus }) {

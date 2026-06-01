@@ -5,6 +5,7 @@ import {
   Input,
   InputNumber,
   Modal,
+  Popconfirm,
   Select,
   Space,
   Table,
@@ -73,6 +74,12 @@ export default function Refunds() {
     load()
   }
 
+  const doRemove = async (id: number) => {
+    await client.delete(`/refunds/${id}`)
+    message.success('已删除')
+    load()
+  }
+
   return (
     <div>
       <Button type="primary" style={{ marginBottom: 16 }} onClick={openCreate}>发起退款</Button>
@@ -96,13 +103,27 @@ export default function Refunds() {
           },
           {
             title: '操作',
-            render: (_, r) =>
-              isAdmin && r.status === 'PENDING' ? (
-                <Space>
-                  <a onClick={() => act(r.id, 'approve')}>执行</a>
-                  <a style={{ color: '#cf1322' }} onClick={() => act(r.id, 'reject')}>拒绝</a>
-                </Space>
-              ) : null,
+            render: (_, r) => (
+              <Space>
+                {isAdmin && r.status === 'PENDING' && (
+                  <>
+                    <a onClick={() => act(r.id, 'approve')}>执行</a>
+                    <a style={{ color: '#cf1322' }} onClick={() => act(r.id, 'reject')}>拒绝</a>
+                  </>
+                )}
+                {isAdmin && (
+                  <Popconfirm
+                    title={r.status === 'REFUNDED' ? '该退款已执行，删除会回退订单退款额（佣金/台账请人工复核）。确定删除？' : '确认删除该退款记录？'}
+                    okText="删除"
+                    cancelText="取消"
+                    okButtonProps={{ danger: true }}
+                    onConfirm={() => doRemove(r.id)}
+                  >
+                    <a style={{ color: '#dc2626' }}>删除</a>
+                  </Popconfirm>
+                )}
+              </Space>
+            ),
           },
         ]}
       />

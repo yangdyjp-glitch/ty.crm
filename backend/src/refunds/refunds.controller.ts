@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -41,5 +42,11 @@ export class RefundsController {
   @Roles(UserRole.ADMIN)
   reject(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number) {
     return this.refunds.reject(user, id);
+  }
+
+  @Delete(':id')
+  @Roles(UserRole.ADMIN)
+  remove(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number) {
+    return this.refunds.remove(user, id);
   }
 }

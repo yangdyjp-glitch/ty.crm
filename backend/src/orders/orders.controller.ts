@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -62,5 +63,11 @@ export class OrdersController {
     @Param('id', ParseIntPipe) id: number,
   ) {
     return this.orders.completeService(user, id);
+  }
+
+  @Delete(':id')
+  @Roles(UserRole.ADMIN)
+  remove(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number) {
+    return this.orders.remove(user, id);
   }
 }

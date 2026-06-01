@@ -111,7 +111,9 @@ export default function Payments() {
             title: '操作',
             render: (_, r) =>
               r.confirmStatus === 'CONFIRMED' ? (
-                <span style={{ color: '#9ca3af' }}>已锁定</span>
+                <Popconfirm title="该收款已到账，删除会回退订单的已收金额。确定删除？" okText="删除" cancelText="取消" okButtonProps={{ danger: true }} onConfirm={() => doDelete(r.id)}>
+                  <a style={{ color: '#dc2626' }}>删除</a>
+                </Popconfirm>
               ) : (
                 <Space>
                   {isAdmin && <a onClick={() => confirm(r.id)}>确认到账</a>}

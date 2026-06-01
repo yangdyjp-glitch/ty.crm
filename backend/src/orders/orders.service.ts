@@ -8,6 +8,7 @@ import {
   OrderStatus,
   PaymentConfirmStatus,
   Prisma,
+  RefundStatus,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CustomersService } from '../customers/customers.service';
@@ -235,5 +236,50 @@ export class OrdersService {
     // 结算条件=服务完成后 → 触发该订单分成进入待审核
     await this.commissions.onServiceCompleted(o.id);
     return this.get(user, id);
+  }
+
+  /** 删除订单：级联软删除其收款/退款/分成；若存在已到账收款或已退款则拦截并提示先删款项 */
+  async remove(user: AuthUser, id: number) {
+    const order = await this.loadScoped(user, id);
+    const [confirmedPays, executedRefunds] = await Promise.all([
+      this.prisma.payment.findMany({
+        where: {
+          orderId: id,
+          deletedAt: null,
+          confirmStatus: PaymentConfirmStatus.CONFIRMED,
+        },
+        select: { paymentNo: true },
+      }),
+      this.prisma.refund.findMany({
+        where: { orderId: id, deletedAt: null, status: RefundStatus.REFUNDED },
+        select: { refundNo: true },
+      }),
+    ]);
+    if (confirmedPays.length || executedRefunds.length) {
+      throw new BadRequestException({
+        message:
+          '该订单存在「已到账收款」或「已退款」记录，请先到收款 / 退款页删除这些记录，再删除订单。',
+        blockingPayments: confirmedPays.map((p) => p.paymentNo),
+        blockingRefunds: executedRefunds.map((r) => r.refundNo),
+      });
+    }
+    const now = new Date();
+    await this.prisma.$transaction([
+      this.prisma.payment.updateMany({
+        where: { orderId: id, deletedAt: null },
+        data: { deletedAt: now },
+      }),
+      this.prisma.refund.updateMany({
+        where: { orderId: id, deletedAt: null },
+        data: { deletedAt: now },
+      }),
+      this.prisma.commission.updateMany({
+        where: { orderId: id, deletedAt: null },
+        data: { deletedAt: now },
+      }),
+      this.prisma.order.update({ where: { id }, data: { deletedAt: now } }),
+    ]);
+    await this.customers.recomputeMainStatus(order.customerId);
+    return { ok: true };
   }
 }

@@ -5,6 +5,7 @@ import {
   Input,
   InputNumber,
   Modal,
+  Popconfirm,
   Select,
   Space,
   Table,
@@ -12,6 +13,7 @@ import {
   message,
 } from 'antd'
 import client from '../api/client'
+import { useAuth } from '../auth/AuthContext'
 import { loadProducts } from '../api/options'
 import { CURRENCY_LABEL, ORDER_STATUS_LABEL, fmtMoney } from '../api/types'
 import { moneyIn } from '../api/money'
@@ -19,6 +21,8 @@ import { moneyIn } from '../api/money'
 type Any = Record<string, any>
 
 export default function Orders() {
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'ADMIN'
   const [data, setData] = useState<{ items: Any[]; total: number }>({ items: [], total: 0 })
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
@@ -64,6 +68,30 @@ export default function Orders() {
     load()
   }
 
+  const doDelete = async (id: number) => {
+    try {
+      await client.delete(`/orders/${id}`)
+      message.success('已删除订单')
+      load()
+    } catch (e: any) {
+      const d = e.response?.data
+      if (d?.blockingPayments?.length || d?.blockingRefunds?.length) {
+        Modal.error({
+          title: '无法删除订单',
+          content: (
+            <div>
+              <p>{d.message}</p>
+              {d.blockingPayments?.length > 0 && <p>已到账收款：{d.blockingPayments.join('、')}</p>}
+              {d.blockingRefunds?.length > 0 && <p>已退款：{d.blockingRefunds.join('、')}</p>}
+            </div>
+          ),
+        })
+      } else {
+        message.error(d?.message || '删除失败')
+      }
+    }
+  }
+
   const columns = [
     { title: '订单号', dataIndex: 'orderNo', width: 130 },
     { title: '客户', render: (_: any, r: Any) => r.customer?.name },
@@ -82,6 +110,11 @@ export default function Orders() {
           )}
           {['IN_SERVICE', 'FULLY_PAID', 'PARTIAL_PAID'].includes(r.status) && (
             <a onClick={() => act(r.id, 'complete-service')}>完成服务</a>
+          )}
+          {isAdmin && (
+            <Popconfirm title="确认删除该订单？其收款/退款将一并删除" okText="删除" cancelText="取消" okButtonProps={{ danger: true }} onConfirm={() => doDelete(r.id)}>
+              <a style={{ color: '#dc2626' }}>删除</a>
+            </Popconfirm>
           )}
         </Space>
       ),
