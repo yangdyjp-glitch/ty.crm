@@ -48,7 +48,7 @@ export default function Channels() {
   const openForm = (rec?: Any) => {
     setEditing(rec || null)
     form.resetFields()
-    if (rec) form.setFieldsValue(rec)
+    if (rec) form.setFieldsValue({ ...rec, defaultCommissionRate: rec.defaultCommissionRate != null ? Number(rec.defaultCommissionRate) : undefined })
     else form.setFieldsValue({ channelType: isAdmin ? 'ENTERPRISE' : 'INDIVIDUAL', commissionMethod: 'NET_RECEIVED_RATIO', fundSettlementMode: 'COMPANY_REBATE', settlementCondition: 'ON_SERVICE_COMPLETE' })
     setOpen(true)
   }

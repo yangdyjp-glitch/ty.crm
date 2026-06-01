@@ -33,7 +33,7 @@ export default function Products() {
   const openForm = (rec?: Any) => {
     setEditing(rec || null)
     form.resetFields()
-    if (rec) form.setFieldsValue(rec)
+    if (rec) form.setFieldsValue({ ...rec, standardPrice: rec.standardPrice != null ? Number(rec.standardPrice) : undefined })
     else form.setFieldsValue({ currency: 'JPY', participateCommission: true, allowDiscount: true })
     setOpen(true)
   }
