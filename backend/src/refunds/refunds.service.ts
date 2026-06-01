@@ -17,7 +17,7 @@ import { LedgerService } from '../ledger/ledger.service';
 import { AuditService } from '../audit/audit.service';
 import { AuthUser } from '../auth/current-user.decorator';
 import { customerScopeWhere } from '../common/scope';
-import { genNo } from '../common/util';
+import { nextNo } from '../common/util';
 import { CreateRefundDto } from './dto/refund.dto';
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -65,7 +65,7 @@ export class RefundsService {
 
     return this.prisma.refund.create({
       data: {
-        refundNo: genNo('R'),
+        refundNo: await nextNo(this.prisma.refund, 'refundNo', 'TK'),
         customerId: order.customerId,
         orderId: order.id,
         currency: order.currency,

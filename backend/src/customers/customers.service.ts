@@ -17,7 +17,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthUser } from '../auth/current-user.decorator';
 import { customerScopeWhere } from '../common/scope';
-import { genNo } from '../common/util';
+import { nextNo } from '../common/util';
 import {
   AssignDto,
   CreateCustomerDto,
@@ -91,7 +91,7 @@ export class CustomersService {
     const ownerUserId = dto.ownerUserId ?? null;
     return this.prisma.customer.create({
       data: {
-        customerNo: genNo('C'),
+        customerNo: await nextNo(this.prisma.customer, 'customerNo', 'KH'),
         name: dto.name,
         nickname: dto.nickname,
         phone: dto.phone,
@@ -161,7 +161,22 @@ export class CustomersService {
       }),
       this.prisma.customer.count({ where }),
     ]);
-    return { items, total, page, pageSize };
+    // 附上负责销售姓名（Customer 无 owner 关系，单独查 users 映射）
+    const ownerIds = [
+      ...new Set(items.map((i) => i.ownerUserId).filter((v): v is number => !!v)),
+    ];
+    const owners = ownerIds.length
+      ? await this.prisma.user.findMany({
+          where: { id: { in: ownerIds } },
+          select: { id: true, name: true },
+        })
+      : [];
+    const ownerMap = new Map(owners.map((u) => [u.id, u.name]));
+    const enriched = items.map((i) => ({
+      ...i,
+      ownerName: i.ownerUserId ? (ownerMap.get(i.ownerUserId) ?? null) : null,
+    }));
+    return { items: enriched, total, page, pageSize };
   }
 
   async get(user: AuthUser, id: number) {
@@ -186,6 +201,16 @@ export class CustomersService {
     });
     if (!c) throw new NotFoundException('客户不存在或无权访问');
     return c;
+  }
+
+  /** 软删除客户 */
+  async remove(user: AuthUser, id: number) {
+    await this.loadScoped(user, id);
+    await this.prisma.customer.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+    return { ok: true };
   }
 
   async update(user: AuthUser, id: number, dto: UpdateCustomerDto) {
@@ -442,7 +467,7 @@ export class CustomersService {
         }
         await this.prisma.customer.create({
           data: {
-            customerNo: genNo('C'),
+            customerNo: await nextNo(this.prisma.customer, 'customerNo', 'KH'),
             name,
             phone,
             wechat,

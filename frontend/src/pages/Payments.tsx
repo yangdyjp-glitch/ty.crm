@@ -22,6 +22,7 @@ export default function Payments() {
   const [rows, setRows] = useState<Any[]>([])
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [form] = Form.useForm()
   const [orders, setOrders] = useState<Any[]>([])
 
@@ -40,10 +41,17 @@ export default function Payments() {
 
   const submit = async () => {
     const v = await form.validateFields()
-    await client.post('/payments', v)
-    message.success('已录入收款（待管理员确认）')
-    setOpen(false)
-    load()
+    setSubmitting(true)
+    try {
+      await client.post('/payments', v)
+      message.success('已录入收款（待管理员确认）')
+      setOpen(false)
+      load()
+    } catch (e: any) {
+      message.error(e.response?.data?.message || '操作失败')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const confirm = async (id: number) => {
@@ -77,7 +85,7 @@ export default function Payments() {
           },
         ]}
       />
-      <Modal title="录入收款" open={open} onCancel={() => setOpen(false)} onOk={submit} destroyOnClose>
+      <Modal title="录入收款" open={open} onCancel={() => setOpen(false)} onOk={submit} confirmLoading={submitting} okText={submitting ? '处理中…' : '确定'} maskClosable={false} cancelButtonProps={{ disabled: submitting }} destroyOnClose>
         <Form form={form} layout="vertical">
           <Form.Item name="orderId" label="订单" rules={[{ required: true }]}>
             <Select

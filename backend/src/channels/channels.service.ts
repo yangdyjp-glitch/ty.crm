@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ChannelType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { genNo } from '../common/util';
+import { nextNo } from '../common/util';
 import {
   CreateChannelDto,
   UpdateChannelDto,
@@ -43,9 +43,9 @@ export class ChannelsService {
     return c;
   }
 
-  create(dto: CreateChannelDto) {
+  async create(dto: CreateChannelDto) {
     return this.prisma.channel.create({
-      data: { channelNo: genNo('CH'), ...dto },
+      data: { channelNo: await nextNo(this.prisma.channel, 'channelNo', 'QD'), ...dto },
     });
   }
 

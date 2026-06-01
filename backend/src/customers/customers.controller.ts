@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -87,6 +88,12 @@ export class CustomersController {
     @Body() dto: UpdateCustomerDto,
   ) {
     return this.customers.update(user, id, dto);
+  }
+
+  @Delete(':id')
+  @Roles(UserRole.ADMIN)
+  remove(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number) {
+    return this.customers.remove(user, id);
   }
 
   @Post(':id/assign')

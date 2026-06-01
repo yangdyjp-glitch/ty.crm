@@ -12,7 +12,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CommissionsService } from '../commissions/commissions.service';
 import { AuthUser } from '../auth/current-user.decorator';
 import { customerScopeWhere } from '../common/scope';
-import { genNo } from '../common/util';
+import { nextNo } from '../common/util';
 import { CreatePaymentDto } from './dto/payment.dto';
 
 @Injectable()
@@ -36,7 +36,7 @@ export class PaymentsService {
     }
     return this.prisma.payment.create({
       data: {
-        paymentNo: genNo('P'),
+        paymentNo: await nextNo(this.prisma.payment, 'paymentNo', 'SK'),
         customerId: order.customerId,
         orderId: order.id,
         amount: dto.amount,

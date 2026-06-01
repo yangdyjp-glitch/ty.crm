@@ -29,6 +29,7 @@ export default function Refunds() {
   const [rows, setRows] = useState<Any[]>([])
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [form] = Form.useForm()
   const [orders, setOrders] = useState<Any[]>([])
 
@@ -47,16 +48,23 @@ export default function Refunds() {
 
   const submit = async () => {
     const v = await form.validateFields()
-    await client.post('/refunds', {
-      orderId: v.orderId,
-      refundRatio: v.refundPercent / 100,
-      reason: v.reason,
-      reasonNote: v.reasonNote,
-      bearer: v.bearer,
-    })
-    message.success('已提交退款申请（待管理员执行）')
-    setOpen(false)
-    load()
+    setSubmitting(true)
+    try {
+      await client.post('/refunds', {
+        orderId: v.orderId,
+        refundRatio: v.refundPercent / 100,
+        reason: v.reason,
+        reasonNote: v.reasonNote,
+        bearer: v.bearer,
+      })
+      message.success('已提交退款申请（待管理员执行）')
+      setOpen(false)
+      load()
+    } catch (e: any) {
+      message.error(e.response?.data?.message || '操作失败')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const act = async (id: number, action: 'approve' | 'reject') => {
@@ -98,7 +106,7 @@ export default function Refunds() {
           },
         ]}
       />
-      <Modal title="发起退款" open={open} onCancel={() => setOpen(false)} onOk={submit} destroyOnClose>
+      <Modal title="发起退款" open={open} onCancel={() => setOpen(false)} onOk={submit} confirmLoading={submitting} okText={submitting ? '处理中…' : '确定'} maskClosable={false} cancelButtonProps={{ disabled: submitting }} destroyOnClose>
         <Form form={form} layout="vertical" initialValues={{ bearer: 'COMPANY', refundPercent: 100 }}>
           <Form.Item name="orderId" label="订单" rules={[{ required: true }]}>
             <Select

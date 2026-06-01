@@ -5,6 +5,7 @@ import {
   Form,
   Input,
   Modal,
+  Popconfirm,
   Select,
   Space,
   Table,
@@ -38,6 +39,7 @@ export default function Customers() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>()
   const [modalOpen, setModalOpen] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [assignTarget, setAssignTarget] = useState<Any | null>(null)
   const [form] = Form.useForm()
   const [sourceCat, setSourceCat] = useState('SELF')
@@ -67,6 +69,7 @@ export default function Customers() {
 
   const submitCreate = async (force = false) => {
     const v = await form.validateFields()
+    setSubmitting(true)
     try {
       await client.post('/customers', { ...v, force })
       message.success('已创建')
@@ -84,6 +87,8 @@ export default function Customers() {
       } else {
         message.error(e.response?.data?.message || '创建失败')
       }
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -91,6 +96,12 @@ export default function Customers() {
     await client.post(`/customers/${assignTarget!.id}/assign`, { ownerUserId })
     message.success('已指派')
     setAssignTarget(null)
+    load()
+  }
+
+  const doDelete = async (id: number) => {
+    await client.delete(`/customers/${id}`)
+    message.success('已删除')
     load()
   }
 
@@ -114,8 +125,7 @@ export default function Customers() {
     { title: '意向', dataIndex: 'intentionLevel', render: (i: string) => (i ? INTENTION_LABEL[i] : '—') },
     {
       title: '分配',
-      dataIndex: 'assignmentStatus',
-      render: (a: string) => (a === 'ASSIGNED' ? <Tag color="green">已分配</Tag> : <Tag>待分配</Tag>),
+      render: (_: any, r: Any) => (r.ownerName ? <Tag color="green">{r.ownerName}</Tag> : <Tag>未分配</Tag>),
     },
     {
       title: '操作',
@@ -131,6 +141,11 @@ export default function Customers() {
             >
               指派
             </a>
+          )}
+          {user?.role === 'ADMIN' && (
+            <Popconfirm title="确认删除该客户？" okText="删除" cancelText="取消" okButtonProps={{ danger: true }} onConfirm={() => doDelete(r.id)}>
+              <a style={{ color: '#dc2626' }}>删除</a>
+            </Popconfirm>
           )}
         </Space>
       ),
@@ -176,7 +191,7 @@ export default function Customers() {
         pagination={{ current: page, pageSize: 10, total: data.total, onChange: setPage, showSizeChanger: false }}
       />
 
-      <Modal title="新增客户" open={modalOpen} onCancel={() => setModalOpen(false)} onOk={() => submitCreate(false)} destroyOnClose>
+      <Modal title="新增客户" open={modalOpen} onCancel={() => setModalOpen(false)} onOk={() => submitCreate(false)} confirmLoading={submitting} okText={submitting ? '处理中…' : '确定'} maskClosable={false} cancelButtonProps={{ disabled: submitting }} destroyOnClose>
         <Form form={form} layout="vertical" initialValues={{ sourceCategory: 'SELF' }}>
           <Form.Item name="name" label="姓名" rules={[{ required: true }]}>
             <Input />
@@ -187,7 +202,7 @@ export default function Customers() {
             <Form.Item name="email" label="邮箱"><Input /></Form.Item>
           </Space>
           <Form.Item name="sourceCategory" label="来源" rules={[{ required: true }]}>
-            <Select onChange={setSourceCat} options={Object.entries(SOURCE_LABEL).map(([k, v]) => ({ value: k, label: v }))} />
+            <Select onChange={(v) => { setSourceCat(v); form.setFieldValue('channelId', undefined) }} options={Object.entries(SOURCE_LABEL).map(([k, v]) => ({ value: k, label: v }))} />
           </Form.Item>
           {sourceCat === 'SELF' ? (
             <Form.Item name="acquisitionChannelId" label="获取渠道">
@@ -195,7 +210,7 @@ export default function Customers() {
             </Form.Item>
           ) : (
             <Form.Item name="channelId" label="第三方渠道" rules={[{ required: true }]}>
-              <Select options={channels.map((c) => ({ value: c.id, label: c.name }))} />
+              <Select options={channels.filter((c) => (sourceCat === 'INDIVIDUAL_THIRD_PARTY' ? c.channelType === 'INDIVIDUAL' : c.channelType === 'ENTERPRISE')).map((c) => ({ value: c.id, label: c.name }))} />
             </Form.Item>
           )}
           <Form.Item name="ownerUserId" label="负责销售（可后续指派）">

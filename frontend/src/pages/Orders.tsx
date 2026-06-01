@@ -21,17 +21,19 @@ type Any = Record<string, any>
 export default function Orders() {
   const [data, setData] = useState<{ items: Any[]; total: number }>({ items: [], total: 0 })
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [form] = Form.useForm()
   const [customers, setCustomers] = useState<Any[]>([])
   const [products, setProducts] = useState<Any[]>([])
 
   const load = () => {
     setLoading(true)
-    client.get('/orders', { params: { page, pageSize: 10 } }).then((r) => setData(r.data)).finally(() => setLoading(false))
+    client.get('/orders', { params: { page, pageSize } }).then((r) => setData(r.data)).finally(() => setLoading(false))
   }
-  useEffect(load, [page])
+  useEffect(load, [page, pageSize])
 
   const openCreate = async () => {
     form.resetFields()
@@ -43,6 +45,7 @@ export default function Orders() {
 
   const submit = async () => {
     const v = await form.validateFields()
+    setSubmitting(true)
     try {
       await client.post('/orders', v)
       message.success('已创建订单')
@@ -50,6 +53,8 @@ export default function Orders() {
       load()
     } catch (e: any) {
       message.error(e.response?.data?.message || '创建失败')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -91,9 +96,9 @@ export default function Orders() {
         loading={loading}
         columns={columns}
         dataSource={data.items}
-        pagination={{ current: page, pageSize: 10, total: data.total, onChange: setPage, showSizeChanger: false }}
+        pagination={{ current: page, pageSize, total: data.total, onChange: (p, ps) => { setPage(p); setPageSize(ps) }, showSizeChanger: true, pageSizeOptions: [10, 20, 50, 100] }}
       />
-      <Modal title="签约 + 首款" open={open} onCancel={() => setOpen(false)} onOk={submit} destroyOnClose>
+      <Modal title="签约 + 首款" open={open} onCancel={() => setOpen(false)} onOk={submit} confirmLoading={submitting} okText={submitting ? '处理中…' : '确定'} maskClosable={false} cancelButtonProps={{ disabled: submitting }} destroyOnClose>
         <Form form={form} layout="vertical" initialValues={{ currency: 'JPY' }}>
           <Form.Item name="customerId" label="客户" rules={[{ required: true }]}>
             <Select
@@ -110,14 +115,14 @@ export default function Orders() {
               <Select style={{ width: 100 }} options={[{ value: 'JPY', label: '日元' }, { value: 'CNY', label: '人民币' }]} />
             </Form.Item>
             <Form.Item name="originalPrice" label="应缴金额" rules={[{ required: true }]}>
-              <InputNumber min={0} style={{ width: 140 }} />
+              <InputNumber min={0} controls={false} style={{ width: 140 }} />
             </Form.Item>
             <Form.Item name="discountAmount" label="优惠">
-              <InputNumber min={0} style={{ width: 100 }} />
+              <InputNumber min={0} controls={false} style={{ width: 100 }} />
             </Form.Item>
           </Space>
           <Form.Item name="firstPaymentAmount" label="首款金额（可选，待管理员确认）">
-            <InputNumber min={0} style={{ width: '100%' }} />
+            <InputNumber min={0} controls={false} style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item name="contractNo" label="合同编号"><Input /></Form.Item>
         </Form>

@@ -9,6 +9,7 @@ export default function Users() {
   const [rows, setRows] = useState<Any[]>([])
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [editing, setEditing] = useState<Any | null>(null)
   const [form] = Form.useForm()
 
@@ -26,11 +27,18 @@ export default function Users() {
   }
   const submit = async () => {
     const v = await form.validateFields()
-    if (editing) await client.patch(`/users/${editing.id}`, v)
-    else await client.post('/users', v)
-    message.success('已保存')
-    setOpen(false)
-    load()
+    setSubmitting(true)
+    try {
+      if (editing) await client.patch(`/users/${editing.id}`, v)
+      else await client.post('/users', v)
+      message.success('已保存')
+      setOpen(false)
+      load()
+    } catch (e: any) {
+      message.error(e.response?.data?.message || '操作失败')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -41,6 +49,7 @@ export default function Users() {
         loading={loading}
         dataSource={rows}
         columns={[
+          { title: '用户编号', render: (_: any, r: Any) => 'YH' + String(r.id).padStart(6, '0'), width: 110 },
           { title: '账号', dataIndex: 'username' },
           { title: '姓名', dataIndex: 'name' },
           { title: '角色', dataIndex: 'role', render: (r) => <Tag color="blue">{ROLE_LABEL[r]}</Tag> },
@@ -48,7 +57,7 @@ export default function Users() {
           { title: '操作', render: (_, r) => <a onClick={() => openForm(r)}>编辑</a> },
         ]}
       />
-      <Modal title={editing ? '编辑用户' : '新增用户'} open={open} onCancel={() => setOpen(false)} onOk={submit} destroyOnClose>
+      <Modal title={editing ? '编辑用户' : '新增用户'} open={open} onCancel={() => setOpen(false)} onOk={submit} confirmLoading={submitting} okText={submitting ? '处理中…' : '确定'} maskClosable={false} cancelButtonProps={{ disabled: submitting }} destroyOnClose>
         <Form form={form} layout="vertical">
           {!editing && (
             <Form.Item name="username" label="账号" rules={[{ required: true }]}><Input /></Form.Item>

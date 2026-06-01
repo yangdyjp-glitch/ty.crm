@@ -14,7 +14,7 @@ import { CustomersService } from '../customers/customers.service';
 import { CommissionsService } from '../commissions/commissions.service';
 import { AuthUser } from '../auth/current-user.decorator';
 import { customerScopeWhere } from '../common/scope';
-import { genNo } from '../common/util';
+import { nextNo } from '../common/util';
 import { CreateOrderDto, UpdateOrderDto } from './dto/order.dto';
 
 @Injectable()
@@ -44,17 +44,24 @@ export class OrdersService {
     const discount = dto.discountAmount ?? 0;
     const receivable = dto.originalPrice - discount;
 
+    const orderNo = await nextNo(this.prisma.order, 'orderNo', 'DD');
+    const contractNo = dto.contractNo || (await nextNo(this.prisma.order, 'contractNo', 'HT'));
+    const firstPayNo =
+      dto.firstPaymentAmount && dto.firstPaymentAmount > 0
+        ? await nextNo(this.prisma.payment, 'paymentNo', 'SK')
+        : null;
+
     const order = await this.prisma.$transaction(async (tx) => {
       const o = await tx.order.create({
         data: {
-          orderNo: genNo('O'),
+          orderNo,
           customerId: dto.customerId,
           productId: dto.productId,
           currency: dto.currency,
           fundSettlementMode: fundMode,
           signedById: user.id,
           signedAt: dto.signedAt ? new Date(dto.signedAt) : new Date(),
-          contractNo: dto.contractNo || genNo('HT'), // 自动合同号
+          contractNo, // 自动合同号
           originalPrice: dto.originalPrice,
           discountAmount: discount,
           receivableAmount: receivable,
@@ -68,7 +75,7 @@ export class OrdersService {
       if (dto.firstPaymentAmount && dto.firstPaymentAmount > 0) {
         await tx.payment.create({
           data: {
-            paymentNo: genNo('P'),
+            paymentNo: firstPayNo!,
             customerId: dto.customerId,
             orderId: o.id,
             amount: dto.firstPaymentAmount,
