@@ -68,11 +68,22 @@ export class ChannelsService {
     });
   }
 
+  listAcquisitionAll() {
+    return this.prisma.acquisitionChannel.findMany({ orderBy: { id: 'asc' } });
+  }
+
   createAcquisition(name: string) {
     return this.prisma.acquisitionChannel.upsert({
       where: { name },
       update: { active: true },
       create: { name },
+    });
+  }
+
+  updateAcquisition(id: number, dto: { name?: string; active?: boolean }) {
+    return this.prisma.acquisitionChannel.update({
+      where: { id },
+      data: { name: dto.name, active: dto.active },
     });
   }
 }

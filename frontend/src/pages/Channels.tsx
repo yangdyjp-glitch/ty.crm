@@ -34,6 +34,10 @@ export default function Channels() {
   const [editing, setEditing] = useState<Any | null>(null)
   const [form] = Form.useForm()
   const [ledger, setLedger] = useState<Any | null>(null)
+  const [acqRows, setAcqRows] = useState<Any[]>([])
+  const [acqOpen, setAcqOpen] = useState(false)
+  const [acqEditing, setAcqEditing] = useState<Any | null>(null)
+  const [acqForm] = Form.useForm()
   const openLedger = async (id: number) => {
     const { data } = await client.get(`/channels/${id}/ledger`)
     setLedger(data)
@@ -43,7 +47,10 @@ export default function Channels() {
     setLoading(true)
     client.get('/channels').then((r) => setRows(r.data)).finally(() => setLoading(false))
   }
-  useEffect(load, [])
+  const loadAcq = () => {
+    client.get('/acquisition-channels/all').then((r) => setAcqRows(r.data))
+  }
+  useEffect(() => { load(); loadAcq() }, [])
 
   const openForm = (rec?: Any) => {
     setEditing(rec || null)
@@ -67,6 +74,29 @@ export default function Channels() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const openAcq = (rec?: Any) => {
+    setAcqEditing(rec || null)
+    acqForm.resetFields()
+    if (rec) acqForm.setFieldsValue({ name: rec.name })
+    setAcqOpen(true)
+  }
+  const submitAcq = async () => {
+    const v = await acqForm.validateFields()
+    try {
+      if (acqEditing) await client.patch(`/acquisition-channels/${acqEditing.id}`, { name: v.name })
+      else await client.post('/acquisition-channels', { name: v.name })
+      message.success('已保存')
+      setAcqOpen(false)
+      loadAcq()
+    } catch (e: any) {
+      message.error(e.response?.data?.message || '操作失败（名称可能重复）')
+    }
+  }
+  const toggleAcq = async (rec: Any) => {
+    await client.patch(`/acquisition-channels/${rec.id}`, { active: !rec.active })
+    loadAcq()
   }
 
   return (
@@ -146,6 +176,38 @@ export default function Channels() {
             <Form.Item name="contactName" label="联系人"><Input /></Form.Item>
             <Form.Item name="contactInfo" label="联系方式"><Input /></Form.Item>
           </Space>
+        </Form>
+      </Modal>
+
+      <div style={{ marginTop: 28 }}>
+        <Space style={{ marginBottom: 12 }} wrap>
+          <b style={{ fontSize: 15 }}>获取渠道字典（自获取来源用）</b>
+          <Button size="small" onClick={() => openAcq()}>新增获取渠道</Button>
+        </Space>
+        <Table
+          size="small"
+          rowKey="id"
+          pagination={false}
+          dataSource={acqRows}
+          columns={[
+            { title: '名称', dataIndex: 'name' },
+            { title: '状态', dataIndex: 'active', render: (a: boolean) => <Tag color={a ? 'green' : 'default'}>{a ? '启用' : '停用'}</Tag> },
+            {
+              title: '操作',
+              render: (_: any, r: Any) => (
+                <Space>
+                  <a onClick={() => openAcq(r)}>重命名</a>
+                  <a onClick={() => toggleAcq(r)}>{r.active ? '停用' : '启用'}</a>
+                </Space>
+              ),
+            },
+          ]}
+        />
+      </div>
+
+      <Modal title={acqEditing ? '重命名获取渠道' : '新增获取渠道'} open={acqOpen} onCancel={() => setAcqOpen(false)} onOk={submitAcq} maskClosable={false} destroyOnClose>
+        <Form form={acqForm} layout="vertical">
+          <Form.Item name="name" label="名称" rules={[{ required: true }]}><Input /></Form.Item>
         </Form>
       </Modal>
     </div>

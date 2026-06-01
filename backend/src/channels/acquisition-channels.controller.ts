@@ -1,7 +1,18 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+} from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import { ChannelsService } from './channels.service';
-import { CreateAcquisitionChannelDto } from './dto/channel.dto';
+import {
+  CreateAcquisitionChannelDto,
+  UpdateAcquisitionChannelDto,
+} from './dto/channel.dto';
 import { Roles } from '../auth/roles.decorator';
 
 @Controller('acquisition-channels')
@@ -14,9 +25,21 @@ export class AcquisitionChannelsController {
     return this.channels.listAcquisition();
   }
 
+  @Get('all')
+  listAll() {
+    return this.channels.listAcquisitionAll();
+  }
+
   @Post()
-  @Roles(UserRole.ADMIN, UserRole.MARKET)
   create(@Body() dto: CreateAcquisitionChannelDto) {
     return this.channels.createAcquisition(dto.name);
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateAcquisitionChannelDto,
+  ) {
+    return this.channels.updateAcquisition(id, dto);
   }
 }

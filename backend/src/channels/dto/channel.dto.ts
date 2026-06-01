@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsEnum,
   IsNumber,
   IsOptional,
@@ -45,4 +46,9 @@ export class UpdateChannelDto {
 export class CreateAcquisitionChannelDto {
   @IsString()
   name: string;
+}
+
+export class UpdateAcquisitionChannelDto {
+  @IsOptional() @IsString() name?: string;
+  @IsOptional() @IsBoolean() active?: boolean;
 }
