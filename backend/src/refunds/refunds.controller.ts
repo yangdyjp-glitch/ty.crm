@@ -38,6 +38,12 @@ export class RefundsController {
     return this.refunds.approve(user, id);
   }
 
+  @Post(':id/pay')
+  @Roles(UserRole.ADMIN)
+  pay(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number) {
+    return this.refunds.pay(user, id);
+  }
+
   @Post(':id/reject')
   @Roles(UserRole.ADMIN)
   reject(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number) {

@@ -70,9 +70,9 @@ export default function Refunds() {
     }
   }
 
-  const act = async (id: number, action: 'approve' | 'reject') => {
+  const act = async (id: number, action: 'approve' | 'reject' | 'pay') => {
     await client.post(`/refunds/${id}/${action}`)
-    message.success(action === 'approve' ? '已执行退款' : '已拒绝')
+    message.success(action === 'approve' ? '已审核' : action === 'pay' ? '已支付退款' : '已拒绝')
     load()
   }
 
@@ -101,7 +101,7 @@ export default function Refunds() {
           {
             title: '状态',
             dataIndex: 'status',
-            render: (s) => <Tag color={s === 'REFUNDED' ? 'green' : s === 'REJECTED' ? 'red' : 'orange'}>{REFUND_STATUS_LABEL[s]}</Tag>,
+            render: (s) => <Tag color={s === 'REFUNDED' ? 'green' : s === 'REJECTED' ? 'red' : s === 'APPROVED' ? 'gold' : 'orange'}>{REFUND_STATUS_LABEL[s]}</Tag>,
           },
           {
             title: '操作',
@@ -109,9 +109,14 @@ export default function Refunds() {
               <Space>
                 {isAdmin && r.status === 'PENDING' && (
                   <>
-                    <a onClick={() => act(r.id, 'approve')}>执行</a>
+                    <a onClick={() => act(r.id, 'approve')}>审核</a>
                     <a style={{ color: '#cf1322' }} onClick={() => act(r.id, 'reject')}>拒绝</a>
                   </>
+                )}
+                {isAdmin && r.status === 'APPROVED' && (
+                  <Popconfirm title="确认支付退款？将终止订单并按比例追回佣金" okText="支付" cancelText="取消" onConfirm={() => act(r.id, 'pay')}>
+                    <a>支付</a>
+                  </Popconfirm>
                 )}
                 {isAdmin && (
                   <Popconfirm

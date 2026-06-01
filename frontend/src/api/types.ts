@@ -85,7 +85,8 @@ export const REFUND_REASON_LABEL: Record<string, string> = {
 };
 
 export const REFUND_STATUS_LABEL: Record<string, string> = {
-  PENDING: '待处理',
+  PENDING: '待审核',
+  APPROVED: '待支付',
   REFUNDED: '已退款',
   REJECTED: '已拒绝',
   ABNORMAL: '异常',

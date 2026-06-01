@@ -253,8 +253,11 @@ export class CommissionsService {
   async pay(user: AuthUser, id: number, voucherAttachmentId?: number) {
     const c = await this.load(id);
     if (c.suspended) throw new BadRequestException('分成已挂起，无法支付');
-    if (c.status !== CommissionStatus.PENDING_PAYMENT) {
-      throw new BadRequestException('仅待支付分成可支付');
+    if (
+      c.status !== CommissionStatus.PENDING_REVIEW &&
+      c.status !== CommissionStatus.PENDING_PAYMENT
+    ) {
+      throw new BadRequestException('仅待审核 / 待支付分成可结算');
     }
     const payable = Number(c.payableAmount);
     const balance = await this.ledger.getBalance(c.channelId, c.currency);

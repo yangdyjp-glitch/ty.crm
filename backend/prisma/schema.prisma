@@ -120,7 +120,8 @@ enum RefundReason {
 }
 
 enum RefundStatus {
-  PENDING // 待处理
+  PENDING // 待处理（待审核）
+  APPROVED // 已审核·待支付
   REFUNDED // 已退款
   REJECTED // 已拒绝
   ABNORMAL // 异常

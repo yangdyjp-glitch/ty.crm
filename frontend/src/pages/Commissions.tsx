@@ -21,9 +21,7 @@ export default function Commissions() {
   const batch = async (action: 'batch-review' | 'batch-pay') => {
     if (!selected.length) return
     const { data: res } = await client.post(`/commissions/${action}`, { ids: selected })
-    message.success(
-      action === 'batch-review' ? `已审核 ${res.reviewed}/${res.total}` : `已支付 ${res.paid}/${res.total}`,
-    )
+    message.success(`已结算 ${res.paid}/${res.total}`)
     setSelected([])
     load()
   }
@@ -55,8 +53,7 @@ export default function Commissions() {
           onChange={(v) => { setPage(1); setStatus(v) }}
           options={Object.entries(COMMISSION_STATUS_LABEL).map(([k, v]) => ({ value: k, label: v }))}
         />
-        <Button disabled={!selected.length} onClick={() => batch('batch-review')}>批量审核（{selected.length}）</Button>
-        <Button type="primary" disabled={!selected.length} onClick={() => batch('batch-pay')}>批量支付（{selected.length}）</Button>
+        <Button type="primary" disabled={!selected.length} onClick={() => batch('batch-pay')}>批量结算（{selected.length}）</Button>
       </Space>
       <Table
         rowKey="id"
@@ -91,8 +88,7 @@ export default function Commissions() {
             title: '操作',
             render: (_, r) => (
               <Space>
-                {r.status === 'PENDING_REVIEW' && !r.suspended && <a onClick={() => act(r.id, 'review')}>审核</a>}
-                {r.status === 'PENDING_PAYMENT' && !r.suspended && <a onClick={() => act(r.id, 'pay')}>支付</a>}
+                {['PENDING_REVIEW', 'PENDING_PAYMENT'].includes(r.status) && !r.suspended && <a onClick={() => act(r.id, 'pay')}>结算</a>}
                 {!['PAID', 'CANCELLED', 'SELF_DEDUCTED'].includes(r.status) &&
                   (r.suspended ? (
                     <a onClick={() => act(r.id, 'resume')}>解除挂起</a>

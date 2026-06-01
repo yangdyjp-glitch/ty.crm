@@ -83,14 +83,29 @@ export class RefundsService {
     });
   }
 
-  /** 管理员执行退款：终止订单 + 等比例追回佣金 + 第三方垫付入台账 */
+  /** 管理员审核退款：待处理 → 已审核·待支付（不动钱） */
   async approve(user: AuthUser, id: number) {
     const refund = await this.prisma.refund.findFirst({
       where: { id, deletedAt: null },
     });
     if (!refund) throw new NotFoundException('退款记录不存在');
     if (refund.status !== RefundStatus.PENDING) {
-      throw new BadRequestException('仅待处理退款可执行');
+      throw new BadRequestException('仅待处理退款可审核');
+    }
+    return this.prisma.refund.update({
+      where: { id },
+      data: { status: RefundStatus.APPROVED, reviewedById: user.id },
+    });
+  }
+
+  /** 管理员支付退款：已审核 → 已退款；终止订单 + 等比例追回佣金 + 第三方垫付入台账 */
+  async pay(user: AuthUser, id: number) {
+    const refund = await this.prisma.refund.findFirst({
+      where: { id, deletedAt: null },
+    });
+    if (!refund) throw new NotFoundException('退款记录不存在');
+    if (refund.status !== RefundStatus.APPROVED) {
+      throw new BadRequestException('仅已审核（待支付）退款可支付');
     }
     const order = await this.prisma.order.findUnique({
       where: { id: refund.orderId },
@@ -100,11 +115,7 @@ export class RefundsService {
     await this.prisma.$transaction([
       this.prisma.refund.update({
         where: { id },
-        data: {
-          status: RefundStatus.REFUNDED,
-          reviewedById: user.id,
-          completedAt: new Date(),
-        },
+        data: { status: RefundStatus.REFUNDED, completedAt: new Date() },
       }),
       // 退款一律终止订单
       this.prisma.order.update({
@@ -151,7 +162,7 @@ export class RefundsService {
       operatorId: user.id,
       relatedType: 'Refund',
       relatedId: id,
-      action: 'APPROVE_REFUND',
+      action: 'PAY_REFUND',
       newValue: `名义=${refund.nominalAmount} 现金=${refund.cashAmount} 抵减=${refund.offsetAmount} 承担=${refund.bearer}`,
     });
     return this.prisma.refund.findUnique({ where: { id } });
