@@ -77,22 +77,39 @@ td.ant-table-cell[align='right'] {
   font-variant-numeric: tabular-nums;
 }
 
-/* 直角框体 + 淡金色线条：卡片描边 + 表格网格 */
+/* 直角框体 + 淡金色线条：横线 1px，竖线 3px（竖比横粗 2px），统一金色 */
 .ant-layout .ant-card {
-  border: 1px solid var(--line);
+  border-style: solid;
+  border-color: var(--line);
+  border-width: 1px 3px; /* 上下 1px / 左右 3px */
   border-radius: 0;
 }
 .ant-table-wrapper .ant-table {
-  border: 1px solid var(--line);
+  border-style: solid;
+  border-color: var(--line);
+  border-width: 1px 3px;
   border-radius: 0;
   overflow: hidden;
 }
+/* 去掉表头单元格之间 AntD 默认的竖条分隔（它会和边框叠成奇怪的粗痕） */
+.ant-table-thead > tr > th::before {
+  display: none !important;
+}
+/* 竖线（列分隔）3px；最后一列不重复（交给表格外框） */
 .ant-table-tbody > tr > td,
 .ant-table-thead > tr > th {
-  border-inline-end: 1px solid var(--line-soft) !important;
+  border-inline-end: 3px solid var(--line) !important;
+}
+.ant-table-tbody > tr > td:last-child,
+.ant-table-thead > tr > th:last-child {
+  border-inline-end: none !important;
+}
+/* 横线（行间 / 表头底线）1px */
+.ant-table-tbody > tr > td {
+  border-bottom: 1px solid var(--line) !important;
 }
 .ant-table-thead > tr > th {
-  border-bottom: 1.5px solid var(--line) !important;
+  border-bottom: 1px solid var(--line) !important;
   font-weight: 700 !important;
 }
 
