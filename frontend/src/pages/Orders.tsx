@@ -27,7 +27,6 @@ export default function Orders() {
   const nav = useNavigate()
   const [data, setData] = useState<{ items: Any[]; total: number }>({ items: [], total: 0 })
   const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(10)
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -44,9 +43,9 @@ export default function Orders() {
 
   const load = () => {
     setLoading(true)
-    client.get('/orders', { params: { page, pageSize } }).then((r) => setData(r.data)).finally(() => setLoading(false))
+    client.get('/orders', { params: { page, pageSize: 12 } }).then((r) => setData(r.data)).finally(() => setLoading(false))
   }
-  useEffect(load, [page, pageSize])
+  useEffect(load, [page])
 
   const openCreate = async () => {
     form.resetFields()
@@ -139,7 +138,7 @@ export default function Orders() {
         loading={loading}
         columns={columns}
         dataSource={data.items}
-        pagination={{ current: page, pageSize, total: data.total, onChange: (p, ps) => { setPage(p); setPageSize(ps) }, showSizeChanger: true, pageSizeOptions: [10, 20, 50, 100] }}
+        pagination={{ current: page, pageSize: 12, total: data.total, onChange: setPage, showSizeChanger: false }}
       />
       <Modal title="签约（首款必填 / 尾款选填）" open={open} onCancel={() => setOpen(false)} onOk={submit} confirmLoading={submitting} okText={submitting ? '处理中…' : '确定'} maskClosable={false} cancelButtonProps={{ disabled: submitting }} destroyOnClose>
         <Form form={form} layout="vertical" initialValues={{ currency: 'JPY' }}>
