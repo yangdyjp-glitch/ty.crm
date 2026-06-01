@@ -215,7 +215,24 @@ export class CustomersService {
 
   async update(user: AuthUser, id: number, dto: UpdateCustomerDto) {
     await this.loadScoped(user, id);
-    return this.prisma.customer.update({ where: { id }, data: dto });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data: any = { ...dto };
+    // 改了第三方渠道 → 重算渠道名称/分成比例快照
+    if (dto.channelId !== undefined) {
+      if (dto.channelId) {
+        const ch = await this.prisma.channel.findFirst({
+          where: { id: dto.channelId, deletedAt: null },
+        });
+        data.channelNameSnapshot = ch?.name ?? null;
+        data.commissionRateSnapshot = ch?.defaultCommissionRate
+          ? Number(ch.defaultCommissionRate)
+          : null;
+      } else {
+        data.channelNameSnapshot = null;
+        data.commissionRateSnapshot = null;
+      }
+    }
+    return this.prisma.customer.update({ where: { id }, data });
   }
 
   async assign(user: AuthUser, id: number, dto: AssignDto) {

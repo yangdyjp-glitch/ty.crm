@@ -95,8 +95,8 @@ export default function Orders() {
   }
 
   const columns = [
-    { title: '订单号', dataIndex: 'orderNo', width: 130 },
-    { title: '客户', render: (_: any, r: Any) => r.customer?.name },
+    { title: '订单号', dataIndex: 'orderNo', width: 130, render: (n: string, r: Any) => <a onClick={() => nav(`/orders/${r.id}`)}>{n}</a> },
+    { title: '客户', render: (_: any, r: Any) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
     { title: '项目', render: (_: any, r: Any) => r.product?.name },
     { title: '币种', dataIndex: 'currency', render: (c: string) => CURRENCY_LABEL[c] },
     { title: '应收', dataIndex: 'receivableAmount', render: fmtMoney, align: 'right' as const },

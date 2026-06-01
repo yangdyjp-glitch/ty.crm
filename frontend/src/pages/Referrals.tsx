@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Button,
   Form,
@@ -19,6 +20,7 @@ type Any = Record<string, any>
 const SERVICE_TYPES = ['住房', '电话卡', '保险', '其他']
 
 export default function Referrals() {
+  const nav = useNavigate()
   const [rows, setRows] = useState<Any[]>([])
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
@@ -65,7 +67,7 @@ export default function Referrals() {
         loading={loading}
         dataSource={rows}
         columns={[
-          { title: '客户', render: (_, r) => r.customer?.name },
+          { title: '客户', render: (_, r) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
           { title: '服务种类', dataIndex: 'serviceType' },
           { title: '下游公司', dataIndex: 'downstreamCompany' },
           { title: '佣金', dataIndex: 'commissionAmount', render: fmtMoney, align: 'right' },

@@ -160,8 +160,8 @@ export class PaymentsService {
       where,
       orderBy: { id: 'desc' },
       include: {
-        order: { select: { orderNo: true, receivableAmount: true, paidAmount: true, unpaidAmount: true } },
-        customer: { select: { name: true } },
+        order: { select: { id: true, orderNo: true, receivableAmount: true, paidAmount: true, unpaidAmount: true } },
+        customer: { select: { id: true, name: true } },
       },
     });
   }
@@ -171,8 +171,8 @@ export class PaymentsService {
       where: { deletedAt: null, confirmStatus: PaymentConfirmStatus.PENDING },
       orderBy: { id: 'desc' },
       include: {
-        order: { select: { orderNo: true, receivableAmount: true, paidAmount: true, unpaidAmount: true } },
-        customer: { select: { name: true } },
+        order: { select: { id: true, orderNo: true, receivableAmount: true, paidAmount: true, unpaidAmount: true } },
+        customer: { select: { id: true, name: true } },
       },
     });
   }

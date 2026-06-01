@@ -46,6 +46,9 @@ export default function Customers() {
   const [channels, setChannels] = useState<Any[]>([])
   const [acq, setAcq] = useState<Any[]>([])
   const [sales, setSales] = useState<Any[]>([])
+  const [editCust, setEditCust] = useState<Any | null>(null)
+  const [editForm] = Form.useForm()
+  const [editSourceCat, setEditSourceCat] = useState('SELF')
 
   const canCreate = user?.role === 'MARKET' || user?.role === 'ADMIN'
 
@@ -105,24 +108,65 @@ export default function Customers() {
     load()
   }
 
+  const openQuickEdit = async (r: Any) => {
+    setChannels(await loadChannelOptions().catch(() => []))
+    setAcq(await loadAcqChannels().catch(() => []))
+    setEditSourceCat(r.sourceCategory)
+    editForm.setFieldsValue({
+      intentionLevel: r.intentionLevel ?? undefined,
+      mainStatus: r.mainStatus,
+      sourceCategory: r.sourceCategory,
+      channelId: r.channel?.id,
+      acquisitionChannelId: r.acquisitionChannel?.id,
+    })
+    setEditCust(r)
+  }
+  const submitQuickEdit = async () => {
+    const v = await editForm.validateFields()
+    setSubmitting(true)
+    try {
+      await client.patch(`/customers/${editCust!.id}`, {
+        intentionLevel: v.intentionLevel ?? null,
+        mainStatus: v.mainStatus,
+        sourceCategory: v.sourceCategory,
+        channelId: v.sourceCategory === 'SELF' ? null : (v.channelId ?? null),
+        acquisitionChannelId: v.sourceCategory === 'SELF' ? (v.acquisitionChannelId ?? null) : null,
+      })
+      message.success('已修改')
+      setEditCust(null)
+      load()
+    } catch (e: any) {
+      message.error(e.response?.data?.message || '操作失败')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   const columns = [
     { title: '编号', dataIndex: 'customerNo', width: 130 },
-    { title: '姓名', dataIndex: 'name' },
+    { title: '姓名', dataIndex: 'name', render: (n: string, r: Any) => <a onClick={() => nav(`/customers/${r.id}`)}>{n}</a> },
     {
       title: '联系方式',
       render: (_: any, r: Any) => [r.phone, r.wechat, r.email].filter(Boolean).join(' / ') || '—',
     },
     {
       title: '来源 / 渠道',
-      render: (_: any, r: Any) =>
-        `${SOURCE_LABEL[r.sourceCategory] || ''}${r.channel ? '：' + r.channel.name : r.acquisitionChannel ? '：' + r.acquisitionChannel.name : ''}`,
+      render: (_: any, r: Any) => (
+        <a onClick={() => openQuickEdit(r)}>
+          {`${SOURCE_LABEL[r.sourceCategory] || ''}${r.channel ? '：' + r.channel.name : r.acquisitionChannel ? '：' + r.acquisitionChannel.name : ''}`}
+        </a>
+      ),
     },
     {
       title: '状态',
       dataIndex: 'mainStatus',
-      render: (s: string) => <Tag color={CUSTOMER_STATUS_COLOR[s]}>{CUSTOMER_STATUS_LABEL[s]}</Tag>,
+      render: (s: string, r: Any) => (
+        <a onClick={() => openQuickEdit(r)}>
+          <Tag color={CUSTOMER_STATUS_COLOR[s]}>{CUSTOMER_STATUS_LABEL[s]}</Tag>
+        </a>
+      ),
     },
-    { title: '意向', dataIndex: 'intentionLevel', render: (i: string) => (i ? INTENTION_LABEL[i] : '—') },
+    { title: '意向', dataIndex: 'intentionLevel', render: (i: string, r: Any) => <a onClick={() => openQuickEdit(r)}>{i ? INTENTION_LABEL[i] : '—'}</a> },
     {
       title: '分配',
       render: (_: any, r: Any) => {
@@ -227,6 +271,29 @@ export default function Customers() {
           options={sales.map((s) => ({ value: s.id, label: s.name }))}
           onChange={doAssign}
         />
+      </Modal>
+
+      <Modal title="快速修改（意向 / 状态 / 来源渠道）" open={!!editCust} onCancel={() => setEditCust(null)} onOk={submitQuickEdit} confirmLoading={submitting} okText={submitting ? '处理中…' : '确定'} maskClosable={false} cancelButtonProps={{ disabled: submitting }} destroyOnClose>
+        <Form form={editForm} layout="vertical">
+          <Form.Item name="intentionLevel" label="意向">
+            <Select allowClear options={Object.entries(INTENTION_LABEL).map(([k, v]) => ({ value: k, label: v }))} />
+          </Form.Item>
+          <Form.Item name="mainStatus" label="状态" rules={[{ required: true }]}>
+            <Select options={Object.entries(CUSTOMER_STATUS_LABEL).map(([k, v]) => ({ value: k, label: v }))} />
+          </Form.Item>
+          <Form.Item name="sourceCategory" label="来源" rules={[{ required: true }]}>
+            <Select onChange={(v) => { setEditSourceCat(v); editForm.setFieldValue('channelId', undefined); editForm.setFieldValue('acquisitionChannelId', undefined) }} options={Object.entries(SOURCE_LABEL).map(([k, v]) => ({ value: k, label: v }))} />
+          </Form.Item>
+          {editSourceCat === 'SELF' ? (
+            <Form.Item name="acquisitionChannelId" label="获取渠道">
+              <Select allowClear options={acq.map((a) => ({ value: a.id, label: a.name }))} />
+            </Form.Item>
+          ) : (
+            <Form.Item name="channelId" label="第三方渠道" rules={[{ required: true }]}>
+              <Select options={channels.filter((c) => (editSourceCat === 'INDIVIDUAL_THIRD_PARTY' ? c.channelType === 'INDIVIDUAL' : c.channelType === 'ENTERPRISE')).map((c) => ({ value: c.id, label: c.name }))} />
+            </Form.Item>
+          )}
+        </Form>
       </Modal>
     </div>
   )

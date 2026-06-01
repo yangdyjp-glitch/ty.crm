@@ -26,7 +26,9 @@ export class ChannelsController {
   constructor(private channels: ChannelsService) {}
 
   @Get()
-  list(@Query('type') type?: ChannelType) {
+  list(@CurrentUser() u: AuthUser, @Query('type') type?: ChannelType) {
+    // 市场仅可见个人渠道；企业渠道仅管理员可见
+    if (u.role === UserRole.MARKET) return this.channels.list(ChannelType.INDIVIDUAL);
     return this.channels.list(type);
   }
 

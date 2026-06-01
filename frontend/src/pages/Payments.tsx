@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Button,
   Form,
@@ -22,6 +23,7 @@ type Any = Record<string, any>
 export default function Payments() {
   const { user } = useAuth()
   const isAdmin = user?.role === 'ADMIN'
+  const nav = useNavigate()
   const [rows, setRows] = useState<Any[]>([])
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
@@ -98,8 +100,8 @@ export default function Payments() {
         dataSource={rows}
         columns={[
           { title: '收款号', dataIndex: 'paymentNo', width: 130 },
-          { title: '客户', render: (_, r) => r.customer?.name },
-          { title: '订单', render: (_, r) => r.order?.orderNo },
+          { title: '客户', render: (_, r) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
+          { title: '订单', render: (_, r) => <a onClick={() => nav(`/orders/${r.order?.id}`)}>{r.order?.orderNo}</a> },
           { title: '金额', dataIndex: 'amount', render: moneyIn, align: 'right' },
           { title: '币种', dataIndex: 'currency', render: (c) => CURRENCY_LABEL[c] },
           {

@@ -49,6 +49,10 @@ export class UpdateCustomerDto {
   @IsOptional() @IsString() targetStage?: string;
   @IsOptional() @IsString() targetStartTime?: string;
   @IsOptional() @IsEnum(IntentionLevel) intentionLevel?: IntentionLevel;
+  @IsOptional() @IsEnum(CustomerMainStatus) mainStatus?: CustomerMainStatus;
+  @IsOptional() @IsEnum(SourceCategory) sourceCategory?: SourceCategory;
+  @IsOptional() @IsInt() channelId?: number;
+  @IsOptional() @IsInt() acquisitionChannelId?: number;
   @IsOptional() @IsString() remark?: string;
 }
 

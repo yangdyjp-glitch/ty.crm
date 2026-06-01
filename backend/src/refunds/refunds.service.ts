@@ -229,8 +229,8 @@ export class RefundsService {
       where,
       orderBy: { id: 'desc' },
       include: {
-        order: { select: { orderNo: true } },
-        customer: { select: { name: true } },
+        order: { select: { id: true, orderNo: true } },
+        customer: { select: { id: true, name: true } },
       },
     });
   }
