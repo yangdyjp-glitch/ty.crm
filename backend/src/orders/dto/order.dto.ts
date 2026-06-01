@@ -20,8 +20,9 @@ export class CreateOrderDto {
   @IsOptional() @IsEnum(FundSettlementMode) fundSettlementMode?: FundSettlementMode;
   @IsOptional() @IsString() remark?: string;
 
-  // 签约 + 首款同屏（可选）
-  @IsOptional() @IsNumber() @Min(0) firstPaymentAmount?: number;
+  // 签约：首款（必填）+ 尾款（选填），各生成一条待确认收款
+  @IsNumber() @Min(0) firstPaymentAmount: number;
+  @IsOptional() @IsNumber() @Min(0) tailPaymentAmount?: number;
   @IsOptional() @IsString() firstPaymentMethod?: string;
   @IsOptional() @IsDateString() firstPaymentPaidAt?: string;
 }

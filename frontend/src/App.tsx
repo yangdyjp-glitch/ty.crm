@@ -9,6 +9,7 @@ import CustomerDetail from './pages/CustomerDetail'
 import Channels from './pages/Channels'
 import Products from './pages/Products'
 import Orders from './pages/Orders'
+import OrderDetail from './pages/OrderDetail'
 import Payments from './pages/Payments'
 import Refunds from './pages/Refunds'
 import Commissions from './pages/Commissions'
@@ -40,6 +41,7 @@ export default function App() {
         <Route path="channels" element={<Channels />} />
         <Route path="products" element={<Products />} />
         <Route path="orders" element={<Orders />} />
+        <Route path="orders/:id" element={<OrderDetail />} />
         <Route path="payments" element={<Payments />} />
         <Route path="refunds" element={<Refunds />} />
         <Route path="commissions" element={<Commissions />} />

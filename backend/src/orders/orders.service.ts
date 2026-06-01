@@ -47,10 +47,12 @@ export class OrdersService {
 
     const orderNo = await nextNo(this.prisma.order, 'orderNo', 'DD');
     const contractNo = dto.contractNo || (await nextNo(this.prisma.order, 'contractNo', 'HT'));
-    const firstPayNo =
-      dto.firstPaymentAmount && dto.firstPaymentAmount > 0
-        ? await nextNo(this.prisma.payment, 'paymentNo', 'SK')
-        : null;
+    const firstPayNo = await nextNo(this.prisma.payment, 'paymentNo', 'SK');
+    const hasTail = !!dto.tailPaymentAmount && dto.tailPaymentAmount > 0;
+    // 尾款编号取首款 +1（同事务内顺延，避免重复查询撞号）
+    const tailPayNo = hasTail
+      ? 'SK' + String(parseInt(firstPayNo.slice(2), 10) + 1).padStart(6, '0')
+      : null;
 
     const order = await this.prisma.$transaction(async (tx) => {
       const o = await tx.order.create({
@@ -73,20 +75,36 @@ export class OrdersService {
           remark: dto.remark,
         },
       });
-      if (dto.firstPaymentAmount && dto.firstPaymentAmount > 0) {
+      // 首款（必填）→ 一条待确认收款
+      await tx.payment.create({
+        data: {
+          paymentNo: firstPayNo,
+          customerId: dto.customerId,
+          orderId: o.id,
+          amount: dto.firstPaymentAmount,
+          currency: dto.currency,
+          method: dto.firstPaymentMethod,
+          paidAt: dto.firstPaymentPaidAt
+            ? new Date(dto.firstPaymentPaidAt)
+            : new Date(),
+          confirmStatus: PaymentConfirmStatus.PENDING,
+          createdById: user.id,
+          remark: '首款',
+        },
+      });
+      // 尾款（选填）→ 再加一条待确认收款
+      if (hasTail) {
         await tx.payment.create({
           data: {
-            paymentNo: firstPayNo!,
+            paymentNo: tailPayNo!,
             customerId: dto.customerId,
             orderId: o.id,
-            amount: dto.firstPaymentAmount,
+            amount: dto.tailPaymentAmount!,
             currency: dto.currency,
-            method: dto.firstPaymentMethod,
-            paidAt: dto.firstPaymentPaidAt
-              ? new Date(dto.firstPaymentPaidAt)
-              : new Date(),
+            paidAt: new Date(),
             confirmStatus: PaymentConfirmStatus.PENDING,
             createdById: user.id,
+            remark: '尾款',
           },
         });
       }
@@ -206,32 +224,6 @@ export class OrdersService {
       where: { id },
       data: { status: OrderStatus.COMPLETED },
     });
-    // 完成服务：若仍有未收余额，自动生成一条「待确认」尾款收款（订单已填好，等人工点"确认到账"）
-    const unpaid = Number(o.unpaidAmount);
-    if (unpaid > 0) {
-      const pendingCount = await this.prisma.payment.count({
-        where: {
-          orderId: o.id,
-          deletedAt: null,
-          confirmStatus: PaymentConfirmStatus.PENDING,
-        },
-      });
-      if (pendingCount === 0) {
-        await this.prisma.payment.create({
-          data: {
-            paymentNo: await nextNo(this.prisma.payment, 'paymentNo', 'SK'),
-            customerId: o.customerId,
-            orderId: o.id,
-            amount: unpaid,
-            currency: o.currency,
-            paidAt: new Date(),
-            confirmStatus: PaymentConfirmStatus.PENDING,
-            createdById: user.id,
-            remark: '完成服务自动生成尾款（待确认）',
-          },
-        });
-      }
-    }
     await this.customers.recomputeMainStatus(o.customerId);
     // 结算条件=服务完成后 → 触发该订单分成进入待审核
     await this.commissions.onServiceCompleted(o.id);

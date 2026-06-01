@@ -61,7 +61,7 @@ export default function AppLayout() {
 
   // 列表页自动套统一页头 + 白卡片；仪表盘 / 客户详情保留自己的布局
   const current = NAV.find((n) => n.key !== '/' && loc.pathname.startsWith(n.key))
-  const isDetail = loc.pathname.startsWith('/customers/')
+  const isDetail = loc.pathname.startsWith('/customers/') || loc.pathname.startsWith('/orders/')
   const showHeader = !!current && !isDetail
 
   return (

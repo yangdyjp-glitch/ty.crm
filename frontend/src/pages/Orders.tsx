@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Button,
   Form,
@@ -23,6 +24,7 @@ type Any = Record<string, any>
 export default function Orders() {
   const { user } = useAuth()
   const isAdmin = user?.role === 'ADMIN'
+  const nav = useNavigate()
   const [data, setData] = useState<{ items: Any[]; total: number }>({ items: [], total: 0 })
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
@@ -105,6 +107,7 @@ export default function Orders() {
       title: '操作',
       render: (_: any, r: Any) => (
         <Space>
+          <a onClick={() => nav(`/orders/${r.id}`)}>详情</a>
           {['FULLY_PAID', 'PARTIAL_PAID', 'PENDING_PAYMENT'].includes(r.status) && (
             <a onClick={() => act(r.id, 'start-service')}>开始服务</a>
           )}
@@ -131,7 +134,7 @@ export default function Orders() {
         dataSource={data.items}
         pagination={{ current: page, pageSize, total: data.total, onChange: (p, ps) => { setPage(p); setPageSize(ps) }, showSizeChanger: true, pageSizeOptions: [10, 20, 50, 100] }}
       />
-      <Modal title="签约 + 首款" open={open} onCancel={() => setOpen(false)} onOk={submit} confirmLoading={submitting} okText={submitting ? '处理中…' : '确定'} maskClosable={false} cancelButtonProps={{ disabled: submitting }} destroyOnClose>
+      <Modal title="签约（首款必填 / 尾款选填）" open={open} onCancel={() => setOpen(false)} onOk={submit} confirmLoading={submitting} okText={submitting ? '处理中…' : '确定'} maskClosable={false} cancelButtonProps={{ disabled: submitting }} destroyOnClose>
         <Form form={form} layout="vertical" initialValues={{ currency: 'JPY' }}>
           <Form.Item name="customerId" label="客户" rules={[{ required: true }]}>
             <Select
@@ -154,7 +157,10 @@ export default function Orders() {
               <InputNumber min={0} controls={false} style={{ width: 100 }} />
             </Form.Item>
           </Space>
-          <Form.Item name="firstPaymentAmount" label="首款金额（可选，待管理员确认）">
+          <Form.Item name="firstPaymentAmount" label="首款金额（必填，待确认）" rules={[{ required: true }]}>
+            <InputNumber min={0} controls={false} style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item name="tailPaymentAmount" label="尾款金额（选填，待确认）">
             <InputNumber min={0} controls={false} style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item name="contractNo" label="合同编号"><Input /></Form.Item>
