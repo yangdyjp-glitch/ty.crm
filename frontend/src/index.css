@@ -91,6 +91,13 @@ td.ant-table-cell[align='right'] {
   border-radius: 0;
   overflow: hidden;
 }
+/* 固定列宽：列宽不随内容自动伸缩；内容超长则换行 */
+.ant-table-wrapper table {
+  table-layout: fixed !important;
+}
+.ant-table-tbody > tr > td {
+  word-break: break-word;
+}
 /* 去掉表头单元格之间 AntD 默认的竖条分隔（它会和边框叠成奇怪的粗痕） */
 .ant-table-thead > tr > th::before {
   display: none !important;
