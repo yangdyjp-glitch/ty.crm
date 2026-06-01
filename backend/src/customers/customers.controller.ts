@@ -155,15 +155,6 @@ export class CustomersController {
     return this.customers.setSalesStage(user, id, dto.salesStage);
   }
 
-  @Post(':id/score')
-  @Roles(UserRole.SALES, UserRole.ADMIN)
-  computeScore(
-    @CurrentUser() user: AuthUser,
-    @Param('id', ParseIntPipe) id: number,
-  ) {
-    return this.customers.computeScore(user, id);
-  }
-
   @Get(':id/ai-summary')
   aiSummary(
     @CurrentUser() user: AuthUser,

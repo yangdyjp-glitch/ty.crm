@@ -2,9 +2,12 @@ import { useEffect, useState } from 'react'
 import {
   Button,
   Form,
+  Input,
   InputNumber,
   Modal,
+  Popconfirm,
   Select,
+  Space,
   Table,
   Tag,
   message,
@@ -25,6 +28,8 @@ export default function Payments() {
   const [submitting, setSubmitting] = useState(false)
   const [form] = Form.useForm()
   const [orders, setOrders] = useState<Any[]>([])
+  const [editTarget, setEditTarget] = useState<Any | null>(null)
+  const [editForm] = Form.useForm()
 
   const load = () => {
     setLoading(true)
@@ -60,6 +65,30 @@ export default function Payments() {
     load()
   }
 
+  const openEdit = (r: Any) => {
+    setEditTarget(r)
+    editForm.setFieldsValue({ amount: Number(r.amount), method: r.method, remark: r.remark })
+  }
+  const submitEdit = async () => {
+    const v = await editForm.validateFields()
+    setSubmitting(true)
+    try {
+      await client.patch(`/payments/${editTarget!.id}`, v)
+      message.success('已修改')
+      setEditTarget(null)
+      load()
+    } catch (e: any) {
+      message.error(e.response?.data?.message || '操作失败')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+  const doDelete = async (id: number) => {
+    await client.delete(`/payments/${id}`)
+    message.success('已删除')
+    load()
+  }
+
   return (
     <div>
       <Button type="primary" style={{ marginBottom: 16 }} onClick={openCreate}>录入收款</Button>
@@ -81,7 +110,17 @@ export default function Payments() {
           {
             title: '操作',
             render: (_, r) =>
-              isAdmin && r.confirmStatus === 'PENDING' ? <a onClick={() => confirm(r.id)}>确认到账</a> : null,
+              r.confirmStatus === 'CONFIRMED' ? (
+                <span style={{ color: '#9ca3af' }}>已锁定</span>
+              ) : (
+                <Space>
+                  {isAdmin && <a onClick={() => confirm(r.id)}>确认到账</a>}
+                  <a onClick={() => openEdit(r)}>修改</a>
+                  <Popconfirm title="确认删除这条收款？" okText="删除" cancelText="取消" okButtonProps={{ danger: true }} onConfirm={() => doDelete(r.id)}>
+                    <a style={{ color: '#dc2626' }}>删除</a>
+                  </Popconfirm>
+                </Space>
+              ),
           },
         ]}
       />
@@ -98,6 +137,38 @@ export default function Payments() {
             <InputNumber min={0} style={{ width: '100%' }} />
           </Form.Item>
         </Form>
+      </Modal>
+
+      <Modal title="修改收款（仅待确认可改）" open={!!editTarget} onCancel={() => setEditTarget(null)} onOk={submitEdit} confirmLoading={submitting} okText={submitting ? '处理中…' : '确定'} maskClosable={false} cancelButtonProps={{ disabled: submitting }} destroyOnClose>
+        {editTarget && (
+          <Form form={editForm} layout="vertical">
+            <div style={{ marginBottom: 12, color: '#6b7280', fontSize: 13 }}>
+              订单 {editTarget.order?.orderNo}　应收 {fmtMoney(editTarget.order?.receivableAmount)} / 已收 {fmtMoney(editTarget.order?.paidAmount)} / 未收 {fmtMoney(editTarget.order?.unpaidAmount)}
+            </div>
+            <Form.Item name="amount" label="收款金额" rules={[{ required: true }]}>
+              <InputNumber min={0} controls={false} style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item name="method" label="收款方式"><Input /></Form.Item>
+            <Form.Item
+              name="remark"
+              label="备注 / 差异说明"
+              rules={[
+                {
+                  validator: (_, value) => {
+                    const amt = Number(editForm.getFieldValue('amount'))
+                    const unpaid = Number(editTarget.order?.unpaidAmount ?? 0)
+                    if (amt !== unpaid && !value) {
+                      return Promise.reject(new Error('实收与应收余额不一致，请填写差异说明'))
+                    }
+                    return Promise.resolve()
+                  },
+                },
+              ]}
+            >
+              <Input.TextArea rows={2} placeholder="若实收与应收余额不一致，请说明原因" />
+            </Form.Item>
+          </Form>
+        )}
       </Modal>
     </div>
   )

@@ -13,7 +13,7 @@ import { CommissionsService } from '../commissions/commissions.service';
 import { AuthUser } from '../auth/current-user.decorator';
 import { customerScopeWhere } from '../common/scope';
 import { nextNo } from '../common/util';
-import { CreatePaymentDto } from './dto/payment.dto';
+import { CreatePaymentDto, UpdatePaymentDto } from './dto/payment.dto';
 
 @Injectable()
 export class PaymentsService {
@@ -109,6 +109,42 @@ export class PaymentsService {
     });
   }
 
+  /** 修改待确认收款（已确认的不允许直接改） */
+  async update(user: AuthUser, id: number, dto: UpdatePaymentDto) {
+    const p = await this.prisma.payment.findFirst({
+      where: { id, deletedAt: null, customer: customerScopeWhere(user) },
+    });
+    if (!p) throw new NotFoundException('收款记录不存在或无权访问');
+    if (p.confirmStatus === PaymentConfirmStatus.CONFIRMED) {
+      throw new BadRequestException('已确认的收款不允许修改');
+    }
+    return this.prisma.payment.update({
+      where: { id },
+      data: {
+        amount: dto.amount,
+        method: dto.method,
+        paidAt: dto.paidAt ? new Date(dto.paidAt) : undefined,
+        remark: dto.remark,
+      },
+    });
+  }
+
+  /** 删除待确认收款（已确认的不允许直接删） */
+  async remove(user: AuthUser, id: number) {
+    const p = await this.prisma.payment.findFirst({
+      where: { id, deletedAt: null, customer: customerScopeWhere(user) },
+    });
+    if (!p) throw new NotFoundException('收款记录不存在或无权访问');
+    if (p.confirmStatus === PaymentConfirmStatus.CONFIRMED) {
+      throw new BadRequestException('已确认的收款不允许删除');
+    }
+    await this.prisma.payment.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+    return { ok: true };
+  }
+
   list(
     user: AuthUser,
     q: { orderId?: string; confirmStatus?: PaymentConfirmStatus },
@@ -123,7 +159,7 @@ export class PaymentsService {
       where,
       orderBy: { id: 'desc' },
       include: {
-        order: { select: { orderNo: true } },
+        order: { select: { orderNo: true, receivableAmount: true, paidAmount: true, unpaidAmount: true } },
         customer: { select: { name: true } },
       },
     });
@@ -134,7 +170,7 @@ export class PaymentsService {
       where: { deletedAt: null, confirmStatus: PaymentConfirmStatus.PENDING },
       orderBy: { id: 'desc' },
       include: {
-        order: { select: { orderNo: true } },
+        order: { select: { orderNo: true, receivableAmount: true, paidAmount: true, unpaidAmount: true } },
         customer: { select: { name: true } },
       },
     });

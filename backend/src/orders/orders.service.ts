@@ -205,6 +205,32 @@ export class OrdersService {
       where: { id },
       data: { status: OrderStatus.COMPLETED },
     });
+    // 完成服务：若仍有未收余额，自动生成一条「待确认」尾款收款（订单已填好，等人工点"确认到账"）
+    const unpaid = Number(o.unpaidAmount);
+    if (unpaid > 0) {
+      const pendingCount = await this.prisma.payment.count({
+        where: {
+          orderId: o.id,
+          deletedAt: null,
+          confirmStatus: PaymentConfirmStatus.PENDING,
+        },
+      });
+      if (pendingCount === 0) {
+        await this.prisma.payment.create({
+          data: {
+            paymentNo: await nextNo(this.prisma.payment, 'paymentNo', 'SK'),
+            customerId: o.customerId,
+            orderId: o.id,
+            amount: unpaid,
+            currency: o.currency,
+            paidAt: new Date(),
+            confirmStatus: PaymentConfirmStatus.PENDING,
+            createdById: user.id,
+            remark: '完成服务自动生成尾款（待确认）',
+          },
+        });
+      }
+    }
     await this.customers.recomputeMainStatus(o.customerId);
     // 结算条件=服务完成后 → 触发该订单分成进入待审核
     await this.commissions.onServiceCompleted(o.id);

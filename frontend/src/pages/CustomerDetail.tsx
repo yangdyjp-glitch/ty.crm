@@ -68,11 +68,6 @@ export default function CustomerDetail() {
     message.success('已更新销售阶段')
     load()
   }
-  const doScore = async () => {
-    const { data } = await client.post(`/customers/${id}/score`)
-    message.success(`客户评分：${data.score}`)
-    load()
-  }
   const doAi = async () => {
     const { data } = await client.get(`/customers/${id}/ai-summary`)
     setAiSummary(data.summary)
@@ -87,7 +82,6 @@ export default function CustomerDetail() {
             <Tag color={CUSTOMER_STATUS_COLOR[c.mainStatus]}>{CUSTOMER_STATUS_LABEL[c.mainStatus]}</Tag>
             {c.intentionLevel && <Tag color="purple">{INTENTION_LABEL[c.intentionLevel]}</Tag>}
             {c.salesStage && <Tag color="geekblue">{SALES_STAGE_LABEL[c.salesStage]}</Tag>}
-            {c.score != null && <Tag color="gold">评分 {c.score}</Tag>}
             {c.hasProblem && <Tag color="red">有问题</Tag>}
           </Space>
         }
@@ -102,7 +96,6 @@ export default function CustomerDetail() {
                 onChange={setStage}
                 options={Object.entries(SALES_STAGE_LABEL).map(([k, v]) => ({ value: k, label: v }))}
               />
-              <Button size="small" onClick={doScore}>评分</Button>
               <Button size="small" onClick={doAi}>AI 摘要</Button>
             </Space>
           )

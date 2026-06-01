@@ -1,15 +1,17 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Query,
 } from '@nestjs/common';
 import { PaymentConfirmStatus, UserRole } from '@prisma/client';
 import { PaymentsService } from './payments.service';
-import { CreatePaymentDto } from './dto/payment.dto';
+import { CreatePaymentDto, UpdatePaymentDto } from './dto/payment.dto';
 import { Roles } from '../auth/roles.decorator';
 import { CurrentUser, AuthUser } from '../auth/current-user.decorator';
 
@@ -41,5 +43,19 @@ export class PaymentsController {
   @Roles(UserRole.ADMIN)
   confirm(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number) {
     return this.payments.confirm(user, id);
+  }
+
+  @Patch(':id')
+  update(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdatePaymentDto,
+  ) {
+    return this.payments.update(user, id, dto);
+  }
+
+  @Delete(':id')
+  remove(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number) {
+    return this.payments.remove(user, id);
   }
 }
