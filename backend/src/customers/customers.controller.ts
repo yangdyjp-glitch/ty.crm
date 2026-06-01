@@ -81,7 +81,7 @@ export class CustomersController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.SALES, UserRole.ADMIN)
+  @Roles(UserRole.MARKET, UserRole.SALES, UserRole.ADMIN)
   update(
     @CurrentUser() user: AuthUser,
     @Param('id', ParseIntPipe) id: number,
