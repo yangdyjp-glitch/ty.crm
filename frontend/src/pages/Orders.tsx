@@ -34,6 +34,13 @@ export default function Orders() {
   const [form] = Form.useForm()
   const [customers, setCustomers] = useState<Any[]>([])
   const [products, setProducts] = useState<Any[]>([])
+  const fp = Form.useWatch('firstPaymentAmount', form)
+  const tp = Form.useWatch('tailPaymentAmount', form)
+  const op = Form.useWatch('originalPrice', form)
+  const dc = Form.useWatch('discountAmount', form)
+  const receivable = (Number(op) || 0) - (Number(dc) || 0)
+  const paySum = (Number(fp) || 0) + (Number(tp) || 0)
+  const payMismatch = !!op && paySum !== receivable
 
   const load = () => {
     setLoading(true)
@@ -162,6 +169,27 @@ export default function Orders() {
           </Form.Item>
           <Form.Item name="tailPaymentAmount" label="尾款金额（选填，待确认）">
             <InputNumber min={0} controls={false} style={{ width: '100%' }} />
+          </Form.Item>
+          {payMismatch && (
+            <div style={{ color: '#dc2626', marginBottom: 8 }}>
+              ⚠️ 首款+尾款（{paySum.toLocaleString()}）≠ 应收（{receivable.toLocaleString()}），请在下方填写差异说明。
+            </div>
+          )}
+          <Form.Item
+            name="remark"
+            label="说明（首款+尾款≠应收时必填）"
+            rules={[
+              {
+                validator: (_, value) => {
+                  const rcv = (Number(form.getFieldValue('originalPrice')) || 0) - (Number(form.getFieldValue('discountAmount')) || 0)
+                  const sum = (Number(form.getFieldValue('firstPaymentAmount')) || 0) + (Number(form.getFieldValue('tailPaymentAmount')) || 0)
+                  if (sum !== rcv && !value) return Promise.reject(new Error('首款+尾款与应收不一致，请填写差异说明'))
+                  return Promise.resolve()
+                },
+              },
+            ]}
+          >
+            <Input.TextArea rows={2} placeholder="如：分期收款、尾款待定、优惠后差额等" />
           </Form.Item>
           <Form.Item name="contractNo" label="合同编号"><Input /></Form.Item>
         </Form>

@@ -44,6 +44,11 @@ export class OrdersService {
     const hasCommission = !!customer.channelId && product.participateCommission;
     const discount = dto.discountAmount ?? 0;
     const receivable = dto.originalPrice - discount;
+    // 首款+尾款 ≠ 应收 时必须填写差异说明（存入备注）
+    const paySum = dto.firstPaymentAmount + (dto.tailPaymentAmount ?? 0);
+    if (paySum !== receivable && !dto.remark) {
+      throw new BadRequestException('首款+尾款与应收不一致，请填写差异说明');
+    }
 
     const orderNo = await nextNo(this.prisma.order, 'orderNo', 'DD');
     const contractNo = dto.contractNo || (await nextNo(this.prisma.order, 'contractNo', 'HT'));
