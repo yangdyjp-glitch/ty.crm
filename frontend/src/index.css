@@ -83,10 +83,11 @@ td.ant-table-cell[align='right'] {
   border-radius: 10px;
   box-shadow: 0 2px 14px rgba(20, 83, 45, 0.07);
 }
-/* 内部表格：保留 1px 实线金边 + 直角（竖线=表格左右外框，与横线同粗） */
+/* 内部表格：1px 实线金边 + 圆角（竖线=表格左右外框，与横线同粗） */
 .ant-table-wrapper .ant-table {
   border: 1px solid var(--line);
-  border-radius: 0;
+  border-radius: 8px;
+  overflow: hidden;
 }
 /* 列宽按内容自适应 */
 .ant-table-wrapper table {
@@ -110,6 +111,12 @@ td.ant-table-cell[align='right'] {
 /* 横线（行间 / 表头底线）1px */
 .ant-table-tbody > tr > td {
   border-bottom: 1px solid var(--line) !important;
+}
+/* 最后一行 / 空状态占位不再画行底线，避免与表格外框底边叠成双线 */
+.ant-table-tbody > tr:last-child > td,
+.ant-table-placeholder > td,
+.ant-table-placeholder:hover > td {
+  border-bottom: none !important;
 }
 
 /* ===== 操作列按钮：直角小按钮，按功能配色；删除恒定浅灰 ===== */
