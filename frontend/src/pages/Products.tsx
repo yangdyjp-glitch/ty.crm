@@ -88,6 +88,7 @@ export default function Products() {
               </Space>
             ),
           },
+          { title: '', key: '__fill', render: () => null },
         ]}
       />
       <Modal title={editing ? '编辑项目' : '新增项目'} open={open} onCancel={() => setOpen(false)} onOk={submit} confirmLoading={submitting} okText={submitting ? '处理中…' : '确定'} maskClosable={false} cancelButtonProps={{ disabled: submitting }} destroyOnClose>

@@ -127,6 +127,7 @@ export default function Orders() {
         </Space>
       ),
     },
+    { title: '', key: '__fill', render: () => null },
   ]
 
   return (

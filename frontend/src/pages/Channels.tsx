@@ -138,6 +138,7 @@ export default function Channels() {
                 </Space>
               ) : null,
           },
+          { title: '', key: '__fill', render: () => null },
         ]}
       />
 
@@ -159,6 +160,7 @@ export default function Channels() {
                 { title: '金额', dataIndex: 'amount', width: 120, align: 'right' },
                 { title: '余额', dataIndex: 'balanceAfter', width: 120, align: 'right' },
                 { title: '说明', dataIndex: 'note', width: 180 },
+                { title: '', key: '__fill', render: () => null },
               ]}
             />
           </>
@@ -218,6 +220,7 @@ export default function Channels() {
                 </Space>
               ),
             },
+            { title: '', key: '__fill', render: () => null },
           ]}
         />
       </div>

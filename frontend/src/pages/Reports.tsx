@@ -43,6 +43,7 @@ export default function Reports() {
                     { title: '已收', align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.paidAmount) },
                     { title: '未收', align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.unpaidAmount) },
                     { title: '退款', align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.refundAmount) },
+                    { title: '', key: '__fill', render: () => null },
                   ]}
                 />
               </Card>
@@ -58,6 +59,7 @@ export default function Reports() {
                     { title: '应付', align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.payableAmount) },
                     { title: '已付', align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.paidAmount) },
                     { title: '未付', align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.unpaidAmount) },
+                    { title: '', key: '__fill', render: () => null },
                   ]}
                 />
               </Card>
@@ -80,6 +82,7 @@ export default function Reports() {
                 { title: '应付分成', align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.payableAmount) },
                 { title: '已付', align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.paidAmount) },
                 { title: '未付', align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.unpaidAmount) },
+                { title: '', key: '__fill', render: () => null },
               ]}
             />
           ),
@@ -96,6 +99,7 @@ export default function Reports() {
               columns={[
                 { title: '销售', dataIndex: 'name' },
                 { title: '负责客户数', dataIndex: 'customerCount' },
+                { title: '', key: '__fill', render: () => null },
               ]}
             />
           ),

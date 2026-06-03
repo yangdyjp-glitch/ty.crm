@@ -29,6 +29,7 @@ export default function AuditLogs() {
         { title: '对象', dataIndex: 'relatedType', render: (t, r: Any) => `${t}#${r.relatedId ?? ''}` },
         { title: '动作', dataIndex: 'action', render: (a) => <Tag>{ACTION_LABEL[a] || a}</Tag> },
         { title: '详情', dataIndex: 'newValue' },
+        { title: '', key: '__fill', render: () => null },
       ]}
     />
   )

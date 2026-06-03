@@ -122,6 +122,7 @@ export default function Commissions() {
               </Space>
             ),
           },
+          { title: '', key: '__fill', render: () => null },
         ]}
       />
     </div>

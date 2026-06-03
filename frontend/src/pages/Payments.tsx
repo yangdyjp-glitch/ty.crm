@@ -130,6 +130,7 @@ export default function Payments() {
                 </Space>
               ),
           },
+          { title: '', key: '__fill', render: () => null },
         ]}
       />
       <Modal title="录入收款" open={open} onCancel={() => setOpen(false)} onOk={submit} confirmLoading={submitting} okText={submitting ? '处理中…' : '确定'} maskClosable={false} cancelButtonProps={{ disabled: submitting }} destroyOnClose>

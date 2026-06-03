@@ -77,23 +77,21 @@ td.ant-table-cell[align='right'] {
   font-variant-numeric: tabular-nums;
 }
 
-/* 直角框体 + 淡金色线条：横线 1px 实线金；竖线弱化为 1px 虚线淡金 */
+/* 直角框体 + 淡金色线条：四周统一 1px 实线金（竖线=左右外框，与横线同粗）；无内部竖向分隔 */
 .ant-layout .ant-card {
-  border-style: solid dashed; /* 上下实线 / 左右虚线 */
-  border-color: var(--line) var(--line-soft); /* 横金 / 竖淡金 */
-  border-width: 1px;
+  border: 1px solid var(--line);
   border-radius: 0;
 }
 .ant-table-wrapper .ant-table {
-  border-style: solid dashed;
-  border-color: var(--line) var(--line-soft);
-  border-width: 1px;
+  border: 1px solid var(--line);
   border-radius: 0;
-  overflow: hidden;
 }
-/* 固定列宽：列宽不随内容自动伸缩；内容超长则换行 */
+/* 固定列宽：table-layout fixed + 预设列宽；超宽横向滚动，宽屏留白由末尾隐形填充列吸收 */
 .ant-table-wrapper table {
   table-layout: fixed !important;
+}
+.ant-table-wrapper .ant-table-content {
+  overflow-x: auto;
 }
 .ant-table-tbody > tr > td {
   word-break: break-word;
@@ -102,13 +100,9 @@ td.ant-table-cell[align='right'] {
 .ant-table-thead > tr > th::before {
   display: none !important;
 }
-/* 竖线（列分隔）弱化：1px 虚线淡金；最后一列不重复（交给表格外框） */
+/* 取消所有内部竖向分隔线（仅保留表格左右外框两条竖线） */
 .ant-table-tbody > tr > td,
 .ant-table-thead > tr > th {
-  border-inline-end: 1px dashed var(--line-soft) !important;
-}
-.ant-table-tbody > tr > td:last-child,
-.ant-table-thead > tr > th:last-child {
   border-inline-end: none !important;
 }
 /* 横线（行间 / 表头底线）1px */

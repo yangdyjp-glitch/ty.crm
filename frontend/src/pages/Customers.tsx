@@ -196,6 +196,7 @@ export default function Customers() {
         </Space>
       ),
     },
+    { title: '', key: '__fill', render: () => null },
   ]
 
   return (

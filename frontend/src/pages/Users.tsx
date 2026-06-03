@@ -74,6 +74,7 @@ export default function Users() {
               </Space>
             ),
           },
+          { title: '', key: '__fill', render: () => null },
         ]}
       />
       <Modal title={editing ? '编辑用户' : '新增用户'} open={open} onCancel={() => setOpen(false)} onOk={submit} confirmLoading={submitting} okText={submitting ? '处理中…' : '确定'} maskClosable={false} cancelButtonProps={{ disabled: submitting }} destroyOnClose>

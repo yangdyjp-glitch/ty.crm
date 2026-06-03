@@ -153,6 +153,7 @@ export default function CustomerDetail() {
                     { title: '内容', dataIndex: 'content', width: 180 },
                     { title: '结果', dataIndex: 'result', width: 180 },
                     { title: '下次', dataIndex: 'nextFollowUpAt', render: (t) => (t ? dayjs(t).format('MM-DD') : '—'), width: 110 },
+                    { title: '', key: '__fill', render: () => null },
                   ]}
                 />
               </>
@@ -183,6 +184,7 @@ export default function CustomerDetail() {
                         },
                       ]
                     : []),
+                  { title: '', key: '__fill', render: () => null },
                 ]}
               />
             ),
@@ -202,6 +204,7 @@ export default function CustomerDetail() {
                   { title: '佣金', dataIndex: 'commissionAmount', render: fmtMoney, align: 'right', width: 120 },
                   { title: '币种', dataIndex: 'currency', width: 70 },
                   { title: '收款', dataIndex: 'collectionStatus', render: (s) => (s === 'COLLECTED' ? '已收款' : '待收款'), width: 100 },
+                  { title: '', key: '__fill', render: () => null },
                 ]}
               />
             ),
@@ -241,6 +244,7 @@ export default function CustomerDetail() {
                         <ActionBtn tone="view" onClick={() => downloadFile(`/attachments/${r.id}/file`, r.fileName)}>下载</ActionBtn>
                       ),
                     },
+                    { title: '', key: '__fill', render: () => null },
                   ]}
                 />
               </>

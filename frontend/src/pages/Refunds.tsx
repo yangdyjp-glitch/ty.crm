@@ -134,6 +134,7 @@ export default function Refunds() {
               </Space>
             ),
           },
+          { title: '', key: '__fill', render: () => null },
         ]}
       />
       <Modal title="发起退款" open={open} onCancel={() => setOpen(false)} onOk={submit} confirmLoading={submitting} okText={submitting ? '处理中…' : '确定'} maskClosable={false} cancelButtonProps={{ disabled: submitting }} destroyOnClose>
