@@ -202,7 +202,7 @@ export default function Channels() {
       <div style={{ marginTop: 28 }}>
         <Space style={{ marginBottom: 12 }} wrap>
           <b style={{ fontSize: 15 }}>获取渠道字典（自获取来源用）</b>
-          <Button size="small" onClick={() => openAcq()}>新增获取渠道</Button>
+          <Button type="primary" onClick={() => openAcq()}>新增获取渠道</Button>
         </Space>
         <Table
           size="small"
