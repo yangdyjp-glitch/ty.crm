@@ -63,19 +63,22 @@ export class ChannelsService {
   // ===== 获取渠道字典（自获取用） =====
   listAcquisition() {
     return this.prisma.acquisitionChannel.findMany({
-      where: { active: true },
+      where: { active: true, deletedAt: null },
       orderBy: { id: 'asc' },
     });
   }
 
   listAcquisitionAll() {
-    return this.prisma.acquisitionChannel.findMany({ orderBy: { id: 'asc' } });
+    return this.prisma.acquisitionChannel.findMany({
+      where: { deletedAt: null },
+      orderBy: { id: 'asc' },
+    });
   }
 
   createAcquisition(name: string) {
     return this.prisma.acquisitionChannel.upsert({
       where: { name },
-      update: { active: true },
+      update: { active: true, deletedAt: null },
       create: { name },
     });
   }
@@ -84,6 +87,13 @@ export class ChannelsService {
     return this.prisma.acquisitionChannel.update({
       where: { id },
       data: { name: dto.name, active: dto.active },
+    });
+  }
+
+  removeAcquisition(id: number) {
+    return this.prisma.acquisitionChannel.update({
+      where: { id },
+      data: { deletedAt: new Date() },
     });
   }
 }

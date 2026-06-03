@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -41,5 +42,10 @@ export class AcquisitionChannelsController {
     @Body() dto: UpdateAcquisitionChannelDto,
   ) {
     return this.channels.updateAcquisition(id, dto);
+  }
+
+  @Delete(':id')
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.channels.removeAcquisition(id);
   }
 }

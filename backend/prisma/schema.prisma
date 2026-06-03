@@ -187,6 +187,7 @@ model AcquisitionChannel {
   name      String     @unique
   active    Boolean    @default(true)
   createdAt DateTime   @default(now())
+  deletedAt DateTime?
   customers Customer[]
 }
 

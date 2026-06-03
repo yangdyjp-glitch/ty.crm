@@ -99,6 +99,15 @@ export default function Channels() {
     await client.patch(`/acquisition-channels/${rec.id}`, { active: !rec.active })
     loadAcq()
   }
+  const doRemoveAcq = async (id: number) => {
+    try {
+      await client.delete(`/acquisition-channels/${id}`)
+      message.success('已删除')
+      loadAcq()
+    } catch (e: any) {
+      message.error(e.response?.data?.message || '删除失败')
+    }
+  }
   const doRemove = async (id: number) => {
     try {
       await client.delete(`/channels/${id}`)
@@ -213,6 +222,7 @@ export default function Channels() {
                   ) : (
                     <ActionBtn tone="confirm" onClick={() => toggleAcq(r)}>启用</ActionBtn>
                   )}
+                  <DeleteBtn onConfirm={() => doRemoveAcq(r.id)} />
                 </Space>
               ),
             },
