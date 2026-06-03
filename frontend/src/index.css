@@ -77,18 +77,20 @@ td.ant-table-cell[align='right'] {
   font-variant-numeric: tabular-nums;
 }
 
-/* 直角框体 + 淡金色线条：四周统一 1px 实线金（竖线=左右外框，与横线同粗）；无内部竖向分隔 */
+/* 外层白色卡片：去金边、圆角、淡阴影 */
 .ant-layout .ant-card {
-  border: 1px solid var(--line);
-  border-radius: 0;
+  border: none;
+  border-radius: 10px;
+  box-shadow: 0 2px 14px rgba(20, 83, 45, 0.07);
 }
+/* 内部表格：保留 1px 实线金边 + 直角（竖线=表格左右外框，与横线同粗） */
 .ant-table-wrapper .ant-table {
   border: 1px solid var(--line);
   border-radius: 0;
 }
-/* 固定列宽：table-layout fixed + 预设列宽；超宽横向滚动，宽屏留白由末尾隐形填充列吸收 */
+/* 列宽按内容自适应 */
 .ant-table-wrapper table {
-  table-layout: fixed !important;
+  table-layout: auto !important;
 }
 .ant-table-wrapper .ant-table-content {
   overflow-x: auto;

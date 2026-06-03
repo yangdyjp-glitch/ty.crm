@@ -109,7 +109,6 @@ export default function OrderDetail() {
             { title: '金额', dataIndex: 'amount', render: moneyIn, align: 'right' },
             { title: '状态', dataIndex: 'confirmStatus', render: (s: string) => PAYMENT_CONFIRM_LABEL[s] },
             { title: '备注', dataIndex: 'remark' },
-            { title: '', key: '__fill', render: () => null },
           ]}
         />
       </Card>
@@ -124,7 +123,6 @@ export default function OrderDetail() {
             { title: '退款号', dataIndex: 'refundNo' },
             { title: '名义额', dataIndex: 'nominalAmount', render: moneyOut, align: 'right' },
             { title: '状态', dataIndex: 'status', render: (s: string) => REFUND_STATUS_LABEL[s] },
-            { title: '', key: '__fill', render: () => null },
           ]}
         />
       </Card>

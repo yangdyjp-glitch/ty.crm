@@ -58,7 +58,6 @@ function MoneyByCurrency({ rows, fields }: { rows: Any[]; fields: [string, strin
             return tone === 'in' ? moneyIn(val) : tone === 'out' ? moneyOut(val) : fmtMoney(val)
           },
         })),
-        { title: '', key: '__fill', render: () => null },
       ]}
     />
   )
@@ -139,7 +138,6 @@ export default function Dashboard() {
               { title: '状态', dataIndex: 'collectionStatus', render: (s) => (s === 'COLLECTED' ? '已收款' : '待收款') },
               { title: '笔数', dataIndex: '_count' },
               { title: '金额', align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.commissionAmount) },
-              { title: '', key: '__fill', render: () => null },
             ]}
           />
         </Card>

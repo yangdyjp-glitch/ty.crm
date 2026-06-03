@@ -103,20 +103,18 @@ export default function Payments() {
         loading={loading}
         dataSource={rows}
         columns={[
-          { title: '收款号', dataIndex: 'paymentNo', width: 130 },
-          { title: '客户', width: 130, render: (_, r) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
-          { title: '订单', width: 130, render: (_, r) => <a onClick={() => nav(`/orders/${r.order?.id}`)}>{r.order?.orderNo}</a> },
-          { title: '金额', dataIndex: 'amount', width: 120, render: moneyIn, align: 'right' },
-          { title: '币种', dataIndex: 'currency', width: 70, render: (c) => CURRENCY_LABEL[c] },
+          { title: '收款号', dataIndex: 'paymentNo' },
+          { title: '客户', render: (_, r) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
+          { title: '订单', render: (_, r) => <a onClick={() => nav(`/orders/${r.order?.id}`)}>{r.order?.orderNo}</a> },
+          { title: '金额', dataIndex: 'amount', render: moneyIn, align: 'right' },
+          { title: '币种', dataIndex: 'currency', render: (c) => CURRENCY_LABEL[c] },
           {
             title: '确认状态',
             dataIndex: 'confirmStatus',
-            width: 100,
             render: (s) => <Tag color={s === 'CONFIRMED' ? 'green' : s === 'PROBLEM' ? 'red' : 'orange'}>{PAYMENT_CONFIRM_LABEL[s]}</Tag>,
           },
           {
             title: '操作',
-            width: 210,
             render: (_, r) =>
               r.confirmStatus === 'CONFIRMED' ? (
                 <Space wrap>
@@ -130,7 +128,6 @@ export default function Payments() {
                 </Space>
               ),
           },
-          { title: '', key: '__fill', render: () => null },
         ]}
       />
       <Modal title="录入收款" open={open} onCancel={() => setOpen(false)} onOk={submit} confirmLoading={submitting} okText={submitting ? '处理中…' : '确定'} maskClosable={false} cancelButtonProps={{ disabled: submitting }} destroyOnClose>

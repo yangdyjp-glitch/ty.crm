@@ -119,16 +119,15 @@ export default function Channels() {
         loading={loading}
         dataSource={rows}
         columns={[
-          { title: '编号', dataIndex: 'channelNo', width: 110 },
-          { title: '名称', dataIndex: 'name', width: 130 },
-          { title: '类型', dataIndex: 'channelType', width: 100, render: (t) => <Tag>{CHANNEL_TYPE_LABEL[t]}</Tag> },
-          { title: '默认比例', dataIndex: 'defaultCommissionRate', width: 90, render: (r) => (r != null ? r + '%' : '—') },
-          { title: '计算方式', dataIndex: 'commissionMethod', width: 120, render: (m) => COMMISSION_METHOD_LABEL[m] },
-          { title: '资金模式', dataIndex: 'fundSettlementMode', width: 120, render: (m) => FUND_MODE_LABEL[m] },
-          { title: '结算条件', dataIndex: 'settlementCondition', width: 120, render: (s) => SETTLEMENT_COND_LABEL[s] },
+          { title: '编号', dataIndex: 'channelNo' },
+          { title: '名称', dataIndex: 'name' },
+          { title: '类型', dataIndex: 'channelType', render: (t) => <Tag>{CHANNEL_TYPE_LABEL[t]}</Tag> },
+          { title: '默认比例', dataIndex: 'defaultCommissionRate', render: (r) => (r != null ? r + '%' : '—') },
+          { title: '计算方式', dataIndex: 'commissionMethod', render: (m) => COMMISSION_METHOD_LABEL[m] },
+          { title: '资金模式', dataIndex: 'fundSettlementMode', render: (m) => FUND_MODE_LABEL[m] },
+          { title: '结算条件', dataIndex: 'settlementCondition', render: (s) => SETTLEMENT_COND_LABEL[s] },
           {
             title: '操作',
-            width: 210,
             render: (_, r) =>
               isAdmin ? (
                 <Space wrap>
@@ -138,7 +137,6 @@ export default function Channels() {
                 </Space>
               ) : null,
           },
-          { title: '', key: '__fill', render: () => null },
         ]}
       />
 
@@ -154,13 +152,12 @@ export default function Channels() {
               pagination={false}
               dataSource={ledger.entries}
               columns={[
-                { title: '时间', dataIndex: 'createdAt', width: 150, render: (t: string) => dayjs(t).format('MM-DD HH:mm') },
-                { title: '币种', dataIndex: 'currency', width: 70 },
-                { title: '类型', dataIndex: 'entryType', width: 100, render: (e: string) => LEDGER_TYPE_LABEL[e] || e },
-                { title: '金额', dataIndex: 'amount', width: 120, align: 'right' },
-                { title: '余额', dataIndex: 'balanceAfter', width: 120, align: 'right' },
-                { title: '说明', dataIndex: 'note', width: 180 },
-                { title: '', key: '__fill', render: () => null },
+                { title: '时间', dataIndex: 'createdAt', render: (t: string) => dayjs(t).format('MM-DD HH:mm') },
+                { title: '币种', dataIndex: 'currency' },
+                { title: '类型', dataIndex: 'entryType', render: (e: string) => LEDGER_TYPE_LABEL[e] || e },
+                { title: '金额', dataIndex: 'amount', align: 'right' },
+                { title: '余额', dataIndex: 'balanceAfter', align: 'right' },
+                { title: '说明', dataIndex: 'note' },
               ]}
             />
           </>
@@ -204,11 +201,10 @@ export default function Channels() {
           pagination={false}
           dataSource={acqRows}
           columns={[
-            { title: '名称', dataIndex: 'name', width: 130 },
-            { title: '状态', dataIndex: 'active', width: 100, render: (a: boolean) => <Tag color={a ? 'green' : 'default'}>{a ? '启用' : '停用'}</Tag> },
+            { title: '名称', dataIndex: 'name' },
+            { title: '状态', dataIndex: 'active', render: (a: boolean) => <Tag color={a ? 'green' : 'default'}>{a ? '启用' : '停用'}</Tag> },
             {
               title: '操作',
-              width: 150,
               render: (_: any, r: Any) => (
                 <Space wrap>
                   <ActionBtn tone="edit" onClick={() => openAcq(r)}>重命名</ActionBtn>
@@ -220,7 +216,6 @@ export default function Channels() {
                 </Space>
               ),
             },
-            { title: '', key: '__fill', render: () => null },
           ]}
         />
       </div>

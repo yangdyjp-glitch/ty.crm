@@ -78,21 +78,19 @@ export default function Referrals() {
         loading={loading}
         dataSource={rows}
         columns={[
-          { title: '客户', width: 140, render: (_, r) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
-          { title: '服务种类', dataIndex: 'serviceType', width: 110 },
-          { title: '下游公司', dataIndex: 'downstreamCompany', width: 140 },
-          { title: '佣金', dataIndex: 'commissionAmount', render: fmtMoney, align: 'right', width: 120 },
-          { title: '币种', dataIndex: 'currency', render: (c) => CURRENCY_LABEL[c], width: 70 },
-          { title: '结款时间', dataIndex: 'settlementDate', render: (t) => (t ? dayjs(t).format('YYYY-MM-DD') : '—'), width: 150 },
+          { title: '客户', render: (_, r) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
+          { title: '服务种类', dataIndex: 'serviceType' },
+          { title: '下游公司', dataIndex: 'downstreamCompany' },
+          { title: '佣金', dataIndex: 'commissionAmount', render: fmtMoney, align: 'right' },
+          { title: '币种', dataIndex: 'currency', render: (c) => CURRENCY_LABEL[c] },
+          { title: '结款时间', dataIndex: 'settlementDate', render: (t) => (t ? dayjs(t).format('YYYY-MM-DD') : '—') },
           {
             title: '收款状态',
             dataIndex: 'collectionStatus',
-            width: 100,
             render: (s) => <Tag color={s === 'COLLECTED' ? 'green' : 'orange'}>{s === 'COLLECTED' ? '已收款' : '待收款'}</Tag>,
           },
           {
             title: '操作',
-            width: 150,
             render: (_, r) => (
               <Space wrap>
                 {r.collectionStatus === 'PENDING' ? (
@@ -104,7 +102,6 @@ export default function Referrals() {
               </Space>
             ),
           },
-          { title: '', key: '__fill', render: () => null },
         ]}
       />
       <Modal title="登记转介绍收佣" open={open} onCancel={() => setOpen(false)} onOk={submit} confirmLoading={submitting} okText={submitting ? '处理中…' : '确定'} maskClosable={false} cancelButtonProps={{ disabled: submitting }} destroyOnClose>

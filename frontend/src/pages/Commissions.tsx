@@ -79,16 +79,15 @@ export default function Commissions() {
         }}
         pagination={{ current: page, pageSize: 10, total: data.total, onChange: setPage, showSizeChanger: false }}
         columns={[
-          { title: '客户', width: 130, render: (_, r) => r.customer?.name },
-          { title: '订单', width: 130, render: (_, r) => r.order?.orderNo },
-          { title: '渠道(快照)', dataIndex: 'channelNameSnapshot', width: 130 },
-          { title: '资金模式', dataIndex: 'fundSettlementMode', width: 120, render: (m) => FUND_MODE_LABEL[m] },
-          { title: '币种', dataIndex: 'currency', width: 70, render: (c: string) => CURRENCY_LABEL[c] || c },
-          { title: '应付', dataIndex: 'payableAmount', width: 120, render: fmtMoney, align: 'right' },
-          { title: '已付', dataIndex: 'paidAmount', width: 120, render: fmtMoney, align: 'right' },
+          { title: '客户', render: (_, r) => r.customer?.name },
+          { title: '订单', render: (_, r) => r.order?.orderNo },
+          { title: '渠道(快照)', dataIndex: 'channelNameSnapshot' },
+          { title: '资金模式', dataIndex: 'fundSettlementMode', render: (m) => FUND_MODE_LABEL[m] },
+          { title: '币种', dataIndex: 'currency', render: (c: string) => CURRENCY_LABEL[c] || c },
+          { title: '应付', dataIndex: 'payableAmount', render: fmtMoney, align: 'right' },
+          { title: '已付', dataIndex: 'paidAmount', render: fmtMoney, align: 'right' },
           {
             title: '状态',
-            width: 130,
             render: (_, r) => (
               <Space>
                 <Tag color={COMMISSION_STATUS_COLOR[r.status]}>{COMMISSION_STATUS_LABEL[r.status]}</Tag>
@@ -98,7 +97,6 @@ export default function Commissions() {
           },
           {
             title: '操作',
-            width: 280,
             render: (_, r) => (
               <Space wrap>
                 {['PENDING_REVIEW', 'PENDING_PAYMENT'].includes(r.status) && !r.suspended && <ActionBtn tone="confirm" onClick={() => act(r.id, 'pay')}>结算</ActionBtn>}
@@ -122,7 +120,6 @@ export default function Commissions() {
               </Space>
             ),
           },
-          { title: '', key: '__fill', render: () => null },
         ]}
       />
     </div>

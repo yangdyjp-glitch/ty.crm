@@ -59,14 +59,13 @@ export default function Users() {
         loading={loading}
         dataSource={rows}
         columns={[
-          { title: '用户编号', render: (_: any, r: Any) => 'YH' + String(r.id).padStart(6, '0'), width: 110 },
-          { title: '账号', dataIndex: 'username', width: 130 },
-          { title: '姓名', dataIndex: 'name', width: 130 },
-          { title: '角色', dataIndex: 'role', render: (r) => <Tag color="blue">{ROLE_LABEL[r]}</Tag>, width: 100 },
-          { title: '状态', dataIndex: 'status', render: (s) => <Tag color={s === 'active' ? 'green' : 'red'}>{s === 'active' ? '启用' : '停用'}</Tag>, width: 100 },
+          { title: '用户编号', render: (_: any, r: Any) => 'YH' + String(r.id).padStart(6, '0') },
+          { title: '账号', dataIndex: 'username' },
+          { title: '姓名', dataIndex: 'name' },
+          { title: '角色', dataIndex: 'role', render: (r) => <Tag color="blue">{ROLE_LABEL[r]}</Tag> },
+          { title: '状态', dataIndex: 'status', render: (s) => <Tag color={s === 'active' ? 'green' : 'red'}>{s === 'active' ? '启用' : '停用'}</Tag> },
           {
             title: '操作',
-            width: 150,
             render: (_, r) => (
               <Space wrap>
                 <ActionBtn tone="edit" onClick={() => openForm(r)}>编辑</ActionBtn>
@@ -74,7 +73,6 @@ export default function Users() {
               </Space>
             ),
           },
-          { title: '', key: '__fill', render: () => null },
         ]}
       />
       <Modal title={editing ? '编辑用户' : '新增用户'} open={open} onCancel={() => setOpen(false)} onOk={submit} confirmLoading={submitting} okText={submitting ? '处理中…' : '确定'} maskClosable={false} cancelButtonProps={{ disabled: submitting }} destroyOnClose>

@@ -72,15 +72,14 @@ export default function Products() {
         loading={loading}
         dataSource={rows}
         columns={[
-          { title: '项目名称', dataIndex: 'name', width: 140 },
-          { title: '分类', dataIndex: 'category', width: 110 },
-          { title: '标准价', dataIndex: 'standardPrice', render: fmtMoney, align: 'right', width: 120 },
-          { title: '币种', dataIndex: 'currency', render: (c) => CURRENCY_LABEL[c], width: 70 },
-          { title: '参与分成', dataIndex: 'participateCommission', render: (b) => (b ? '是' : '否'), width: 100 },
-          { title: '状态', dataIndex: 'status', render: (s) => <Tag color={s === 'active' ? 'green' : 'default'}>{s === 'active' ? '启用' : '停用'}</Tag>, width: 100 },
+          { title: '项目名称', dataIndex: 'name' },
+          { title: '分类', dataIndex: 'category' },
+          { title: '标准价', dataIndex: 'standardPrice', render: fmtMoney, align: 'right' },
+          { title: '币种', dataIndex: 'currency', render: (c) => CURRENCY_LABEL[c] },
+          { title: '参与分成', dataIndex: 'participateCommission', render: (b) => (b ? '是' : '否') },
+          { title: '状态', dataIndex: 'status', render: (s) => <Tag color={s === 'active' ? 'green' : 'default'}>{s === 'active' ? '启用' : '停用'}</Tag> },
           {
             title: '操作',
-            width: 150,
             render: (_, r) => (
               <Space wrap>
                 <ActionBtn tone="edit" onClick={() => openForm(r)}>编辑</ActionBtn>
@@ -88,7 +87,6 @@ export default function Products() {
               </Space>
             ),
           },
-          { title: '', key: '__fill', render: () => null },
         ]}
       />
       <Modal title={editing ? '编辑项目' : '新增项目'} open={open} onCancel={() => setOpen(false)} onOk={submit} confirmLoading={submitting} okText={submitting ? '处理中…' : '确定'} maskClosable={false} cancelButtonProps={{ disabled: submitting }} destroyOnClose>

@@ -101,17 +101,16 @@ export default function Orders() {
   }
 
   const columns = [
-    { title: '订单号', dataIndex: 'orderNo', width: 130, render: (n: string, r: Any) => <a onClick={() => nav(`/orders/${r.id}`)}>{n}</a> },
-    { title: '客户', width: 130, render: (_: any, r: Any) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
-    { title: '项目', width: 140, render: (_: any, r: Any) => r.product?.name },
-    { title: '币种', dataIndex: 'currency', width: 70, render: (c: string) => CURRENCY_LABEL[c] },
-    { title: '应收', dataIndex: 'receivableAmount', width: 120, render: fmtMoney, align: 'right' as const },
-    { title: '已收', dataIndex: 'paidAmount', width: 120, render: moneyIn, align: 'right' as const },
-    { title: '未收', dataIndex: 'unpaidAmount', width: 120, render: fmtMoney, align: 'right' as const },
-    { title: '状态', dataIndex: 'status', width: 100, render: (s: string) => <Tag>{ORDER_STATUS_LABEL[s]}</Tag> },
+    { title: '订单号', dataIndex: 'orderNo', render: (n: string, r: Any) => <a onClick={() => nav(`/orders/${r.id}`)}>{n}</a> },
+    { title: '客户', render: (_: any, r: Any) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
+    { title: '项目', render: (_: any, r: Any) => r.product?.name },
+    { title: '币种', dataIndex: 'currency', render: (c: string) => CURRENCY_LABEL[c] },
+    { title: '应收', dataIndex: 'receivableAmount', render: fmtMoney, align: 'right' as const },
+    { title: '已收', dataIndex: 'paidAmount', render: moneyIn, align: 'right' as const },
+    { title: '未收', dataIndex: 'unpaidAmount', render: fmtMoney, align: 'right' as const },
+    { title: '状态', dataIndex: 'status', render: (s: string) => <Tag>{ORDER_STATUS_LABEL[s]}</Tag> },
     {
       title: '操作',
-      width: 280,
       render: (_: any, r: Any) => (
         <Space wrap>
           <ActionBtn tone="view" onClick={() => nav(`/orders/${r.id}`)}>详情</ActionBtn>
@@ -127,7 +126,6 @@ export default function Orders() {
         </Space>
       ),
     },
-    { title: '', key: '__fill', render: () => null },
   ]
 
   return (

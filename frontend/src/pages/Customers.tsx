@@ -147,16 +147,14 @@ export default function Customers() {
   }
 
   const columns = [
-    { title: '编号', dataIndex: 'customerNo', width: 130 },
-    { title: '姓名', dataIndex: 'name', width: 130, render: (n: string, r: Any) => <a onClick={() => nav(`/customers/${r.id}`)}>{n}</a> },
+    { title: '编号', dataIndex: 'customerNo' },
+    { title: '姓名', dataIndex: 'name', render: (n: string, r: Any) => <a onClick={() => nav(`/customers/${r.id}`)}>{n}</a> },
     {
       title: '联系方式',
-      width: 130,
       render: (_: any, r: Any) => [r.phone, r.wechat, r.email].filter(Boolean).join(' / ') || '—',
     },
     {
       title: '来源 / 渠道',
-      width: 140,
       render: (_: any, r: Any) => (
         <a onClick={() => openQuickEdit(r)}>
           {`${SOURCE_LABEL[r.sourceCategory] || ''}${r.channel ? '：' + r.channel.name : r.acquisitionChannel ? '：' + r.acquisitionChannel.name : ''}`}
@@ -166,17 +164,15 @@ export default function Customers() {
     {
       title: '状态',
       dataIndex: 'mainStatus',
-      width: 100,
       render: (s: string, r: Any) => (
         <a onClick={() => openQuickEdit(r)}>
           <Tag color={CUSTOMER_STATUS_COLOR[s]}>{CUSTOMER_STATUS_LABEL[s]}</Tag>
         </a>
       ),
     },
-    { title: '意向', dataIndex: 'intentionLevel', width: 100, render: (i: string, r: Any) => <a onClick={() => openQuickEdit(r)}>{i ? INTENTION_LABEL[i] : '—'}</a> },
+    { title: '意向', dataIndex: 'intentionLevel', render: (i: string, r: Any) => <a onClick={() => openQuickEdit(r)}>{i ? INTENTION_LABEL[i] : '—'}</a> },
     {
       title: '分配',
-      width: 100,
       render: (_: any, r: Any) => {
         const label = r.ownerName ? <Tag color="green">{r.ownerName}</Tag> : <Tag>未分配</Tag>
         return canCreate ? (
@@ -188,7 +184,6 @@ export default function Customers() {
     },
     {
       title: '操作',
-      width: 150,
       render: (_: any, r: Any) => (
         <Space wrap>
           <ActionBtn tone="view" onClick={() => nav(`/customers/${r.id}`)}>详情</ActionBtn>
@@ -196,7 +191,6 @@ export default function Customers() {
         </Space>
       ),
     },
-    { title: '', key: '__fill', render: () => null },
   ]
 
   return (

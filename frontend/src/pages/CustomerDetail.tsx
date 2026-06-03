@@ -148,12 +148,11 @@ export default function CustomerDetail() {
                   dataSource={c.followUps || []}
                   pagination={false}
                   columns={[
-                    { title: '时间', dataIndex: 'followedAt', render: (t) => dayjs(t).format('MM-DD HH:mm'), width: 150 },
-                    { title: '方式', dataIndex: 'method', render: (m) => FOLLOW_METHOD_LABEL[m], width: 100 },
-                    { title: '内容', dataIndex: 'content', width: 180 },
-                    { title: '结果', dataIndex: 'result', width: 180 },
-                    { title: '下次', dataIndex: 'nextFollowUpAt', render: (t) => (t ? dayjs(t).format('MM-DD') : '—'), width: 110 },
-                    { title: '', key: '__fill', render: () => null },
+                    { title: '时间', dataIndex: 'followedAt', render: (t) => dayjs(t).format('MM-DD HH:mm') },
+                    { title: '方式', dataIndex: 'method', render: (m) => FOLLOW_METHOD_LABEL[m] },
+                    { title: '内容', dataIndex: 'content' },
+                    { title: '结果', dataIndex: 'result' },
+                    { title: '下次', dataIndex: 'nextFollowUpAt', render: (t) => (t ? dayjs(t).format('MM-DD') : '—') },
                   ]}
                 />
               </>
@@ -169,22 +168,20 @@ export default function CustomerDetail() {
                 dataSource={c.orders || []}
                 pagination={false}
                 columns={[
-                  { title: '订单号', dataIndex: 'orderNo', width: 140 },
-                  { title: '币种', dataIndex: 'currency', width: 70 },
-                  { title: '应收', dataIndex: 'receivableAmount', render: fmtMoney, align: 'right', width: 120 },
-                  { title: '已收', dataIndex: 'paidAmount', render: moneyIn, align: 'right', width: 120 },
-                  { title: '未收', dataIndex: 'unpaidAmount', render: fmtMoney, align: 'right', width: 120 },
-                  { title: '状态', dataIndex: 'status', render: (s) => <Tag>{ORDER_STATUS_LABEL[s]}</Tag>, width: 100 },
+                  { title: '订单号', dataIndex: 'orderNo' },
+                  { title: '币种', dataIndex: 'currency' },
+                  { title: '应收', dataIndex: 'receivableAmount', render: fmtMoney, align: 'right' },
+                  { title: '已收', dataIndex: 'paidAmount', render: moneyIn, align: 'right' },
+                  { title: '未收', dataIndex: 'unpaidAmount', render: fmtMoney, align: 'right' },
+                  { title: '状态', dataIndex: 'status', render: (s) => <Tag>{ORDER_STATUS_LABEL[s]}</Tag> },
                   ...(isAdmin
                     ? [
                         {
                           title: '操作',
-                          width: 110,
                           render: (_: any, r: Any) => <DeleteBtn onConfirm={() => delOrder(r.id)} />,
                         },
                       ]
                     : []),
-                  { title: '', key: '__fill', render: () => null },
                 ]}
               />
             ),
@@ -199,12 +196,11 @@ export default function CustomerDetail() {
                 dataSource={c.referrals || []}
                 pagination={false}
                 columns={[
-                  { title: '服务种类', dataIndex: 'serviceType', width: 110 },
-                  { title: '下游公司', dataIndex: 'downstreamCompany', width: 140 },
-                  { title: '佣金', dataIndex: 'commissionAmount', render: fmtMoney, align: 'right', width: 120 },
-                  { title: '币种', dataIndex: 'currency', width: 70 },
-                  { title: '收款', dataIndex: 'collectionStatus', render: (s) => (s === 'COLLECTED' ? '已收款' : '待收款'), width: 100 },
-                  { title: '', key: '__fill', render: () => null },
+                  { title: '服务种类', dataIndex: 'serviceType' },
+                  { title: '下游公司', dataIndex: 'downstreamCompany' },
+                  { title: '佣金', dataIndex: 'commissionAmount', render: fmtMoney, align: 'right' },
+                  { title: '币种', dataIndex: 'currency' },
+                  { title: '收款', dataIndex: 'collectionStatus', render: (s) => (s === 'COLLECTED' ? '已收款' : '待收款') },
                 ]}
               />
             ),
@@ -234,17 +230,15 @@ export default function CustomerDetail() {
                   dataSource={attachments}
                   pagination={false}
                   columns={[
-                    { title: '文件名', dataIndex: 'fileName', width: 180 },
-                    { title: '类型', dataIndex: 'fileType', width: 100 },
-                    { title: '上传时间', dataIndex: 'createdAt', render: (t) => dayjs(t).format('MM-DD HH:mm'), width: 150 },
+                    { title: '文件名', dataIndex: 'fileName' },
+                    { title: '类型', dataIndex: 'fileType' },
+                    { title: '上传时间', dataIndex: 'createdAt', render: (t) => dayjs(t).format('MM-DD HH:mm') },
                     {
                       title: '操作',
-                      width: 110,
                       render: (_: any, r: Any) => (
                         <ActionBtn tone="view" onClick={() => downloadFile(`/attachments/${r.id}/file`, r.fileName)}>下载</ActionBtn>
                       ),
                     },
-                    { title: '', key: '__fill', render: () => null },
                   ]}
                 />
               </>

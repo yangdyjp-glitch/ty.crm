@@ -24,12 +24,11 @@ export default function AuditLogs() {
       loading={loading}
       dataSource={rows}
       columns={[
-        { title: '时间', dataIndex: 'createdAt', render: (t) => dayjs(t).format('YYYY-MM-DD HH:mm:ss'), width: 180 },
-        { title: '操作人ID', dataIndex: 'operatorId', width: 90 },
+        { title: '时间', dataIndex: 'createdAt', render: (t) => dayjs(t).format('YYYY-MM-DD HH:mm:ss') },
+        { title: '操作人ID', dataIndex: 'operatorId' },
         { title: '对象', dataIndex: 'relatedType', render: (t, r: Any) => `${t}#${r.relatedId ?? ''}` },
         { title: '动作', dataIndex: 'action', render: (a) => <Tag>{ACTION_LABEL[a] || a}</Tag> },
         { title: '详情', dataIndex: 'newValue' },
-        { title: '', key: '__fill', render: () => null },
       ]}
     />
   )
