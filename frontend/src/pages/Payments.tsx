@@ -6,13 +6,13 @@ import {
   Input,
   InputNumber,
   Modal,
-  Popconfirm,
   Select,
   Space,
   Table,
   Tag,
   message,
 } from 'antd'
+import { ActionBtn, DeleteBtn } from '../components/Actions'
 import client from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import { CURRENCY_LABEL, PAYMENT_CONFIRM_LABEL, fmtMoney } from '../api/types'
@@ -86,9 +86,13 @@ export default function Payments() {
     }
   }
   const doDelete = async (id: number) => {
-    await client.delete(`/payments/${id}`)
-    message.success('已删除')
-    load()
+    try {
+      await client.delete(`/payments/${id}`)
+      message.success('已删除')
+      load()
+    } catch (e: any) {
+      message.error(e.response?.data?.message || '删除失败')
+    }
   }
 
   return (
@@ -100,29 +104,29 @@ export default function Payments() {
         dataSource={rows}
         columns={[
           { title: '收款号', dataIndex: 'paymentNo', width: 130 },
-          { title: '客户', render: (_, r) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
-          { title: '订单', render: (_, r) => <a onClick={() => nav(`/orders/${r.order?.id}`)}>{r.order?.orderNo}</a> },
-          { title: '金额', dataIndex: 'amount', render: moneyIn, align: 'right' },
-          { title: '币种', dataIndex: 'currency', render: (c) => CURRENCY_LABEL[c] },
+          { title: '客户', width: 130, render: (_, r) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
+          { title: '订单', width: 130, render: (_, r) => <a onClick={() => nav(`/orders/${r.order?.id}`)}>{r.order?.orderNo}</a> },
+          { title: '金额', dataIndex: 'amount', width: 120, render: moneyIn, align: 'right' },
+          { title: '币种', dataIndex: 'currency', width: 70, render: (c) => CURRENCY_LABEL[c] },
           {
             title: '确认状态',
             dataIndex: 'confirmStatus',
+            width: 100,
             render: (s) => <Tag color={s === 'CONFIRMED' ? 'green' : s === 'PROBLEM' ? 'red' : 'orange'}>{PAYMENT_CONFIRM_LABEL[s]}</Tag>,
           },
           {
             title: '操作',
+            width: 210,
             render: (_, r) =>
               r.confirmStatus === 'CONFIRMED' ? (
-                <Popconfirm title="该收款已到账，删除会回退订单的已收金额。确定删除？" okText="删除" cancelText="取消" okButtonProps={{ danger: true }} onConfirm={() => doDelete(r.id)}>
-                  <a style={{ color: '#dc2626' }}>删除</a>
-                </Popconfirm>
+                <Space wrap>
+                  <DeleteBtn onConfirm={() => doDelete(r.id)} title="该收款已到账，删除会回退订单的已收金额。确定删除？" />
+                </Space>
               ) : (
-                <Space>
-                  {isAdmin && <a onClick={() => confirm(r.id)}>确认到账</a>}
-                  <a onClick={() => openEdit(r)}>修改</a>
-                  <Popconfirm title="确认删除这条收款？" okText="删除" cancelText="取消" okButtonProps={{ danger: true }} onConfirm={() => doDelete(r.id)}>
-                    <a style={{ color: '#dc2626' }}>删除</a>
-                  </Popconfirm>
+                <Space wrap>
+                  {isAdmin && <ActionBtn tone="confirm" onClick={() => confirm(r.id)}>确认到账</ActionBtn>}
+                  <ActionBtn tone="edit" onClick={() => openEdit(r)}>修改</ActionBtn>
+                  <DeleteBtn onConfirm={() => doDelete(r.id)} title="确认删除这条收款？" />
                 </Space>
               ),
           },

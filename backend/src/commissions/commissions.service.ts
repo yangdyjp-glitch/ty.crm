@@ -320,6 +320,14 @@ export class CommissionsService {
     });
   }
 
+  async remove(id: number) {
+    await this.load(id);
+    return this.prisma.commission.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+  }
+
   // 批量审核 / 批量支付（结算页批量操作）
   async batchReview(ids: number[]) {
     let ok = 0;

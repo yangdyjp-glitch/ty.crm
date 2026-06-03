@@ -5,7 +5,6 @@ import {
   Form,
   Input,
   Modal,
-  Popconfirm,
   Select,
   Space,
   Table,
@@ -14,6 +13,7 @@ import {
   message,
 } from 'antd'
 import { UploadOutlined } from '@ant-design/icons'
+import { ActionBtn, DeleteBtn } from '../components/Actions'
 import client, { downloadFile } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import {
@@ -103,9 +103,13 @@ export default function Customers() {
   }
 
   const doDelete = async (id: number) => {
-    await client.delete(`/customers/${id}`)
-    message.success('已删除')
-    load()
+    try {
+      await client.delete(`/customers/${id}`)
+      message.success('已删除')
+      load()
+    } catch (e: any) {
+      message.error(e.response?.data?.message || '删除失败')
+    }
   }
 
   const openQuickEdit = async (r: Any) => {
@@ -144,13 +148,15 @@ export default function Customers() {
 
   const columns = [
     { title: '编号', dataIndex: 'customerNo', width: 130 },
-    { title: '姓名', dataIndex: 'name', render: (n: string, r: Any) => <a onClick={() => nav(`/customers/${r.id}`)}>{n}</a> },
+    { title: '姓名', dataIndex: 'name', width: 130, render: (n: string, r: Any) => <a onClick={() => nav(`/customers/${r.id}`)}>{n}</a> },
     {
       title: '联系方式',
+      width: 130,
       render: (_: any, r: Any) => [r.phone, r.wechat, r.email].filter(Boolean).join(' / ') || '—',
     },
     {
       title: '来源 / 渠道',
+      width: 140,
       render: (_: any, r: Any) => (
         <a onClick={() => openQuickEdit(r)}>
           {`${SOURCE_LABEL[r.sourceCategory] || ''}${r.channel ? '：' + r.channel.name : r.acquisitionChannel ? '：' + r.acquisitionChannel.name : ''}`}
@@ -160,15 +166,17 @@ export default function Customers() {
     {
       title: '状态',
       dataIndex: 'mainStatus',
+      width: 100,
       render: (s: string, r: Any) => (
         <a onClick={() => openQuickEdit(r)}>
           <Tag color={CUSTOMER_STATUS_COLOR[s]}>{CUSTOMER_STATUS_LABEL[s]}</Tag>
         </a>
       ),
     },
-    { title: '意向', dataIndex: 'intentionLevel', render: (i: string, r: Any) => <a onClick={() => openQuickEdit(r)}>{i ? INTENTION_LABEL[i] : '—'}</a> },
+    { title: '意向', dataIndex: 'intentionLevel', width: 100, render: (i: string, r: Any) => <a onClick={() => openQuickEdit(r)}>{i ? INTENTION_LABEL[i] : '—'}</a> },
     {
       title: '分配',
+      width: 100,
       render: (_: any, r: Any) => {
         const label = r.ownerName ? <Tag color="green">{r.ownerName}</Tag> : <Tag>未分配</Tag>
         return canCreate ? (
@@ -180,14 +188,11 @@ export default function Customers() {
     },
     {
       title: '操作',
+      width: 150,
       render: (_: any, r: Any) => (
-        <Space>
-          <a onClick={() => nav(`/customers/${r.id}`)}>详情</a>
-          {user?.role === 'ADMIN' && (
-            <Popconfirm title="确认删除该客户？" okText="删除" cancelText="取消" okButtonProps={{ danger: true }} onConfirm={() => doDelete(r.id)}>
-              <a style={{ color: '#dc2626' }}>删除</a>
-            </Popconfirm>
-          )}
+        <Space wrap>
+          <ActionBtn tone="view" onClick={() => nav(`/customers/${r.id}`)}>详情</ActionBtn>
+          {user?.role === 'ADMIN' && <DeleteBtn onConfirm={() => doDelete(r.id)} />}
         </Space>
       ),
     },

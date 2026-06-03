@@ -6,6 +6,7 @@ import {
   InputNumber,
   Modal,
   Select,
+  Space,
   Switch,
   Table,
   Tag,
@@ -13,6 +14,7 @@ import {
 } from 'antd'
 import client from '../api/client'
 import { CURRENCY_LABEL, fmtMoney } from '../api/types'
+import { ActionBtn, DeleteBtn } from '../components/Actions'
 
 type Any = Record<string, any>
 
@@ -52,6 +54,15 @@ export default function Products() {
       setSubmitting(false)
     }
   }
+  const del = async (id: number) => {
+    try {
+      await client.delete(`/products/${id}`)
+      message.success('已删除')
+      load()
+    } catch (e: any) {
+      message.error(e.response?.data?.message || '删除失败')
+    }
+  }
 
   return (
     <div>
@@ -61,13 +72,22 @@ export default function Products() {
         loading={loading}
         dataSource={rows}
         columns={[
-          { title: '项目名称', dataIndex: 'name' },
-          { title: '分类', dataIndex: 'category' },
-          { title: '标准价', dataIndex: 'standardPrice', render: fmtMoney, align: 'right' },
-          { title: '币种', dataIndex: 'currency', render: (c) => CURRENCY_LABEL[c] },
-          { title: '参与分成', dataIndex: 'participateCommission', render: (b) => (b ? '是' : '否') },
-          { title: '状态', dataIndex: 'status', render: (s) => <Tag color={s === 'active' ? 'green' : 'default'}>{s === 'active' ? '启用' : '停用'}</Tag> },
-          { title: '操作', render: (_, r) => <a onClick={() => openForm(r)}>编辑</a> },
+          { title: '项目名称', dataIndex: 'name', width: 140 },
+          { title: '分类', dataIndex: 'category', width: 110 },
+          { title: '标准价', dataIndex: 'standardPrice', render: fmtMoney, align: 'right', width: 120 },
+          { title: '币种', dataIndex: 'currency', render: (c) => CURRENCY_LABEL[c], width: 70 },
+          { title: '参与分成', dataIndex: 'participateCommission', render: (b) => (b ? '是' : '否'), width: 100 },
+          { title: '状态', dataIndex: 'status', render: (s) => <Tag color={s === 'active' ? 'green' : 'default'}>{s === 'active' ? '启用' : '停用'}</Tag>, width: 100 },
+          {
+            title: '操作',
+            width: 150,
+            render: (_, r) => (
+              <Space wrap>
+                <ActionBtn tone="edit" onClick={() => openForm(r)}>编辑</ActionBtn>
+                <DeleteBtn onConfirm={() => del(r.id)} />
+              </Space>
+            ),
+          },
         ]}
       />
       <Modal title={editing ? '编辑项目' : '新增项目'} open={open} onCancel={() => setOpen(false)} onOk={submit} confirmLoading={submitting} okText={submitting ? '处理中…' : '确定'} maskClosable={false} cancelButtonProps={{ disabled: submitting }} destroyOnClose>

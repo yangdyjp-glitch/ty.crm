@@ -6,13 +6,13 @@ import {
   Input,
   InputNumber,
   Modal,
-  Popconfirm,
   Select,
   Space,
   Table,
   Tag,
   message,
 } from 'antd'
+import { ActionBtn, DeleteBtn } from '../components/Actions'
 import client from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import { loadProducts } from '../api/options'
@@ -102,28 +102,27 @@ export default function Orders() {
 
   const columns = [
     { title: '订单号', dataIndex: 'orderNo', width: 130, render: (n: string, r: Any) => <a onClick={() => nav(`/orders/${r.id}`)}>{n}</a> },
-    { title: '客户', render: (_: any, r: Any) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
-    { title: '项目', render: (_: any, r: Any) => r.product?.name },
-    { title: '币种', dataIndex: 'currency', render: (c: string) => CURRENCY_LABEL[c] },
-    { title: '应收', dataIndex: 'receivableAmount', render: fmtMoney, align: 'right' as const },
-    { title: '已收', dataIndex: 'paidAmount', render: moneyIn, align: 'right' as const },
-    { title: '未收', dataIndex: 'unpaidAmount', render: fmtMoney, align: 'right' as const },
-    { title: '状态', dataIndex: 'status', render: (s: string) => <Tag>{ORDER_STATUS_LABEL[s]}</Tag> },
+    { title: '客户', width: 130, render: (_: any, r: Any) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
+    { title: '项目', width: 140, render: (_: any, r: Any) => r.product?.name },
+    { title: '币种', dataIndex: 'currency', width: 70, render: (c: string) => CURRENCY_LABEL[c] },
+    { title: '应收', dataIndex: 'receivableAmount', width: 120, render: fmtMoney, align: 'right' as const },
+    { title: '已收', dataIndex: 'paidAmount', width: 120, render: moneyIn, align: 'right' as const },
+    { title: '未收', dataIndex: 'unpaidAmount', width: 120, render: fmtMoney, align: 'right' as const },
+    { title: '状态', dataIndex: 'status', width: 100, render: (s: string) => <Tag>{ORDER_STATUS_LABEL[s]}</Tag> },
     {
       title: '操作',
+      width: 280,
       render: (_: any, r: Any) => (
-        <Space>
-          <a onClick={() => nav(`/orders/${r.id}`)}>详情</a>
+        <Space wrap>
+          <ActionBtn tone="view" onClick={() => nav(`/orders/${r.id}`)}>详情</ActionBtn>
           {['FULLY_PAID', 'PARTIAL_PAID', 'PENDING_PAYMENT'].includes(r.status) && (
-            <a onClick={() => act(r.id, 'start-service')}>开始服务</a>
+            <ActionBtn tone="confirm" onClick={() => act(r.id, 'start-service')}>开始服务</ActionBtn>
           )}
           {['IN_SERVICE', 'FULLY_PAID', 'PARTIAL_PAID'].includes(r.status) && (
-            <a onClick={() => act(r.id, 'complete-service')}>完成服务</a>
+            <ActionBtn tone="confirm" onClick={() => act(r.id, 'complete-service')}>完成服务</ActionBtn>
           )}
           {isAdmin && (
-            <Popconfirm title="确认删除该订单？其收款/退款将一并删除" okText="删除" cancelText="取消" okButtonProps={{ danger: true }} onConfirm={() => doDelete(r.id)}>
-              <a style={{ color: '#dc2626' }}>删除</a>
-            </Popconfirm>
+            <DeleteBtn onConfirm={() => doDelete(r.id)} title="确认删除该订单？其收款/退款将一并删除" />
           )}
         </Space>
       ),

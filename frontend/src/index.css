@@ -115,6 +115,44 @@ td.ant-table-cell[align='right'] {
 .ant-table-tbody > tr > td {
   border-bottom: 1px solid var(--line) !important;
 }
+
+/* ===== 操作列按钮：直角小按钮，按功能配色；删除恒定浅灰 ===== */
+.act-btn {
+  border-radius: 0 !important;
+  height: 24px;
+  padding: 0 9px;
+  font-size: 12px;
+}
+.act-view, .act-view:hover, .act-view:focus, .act-view:active {
+  color: #1d4ed8 !important;
+  border-color: #9db8f2 !important;
+}
+.act-view:hover { background: #eef3ff !important; }
+.act-edit, .act-edit:hover, .act-edit:focus, .act-edit:active {
+  color: #a16207 !important;
+  border-color: #d8bd7a !important;
+}
+.act-edit:hover { background: #fbf6e9 !important; }
+.act-confirm, .act-confirm:hover, .act-confirm:focus, .act-confirm:active {
+  color: #15803d !important;
+  border-color: #8fc7a5 !important;
+}
+.act-confirm:hover { background: #eaf7ef !important; }
+.act-reject, .act-reject:hover, .act-reject:focus, .act-reject:active {
+  color: #c0392b !important;
+  border-color: #e0a8a1 !important;
+}
+.act-reject:hover { background: #fceeec !important; }
+.act-delete, .act-delete:hover, .act-delete:focus, .act-delete:active {
+  color: #9ca3af !important;
+  border-color: #d4d8dd !important;
+}
+.act-delete:hover { background: #f3f4f6 !important; }
+.act-btn[disabled], .act-btn[disabled]:hover {
+  color: #c8ccd0 !important;
+  border-color: #e6e8eb !important;
+  background: transparent !important;
+}
 .ant-table-thead > tr > th {
   border-bottom: 1px solid var(--line) !important;
   font-weight: 700 !important;

@@ -7,6 +7,7 @@ import {
   InputNumber,
   Modal,
   Select,
+  Space,
   Table,
   Tag,
   message,
@@ -14,6 +15,7 @@ import {
 import dayjs from 'dayjs'
 import client from '../api/client'
 import { CURRENCY_LABEL, fmtMoney } from '../api/types'
+import { ActionBtn, DeleteBtn } from '../components/Actions'
 
 type Any = Record<string, any>
 
@@ -58,6 +60,15 @@ export default function Referrals() {
     await client.post(`/referrals/${id}/${action}`)
     load()
   }
+  const del = async (id: number) => {
+    try {
+      await client.delete(`/referrals/${id}`)
+      message.success('已删除')
+      load()
+    } catch (e: any) {
+      message.error(e.response?.data?.message || '删除失败')
+    }
+  }
 
   return (
     <div>
@@ -67,25 +78,31 @@ export default function Referrals() {
         loading={loading}
         dataSource={rows}
         columns={[
-          { title: '客户', render: (_, r) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
-          { title: '服务种类', dataIndex: 'serviceType' },
-          { title: '下游公司', dataIndex: 'downstreamCompany' },
-          { title: '佣金', dataIndex: 'commissionAmount', render: fmtMoney, align: 'right' },
-          { title: '币种', dataIndex: 'currency', render: (c) => CURRENCY_LABEL[c] },
-          { title: '结款时间', dataIndex: 'settlementDate', render: (t) => (t ? dayjs(t).format('YYYY-MM-DD') : '—') },
+          { title: '客户', width: 140, render: (_, r) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
+          { title: '服务种类', dataIndex: 'serviceType', width: 110 },
+          { title: '下游公司', dataIndex: 'downstreamCompany', width: 140 },
+          { title: '佣金', dataIndex: 'commissionAmount', render: fmtMoney, align: 'right', width: 120 },
+          { title: '币种', dataIndex: 'currency', render: (c) => CURRENCY_LABEL[c], width: 70 },
+          { title: '结款时间', dataIndex: 'settlementDate', render: (t) => (t ? dayjs(t).format('YYYY-MM-DD') : '—'), width: 150 },
           {
             title: '收款状态',
             dataIndex: 'collectionStatus',
+            width: 100,
             render: (s) => <Tag color={s === 'COLLECTED' ? 'green' : 'orange'}>{s === 'COLLECTED' ? '已收款' : '待收款'}</Tag>,
           },
           {
             title: '操作',
-            render: (_, r) =>
-              r.collectionStatus === 'PENDING' ? (
-                <a onClick={() => toggle(r.id, 'collect')}>标记已收</a>
-              ) : (
-                <a onClick={() => toggle(r.id, 'uncollect')}>撤销</a>
-              ),
+            width: 150,
+            render: (_, r) => (
+              <Space wrap>
+                {r.collectionStatus === 'PENDING' ? (
+                  <ActionBtn tone="confirm" onClick={() => toggle(r.id, 'collect')}>标记已收</ActionBtn>
+                ) : (
+                  <ActionBtn tone="reject" onClick={() => toggle(r.id, 'uncollect')}>撤销</ActionBtn>
+                )}
+                <DeleteBtn onConfirm={() => del(r.id)} />
+              </Space>
+            ),
           },
         ]}
       />

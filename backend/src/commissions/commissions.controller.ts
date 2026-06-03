@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -70,5 +71,10 @@ export class CommissionsController {
   @Post(':id/cancel')
   cancel(@Param('id', ParseIntPipe) id: number) {
     return this.commissions.cancel(id);
+  }
+
+  @Delete(':id')
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.commissions.remove(id);
   }
 }

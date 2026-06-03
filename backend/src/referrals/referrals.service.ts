@@ -120,4 +120,12 @@ export class ReferralsService {
       },
     });
   }
+
+  async remove(user: AuthUser, id: number) {
+    await this.loadScoped(user, id);
+    return this.prisma.downstreamReferral.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+  }
 }

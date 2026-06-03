@@ -14,6 +14,7 @@ import {
   message,
 } from 'antd'
 import client from '../api/client'
+import { ActionBtn, DeleteBtn } from '../components/Actions'
 import { useAuth } from '../auth/AuthContext'
 import {
   REFUND_BEARER_LABEL,
@@ -77,9 +78,13 @@ export default function Refunds() {
   }
 
   const doRemove = async (id: number) => {
-    await client.delete(`/refunds/${id}`)
-    message.success('已删除')
-    load()
+    try {
+      await client.delete(`/refunds/${id}`)
+      message.success('已删除')
+      load()
+    } catch (e: any) {
+      message.error(e.response?.data?.message || '删除失败')
+    }
   }
 
   return (
@@ -91,43 +96,40 @@ export default function Refunds() {
         dataSource={rows}
         columns={[
           { title: '退款号', dataIndex: 'refundNo', width: 130 },
-          { title: '客户', render: (_, r) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
-          { title: '订单', render: (_, r) => <a onClick={() => nav(`/orders/${r.order?.id}`)}>{r.order?.orderNo}</a> },
-          { title: '名义额', dataIndex: 'nominalAmount', render: moneyOut, align: 'right' },
-          { title: '实退现金', dataIndex: 'cashAmount', render: moneyOut, align: 'right' },
-          { title: '抵减', dataIndex: 'offsetAmount', render: moneyOut, align: 'right' },
-          { title: '原因', dataIndex: 'reason', render: (r) => REFUND_REASON_LABEL[r] },
-          { title: '承担方', dataIndex: 'bearer', render: (b) => REFUND_BEARER_LABEL[b] },
+          { title: '客户', width: 130, render: (_, r) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
+          { title: '订单', width: 130, render: (_, r) => <a onClick={() => nav(`/orders/${r.order?.id}`)}>{r.order?.orderNo}</a> },
+          { title: '名义额', dataIndex: 'nominalAmount', width: 120, render: moneyOut, align: 'right' },
+          { title: '实退现金', dataIndex: 'cashAmount', width: 120, render: moneyOut, align: 'right' },
+          { title: '抵减', dataIndex: 'offsetAmount', width: 120, render: moneyOut, align: 'right' },
+          { title: '原因', dataIndex: 'reason', width: 120, render: (r) => REFUND_REASON_LABEL[r] },
+          { title: '承担方', dataIndex: 'bearer', width: 100, render: (b) => REFUND_BEARER_LABEL[b] },
           {
             title: '状态',
             dataIndex: 'status',
+            width: 100,
             render: (s) => <Tag color={s === 'REFUNDED' ? 'green' : s === 'REJECTED' ? 'red' : s === 'APPROVED' ? 'gold' : 'orange'}>{REFUND_STATUS_LABEL[s]}</Tag>,
           },
           {
             title: '操作',
+            width: 280,
             render: (_, r) => (
-              <Space>
+              <Space wrap>
                 {isAdmin && r.status === 'PENDING' && (
                   <>
-                    <a onClick={() => act(r.id, 'approve')}>审核</a>
-                    <a style={{ color: '#cf1322' }} onClick={() => act(r.id, 'reject')}>拒绝</a>
+                    <ActionBtn tone="confirm" onClick={() => act(r.id, 'approve')}>审核</ActionBtn>
+                    <ActionBtn tone="reject" onClick={() => act(r.id, 'reject')}>拒绝</ActionBtn>
                   </>
                 )}
                 {isAdmin && r.status === 'APPROVED' && (
                   <Popconfirm title="确认支付退款？将终止订单并按比例追回佣金" okText="支付" cancelText="取消" onConfirm={() => act(r.id, 'pay')}>
-                    <a>支付</a>
+                    <ActionBtn tone="confirm">支付</ActionBtn>
                   </Popconfirm>
                 )}
                 {isAdmin && (
-                  <Popconfirm
+                  <DeleteBtn
                     title={r.status === 'REFUNDED' ? '该退款已执行，删除会回退订单退款额（佣金/台账请人工复核）。确定删除？' : '确认删除该退款记录？'}
-                    okText="删除"
-                    cancelText="取消"
-                    okButtonProps={{ danger: true }}
                     onConfirm={() => doRemove(r.id)}
-                  >
-                    <a style={{ color: '#dc2626' }}>删除</a>
-                  </Popconfirm>
+                  />
                 )}
               </Space>
             ),

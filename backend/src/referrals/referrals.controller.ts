@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -61,5 +62,13 @@ export class ReferralsController {
     @Param('id', ParseIntPipe) id: number,
   ) {
     return this.referrals.uncollect(user, id);
+  }
+
+  @Delete(':id')
+  remove(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.referrals.remove(user, id);
   }
 }

@@ -176,6 +176,7 @@ model User {
   status       String   @default("active") // active / disabled
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
 
   @@index([role])
 }

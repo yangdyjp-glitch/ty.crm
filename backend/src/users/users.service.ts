@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
@@ -21,7 +21,7 @@ export class UsersService {
 
   list(role?: UserRole) {
     return this.prisma.user.findMany({
-      where: role ? { role } : {},
+      where: { deletedAt: null, ...(role ? { role } : {}) },
       select: safeSelect,
       orderBy: { id: 'asc' },
     });
@@ -29,7 +29,7 @@ export class UsersService {
 
   options(role?: UserRole) {
     return this.prisma.user.findMany({
-      where: { status: 'active', ...(role ? { role } : {}) },
+      where: { deletedAt: null, status: 'active', ...(role ? { role } : {}) },
       select: { id: true, name: true, username: true, role: true },
       orderBy: { id: 'asc' },
     });
@@ -64,6 +64,17 @@ export class UsersService {
     return this.prisma.user.update({
       where: { id },
       data,
+      select: safeSelect,
+    });
+  }
+
+  async remove(currentUserId: number, id: number) {
+    if (id === currentUserId) {
+      throw new BadRequestException('不能删除当前登录的自己');
+    }
+    return this.prisma.user.update({
+      where: { id },
+      data: { deletedAt: new Date(), status: 'disabled' },
       select: safeSelect,
     });
   }
