@@ -67,6 +67,14 @@ createRoot(document.getElementById('root')!).render(
             colorPrimaryHover: '#15803d',
             colorPrimaryActive: '#14532d',
             primaryShadow: 'none',
+            borderRadius: 6,
+            borderRadiusLG: 6,
+            borderRadiusSM: 6,
+          },
+          Select: {
+            borderRadius: 6,
+            borderRadiusLG: 6,
+            borderRadiusSM: 6,
           },
         },
       }}
