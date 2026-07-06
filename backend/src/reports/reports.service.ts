@@ -27,6 +27,8 @@ export class ReportsService {
         return this.adminDashboard();
       case UserRole.SALES:
         return this.salesDashboard(user.id);
+      case UserRole.BUSINESS_SUPERVISOR:
+        return this.businessSupervisorDashboard(user.id);
       case UserRole.DOWNSTREAM_SALES:
         return this.downstreamDashboard(user.id);
       default:
@@ -139,6 +141,23 @@ export class ReportsService {
     return { role: 'DOWNSTREAM_SALES', referrals };
   }
 
+  private async businessSupervisorDashboard(uid: number) {
+    const [sales, market] = await Promise.all([
+      this.salesDashboard(uid),
+      this.marketDashboard(uid),
+    ]);
+    return {
+      role: 'BUSINESS_SUPERVISOR',
+      counts: {
+        ...sales.counts,
+        registeredTotal: market.counts.total,
+        registeredMonth: market.counts.newMonth,
+      },
+      byCurrency: sales.byCurrency,
+      byStatus: market.byStatus,
+    };
+  }
+
   private async marketDashboard(uid: number) {
     const ms = this.monthStart();
     const [total, newMonth] = await Promise.all([
@@ -214,7 +233,7 @@ export class ReportsService {
       _count: true,
     });
     const users = await this.prisma.user.findMany({
-      where: { role: UserRole.SALES },
+      where: { role: { in: [UserRole.SALES, UserRole.BUSINESS_SUPERVISOR] } },
       select: { id: true, name: true },
     });
     const nameMap = new Map(users.map((u) => [u.id, u.name]));

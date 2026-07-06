@@ -3,6 +3,7 @@
 export const ROLE_LABEL: Record<string, string> = {
   MARKET: '市场',
   SALES: '销售',
+  BUSINESS_SUPERVISOR: '营业主管',
   DOWNSTREAM_SALES: '下游销售',
   ADMIN: '管理员',
 };

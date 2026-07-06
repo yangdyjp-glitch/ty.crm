@@ -50,7 +50,7 @@ export default function Customers() {
   const [editForm] = Form.useForm()
   const [editSourceCat, setEditSourceCat] = useState('SELF')
 
-  const canCreate = user?.role === 'MARKET' || user?.role === 'ADMIN'
+  const canCreate = user?.role === 'MARKET' || user?.role === 'BUSINESS_SUPERVISOR' || user?.role === 'ADMIN'
 
   const load = () => {
     setLoading(true)

@@ -86,13 +86,13 @@ export default function Dashboard() {
     return (
       <div>
         <PageHead eyebrow="总览 · OVERVIEW" title="数据总览" />
-        <Row gutter={[14, 10]}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 14px' }}>
           {cards.map(([t, v, unit, color]) => (
-            <Col key={t} xs={12} sm={8} lg={6} xxl={3}>
+            <div key={t} style={{ flex: '1 1 160px', minWidth: 0 }}>
               <Stat title={t} value={v} unit={unit} color={color} />
-            </Col>
+            </div>
           ))}
-        </Row>
+        </div>
         <SectionTitle eyebrow="FINANCE" title="订单金额（分币种）" />
         <Card size="small">
           <MoneyByCurrency rows={data.byCurrency?.orders} fields={[['receivableAmount', '应收'], ['paidAmount', '已收', 'in'], ['unpaidAmount', '未收'], ['refundAmount', '退款', 'out']]} />
@@ -118,6 +118,41 @@ export default function Dashboard() {
         <SectionTitle eyebrow="FINANCE" title="我的订单金额（分币种）" />
         <Card size="small">
           <MoneyByCurrency rows={data.byCurrency?.orders} fields={[['receivableAmount', '应收'], ['paidAmount', '已收', 'in']]} />
+        </Card>
+      </div>
+    )
+  }
+
+  if (data.role === 'BUSINESS_SUPERVISOR') {
+    const c = data.counts
+    const cards: [string, number, string, string][] = [
+      ['我登记的线索', c.registeredTotal, '位', '#166534'],
+      ['本月登记', c.registeredMonth, '', '#15803d'],
+      ['负责客户', c.myCustomers, '位', '#059669'],
+      ['逾期未跟进', c.overdue, '', '#ef4444'],
+      ['本月签约', c.signedMonth, '单', '#b8860b'],
+    ]
+    return (
+      <div>
+        <PageHead eyebrow="总览 · OVERVIEW" title="营业主管总览" />
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 14px' }}>
+          {cards.map(([t, v, unit, color]) => (
+            <div key={t} style={{ flex: '1 1 160px', minWidth: 0 }}>
+              <Stat title={t} value={v} unit={unit} color={color} />
+            </div>
+          ))}
+        </div>
+        <SectionTitle eyebrow="FINANCE" title="负责订单金额（分币种）" />
+        <Card size="small">
+          <MoneyByCurrency rows={data.byCurrency?.orders} fields={[['receivableAmount', '应收'], ['paidAmount', '已收', 'in']]} />
+        </Card>
+        <SectionTitle eyebrow="STATUS" title="登记线索按状态分布" />
+        <Card size="small">
+          {(data.byStatus || []).map((s: Any) => (
+            <Tag key={s.mainStatus} color="blue" style={{ marginBottom: 8, fontSize: 14, padding: '2px 10px' }}>
+              {CUSTOMER_STATUS_LABEL[s.mainStatus]}：{s._count}
+            </Tag>
+          ))}
         </Card>
       </div>
     )

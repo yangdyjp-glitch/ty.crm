@@ -42,7 +42,7 @@ export default function CustomerDetail() {
   const [aiSummary, setAiSummary] = useState<string | null>(null)
   const [attachments, setAttachments] = useState<Any[]>([])
   const [form] = Form.useForm()
-  const canFollow = user?.role === 'SALES' || user?.role === 'ADMIN'
+  const canFollow = user?.role === 'SALES' || user?.role === 'BUSINESS_SUPERVISOR' || user?.role === 'ADMIN'
   const isAdmin = user?.role === 'ADMIN'
 
   const load = () => client.get(`/customers/${id}`).then((r) => setC(r.data))

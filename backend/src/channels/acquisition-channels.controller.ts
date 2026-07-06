@@ -17,7 +17,7 @@ import {
 import { Roles } from '../auth/roles.decorator';
 
 @Controller('acquisition-channels')
-@Roles(UserRole.ADMIN, UserRole.MARKET)
+@Roles(UserRole.ADMIN, UserRole.MARKET, UserRole.BUSINESS_SUPERVISOR)
 export class AcquisitionChannelsController {
   constructor(private channels: ChannelsService) {}
 

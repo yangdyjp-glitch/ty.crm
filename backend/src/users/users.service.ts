@@ -27,9 +27,10 @@ export class UsersService {
     });
   }
 
-  options(role?: UserRole) {
+  options(role?: UserRole | UserRole[]) {
+    const roleWhere = Array.isArray(role) ? { role: { in: role } } : role ? { role } : {};
     return this.prisma.user.findMany({
-      where: { deletedAt: null, status: 'active', ...(role ? { role } : {}) },
+      where: { deletedAt: null, status: 'active', ...roleWhere },
       select: { id: true, name: true, username: true, role: true },
       orderBy: { id: 'asc' },
     });

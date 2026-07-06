@@ -3,21 +3,22 @@ import type { MenuProps } from 'antd'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { ROLE_LABEL } from '../api/types'
+import ImpersonationBanner from '../components/ImpersonationBanner'
 import NotificationBell from '../components/NotificationBell'
 import PageHeader from '../components/PageHeader'
 
 type Item = { key: string; cn: string; en: string; roles: string[]; admin?: boolean }
 
 const NAV: Item[] = [
-  { key: '/', cn: '仪表盘', en: 'DASHBOARD', roles: ['ADMIN', 'SALES', 'MARKET', 'DOWNSTREAM_SALES'] },
-  { key: '/customers', cn: '客户 / 线索', en: 'CUSTOMERS', roles: ['ADMIN', 'SALES', 'MARKET'] },
-  { key: '/orders', cn: '订单 / 签约', en: 'ORDERS', roles: ['ADMIN', 'SALES'] },
-  { key: '/payments', cn: '收款', en: 'PAYMENTS', roles: ['ADMIN', 'SALES'] },
-  { key: '/refunds', cn: '退款', en: 'REFUNDS', roles: ['ADMIN', 'SALES'] },
+  { key: '/', cn: '仪表盘', en: 'DASHBOARD', roles: ['ADMIN', 'SALES', 'MARKET', 'BUSINESS_SUPERVISOR', 'DOWNSTREAM_SALES'] },
+  { key: '/customers', cn: '客户 / 线索', en: 'CUSTOMERS', roles: ['ADMIN', 'SALES', 'MARKET', 'BUSINESS_SUPERVISOR'] },
+  { key: '/orders', cn: '订单 / 签约', en: 'ORDERS', roles: ['ADMIN', 'SALES', 'BUSINESS_SUPERVISOR'] },
+  { key: '/payments', cn: '收款', en: 'PAYMENTS', roles: ['ADMIN', 'SALES', 'BUSINESS_SUPERVISOR'] },
+  { key: '/refunds', cn: '退款', en: 'REFUNDS', roles: ['ADMIN', 'SALES', 'BUSINESS_SUPERVISOR'] },
   { key: '/commissions', cn: '分成结算', en: 'SETTLEMENT', roles: ['ADMIN'] },
   { key: '/referrals', cn: '转介绍收佣', en: 'REFERRALS', roles: ['ADMIN', 'DOWNSTREAM_SALES'] },
   { key: '/products', cn: '项目管理', en: 'PRODUCTS', roles: ['ADMIN'], admin: true },
-  { key: '/channels', cn: '渠道管理', en: 'CHANNELS', roles: ['ADMIN', 'MARKET'], admin: true },
+  { key: '/channels', cn: '渠道管理', en: 'CHANNELS', roles: ['ADMIN', 'MARKET', 'BUSINESS_SUPERVISOR'], admin: true },
   { key: '/reports', cn: '报表', en: 'REPORTS', roles: ['ADMIN'], admin: true },
   { key: '/users', cn: '用户管理', en: 'USERS', roles: ['ADMIN'], admin: true },
   { key: '/audit-logs', cn: '操作日志', en: 'LOGS', roles: ['ADMIN'], admin: true },
@@ -91,6 +92,7 @@ export default function AppLayout() {
         </div>
       </Layout.Sider>
       <Layout>
+        <ImpersonationBanner />
         <Layout.Header style={{ background: 'transparent', padding: '0 24px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
           <NotificationBell />
         </Layout.Header>

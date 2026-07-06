@@ -39,7 +39,7 @@ export class CustomersController {
   }
 
   @Get('check-duplicate')
-  @Roles(UserRole.MARKET, UserRole.ADMIN)
+  @Roles(UserRole.MARKET, UserRole.BUSINESS_SUPERVISOR, UserRole.ADMIN)
   checkDuplicate(
     @Query('phone') phone?: string,
     @Query('wechat') wechat?: string,
@@ -60,7 +60,7 @@ export class CustomersController {
   }
 
   @Post('import')
-  @Roles(UserRole.MARKET, UserRole.ADMIN)
+  @Roles(UserRole.MARKET, UserRole.BUSINESS_SUPERVISOR, UserRole.ADMIN)
   @UseInterceptors(FileInterceptor('file'))
   importExcel(
     @CurrentUser() user: AuthUser,
@@ -75,13 +75,13 @@ export class CustomersController {
   }
 
   @Post()
-  @Roles(UserRole.MARKET, UserRole.ADMIN)
+  @Roles(UserRole.MARKET, UserRole.BUSINESS_SUPERVISOR, UserRole.ADMIN)
   create(@CurrentUser() user: AuthUser, @Body() dto: CreateCustomerDto) {
     return this.customers.create(user, dto);
   }
 
   @Patch(':id')
-  @Roles(UserRole.MARKET, UserRole.SALES, UserRole.ADMIN)
+  @Roles(UserRole.MARKET, UserRole.SALES, UserRole.BUSINESS_SUPERVISOR, UserRole.ADMIN)
   update(
     @CurrentUser() user: AuthUser,
     @Param('id', ParseIntPipe) id: number,
@@ -97,7 +97,7 @@ export class CustomersController {
   }
 
   @Post(':id/assign')
-  @Roles(UserRole.MARKET, UserRole.ADMIN)
+  @Roles(UserRole.MARKET, UserRole.BUSINESS_SUPERVISOR, UserRole.ADMIN)
   assign(
     @CurrentUser() user: AuthUser,
     @Param('id', ParseIntPipe) id: number,
@@ -116,7 +116,7 @@ export class CustomersController {
   }
 
   @Post(':id/follow-ups')
-  @Roles(UserRole.SALES, UserRole.ADMIN)
+  @Roles(UserRole.SALES, UserRole.BUSINESS_SUPERVISOR, UserRole.ADMIN)
   addFollowUp(
     @CurrentUser() user: AuthUser,
     @Param('id', ParseIntPipe) id: number,
@@ -126,7 +126,7 @@ export class CustomersController {
   }
 
   @Post(':id/problem')
-  @Roles(UserRole.SALES, UserRole.ADMIN)
+  @Roles(UserRole.SALES, UserRole.BUSINESS_SUPERVISOR, UserRole.ADMIN)
   setProblem(
     @CurrentUser() user: AuthUser,
     @Param('id', ParseIntPipe) id: number,
@@ -136,7 +136,7 @@ export class CustomersController {
   }
 
   @Post(':id/status')
-  @Roles(UserRole.SALES, UserRole.ADMIN)
+  @Roles(UserRole.SALES, UserRole.BUSINESS_SUPERVISOR, UserRole.ADMIN)
   setStatus(
     @CurrentUser() user: AuthUser,
     @Param('id', ParseIntPipe) id: number,
@@ -146,7 +146,7 @@ export class CustomersController {
   }
 
   @Post(':id/sales-stage')
-  @Roles(UserRole.SALES, UserRole.ADMIN)
+  @Roles(UserRole.SALES, UserRole.BUSINESS_SUPERVISOR, UserRole.ADMIN)
   setSalesStage(
     @CurrentUser() user: AuthUser,
     @Param('id', ParseIntPipe) id: number,

@@ -6,6 +6,13 @@ export interface AuthUser {
   username: string;
   name: string;
   role: UserRole;
+  impersonatorId?: number;
+  impersonator?: {
+    id: number;
+    username: string;
+    name: string;
+    role: UserRole;
+  } | null;
 }
 
 export const CurrentUser = createParamDecorator(

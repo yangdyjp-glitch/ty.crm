@@ -2,15 +2,18 @@ import { useEffect, useState } from 'react'
 import { Button, Form, Input, Modal, Select, Space, Table, Tag, message } from 'antd'
 import client from '../api/client'
 import { ROLE_LABEL } from '../api/types'
+import { useAuth } from '../auth/AuthContext'
 import { ActionBtn, DeleteBtn } from '../components/Actions'
 
 type Any = Record<string, any>
 
 export default function Users() {
+  const { user, impersonate } = useAuth()
   const [rows, setRows] = useState<Any[]>([])
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [impersonatingId, setImpersonatingId] = useState<number | null>(null)
   const [editing, setEditing] = useState<Any | null>(null)
   const [form] = Form.useForm()
 
@@ -50,6 +53,30 @@ export default function Users() {
       message.error(e.response?.data?.message || '删除失败')
     }
   }
+  const doImpersonate = (r: Any) => {
+    Modal.confirm({
+      title: `登录该账户：${r.name}`,
+      content: (
+        <div>
+          <p>将以「{r.name}」的身份登录其账户，期间你看到和操作的都是该用户的内容。</p>
+          <p>此操作会被记入审计日志，不会修改对方密码。完成后可点击顶部横幅「返回我的账户」。</p>
+          <p>确定继续吗？</p>
+        </div>
+      ),
+      okText: '登录该账户',
+      cancelText: '取消',
+      onOk: async () => {
+        setImpersonatingId(r.id)
+        try {
+          await impersonate(r.id)
+          window.location.assign('/')
+        } catch (e: any) {
+          message.error(e.response?.data?.message || '代理登录失败')
+          setImpersonatingId(null)
+        }
+      },
+    })
+  }
 
   return (
     <div>
@@ -69,6 +96,11 @@ export default function Users() {
             render: (_, r) => (
               <Space wrap>
                 <ActionBtn tone="edit" onClick={() => openForm(r)}>编辑</ActionBtn>
+                {user?.role === 'ADMIN' && !user.impersonator && r.id !== user.id && r.status === 'active' && (
+                  <ActionBtn tone="view" loading={impersonatingId === r.id} disabled={submitting || impersonatingId !== null} onClick={() => doImpersonate(r)}>
+                    登录该账户
+                  </ActionBtn>
+                )}
                 <DeleteBtn onConfirm={() => del(r.id)} />
               </Space>
             ),

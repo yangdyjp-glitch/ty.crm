@@ -14,11 +14,12 @@ const prisma = new PrismaClient();
 async function main() {
   const passwordHash = await bcrypt.hash('admin123', 10);
 
-  // 四个测试账号（每角色一个），统一密码 admin123
+  // 测试账号（每角色一个），统一密码 admin123
   const users: { username: string; name: string; role: UserRole }[] = [
     { username: 'admin', name: '管理员', role: UserRole.ADMIN },
     { username: 'market', name: '市场-小王', role: UserRole.MARKET },
     { username: 'sales', name: '销售-小李', role: UserRole.SALES },
+    { username: 'supervisor', name: '营业主管-小周', role: UserRole.BUSINESS_SUPERVISOR },
     { username: 'downstream', name: '下游销售-小张', role: UserRole.DOWNSTREAM_SALES },
   ];
   for (const u of users) {
@@ -79,7 +80,7 @@ async function main() {
   }
 
   // eslint-disable-next-line no-console
-  console.log('Seed done. 账号(密码均为 admin123): admin / market / sales / downstream');
+  console.log('Seed done. 账号(密码均为 admin123): admin / market / sales / supervisor / downstream');
 }
 
 main()

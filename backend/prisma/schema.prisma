@@ -16,6 +16,7 @@ datasource db {
 enum UserRole {
   MARKET // 市场
   SALES // 销售
+  BUSINESS_SUPERVISOR // 营业主管
   DOWNSTREAM_SALES // 下游销售
   ADMIN // 管理员
 }
@@ -565,4 +566,17 @@ model AuditLog {
 
   @@index([relatedType, relatedId])
   @@index([operatorId])
+}
+
+// 管理员代理登录审计日志
+model ImpersonationLog {
+  id           Int      @id @default(autoincrement())
+  actorId      Int
+  targetUserId Int
+  action       String // start / stop
+  createdAt    DateTime @default(now())
+
+  @@index([actorId])
+  @@index([targetUserId])
+  @@index([createdAt])
 }

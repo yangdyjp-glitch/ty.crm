@@ -6,6 +6,7 @@ import { AuthUser } from '../auth/current-user.decorator';
  * - ADMIN：全部
  * - SALES：自己负责的（ownerUserId）
  * - MARKET：自己登记的（enteredById）
+ * - BUSINESS_SUPERVISOR：自己登记的 + 自己负责的
  * - DOWNSTREAM_SALES：管理员分配给自己的（downstreamSalesUserId）
  */
 export function customerScopeWhere(user: AuthUser): Prisma.CustomerWhereInput {
@@ -16,6 +17,14 @@ export function customerScopeWhere(user: AuthUser): Prisma.CustomerWhereInput {
       return { ownerUserId: user.id };
     case UserRole.MARKET:
       return { enteredById: user.id };
+    case UserRole.BUSINESS_SUPERVISOR:
+      return {
+        AND: [
+          {
+            OR: [{ enteredById: user.id }, { ownerUserId: user.id }],
+          },
+        ],
+      };
     case UserRole.DOWNSTREAM_SALES:
       return { downstreamSalesUserId: user.id };
     default:

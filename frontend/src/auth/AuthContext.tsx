@@ -6,11 +6,19 @@ export interface AuthUser {
   username: string;
   name: string;
   role: string;
+  impersonator?: {
+    id: number;
+    username: string;
+    name: string;
+    role: string;
+  } | null;
 }
 
 interface Ctx {
   user: AuthUser | null;
   login: (username: string, password: string) => Promise<void>;
+  impersonate: (userId: number) => Promise<void>;
+  stopImpersonating: () => Promise<void>;
   logout: () => void;
 }
 
@@ -23,11 +31,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return s ? JSON.parse(s) : null;
   });
 
+  const setSession = (token: string, nextUser: AuthUser) => {
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(nextUser));
+    setUser(nextUser);
+  };
+
   const login = async (username: string, password: string) => {
     const { data } = await client.post('/auth/login', { username, password });
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data.user));
-    setUser(data.user);
+    setSession(data.token, data.user);
+  };
+
+  const impersonate = async (userId: number) => {
+    const { data } = await client.post('/auth/impersonate', { userId });
+    setSession(data.token, data.user);
+  };
+
+  const stopImpersonating = async () => {
+    const { data } = await client.post('/auth/stop-impersonating');
+    setSession(data.token, data.user);
   };
 
   const logout = () => {
@@ -38,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, login, impersonate, stopImpersonating, logout }}>
       {children}
     </AuthContext.Provider>
   );

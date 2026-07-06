@@ -15,7 +15,7 @@ import { Roles } from '../auth/roles.decorator';
 import { CurrentUser, AuthUser } from '../auth/current-user.decorator';
 
 @Controller('refunds')
-@Roles(UserRole.SALES, UserRole.ADMIN)
+@Roles(UserRole.SALES, UserRole.BUSINESS_SUPERVISOR, UserRole.ADMIN)
 export class RefundsController {
   constructor(private refunds: RefundsService) {}
 

@@ -240,8 +240,13 @@ export class CustomersService {
     const target = await this.prisma.user.findUnique({
       where: { id: dto.ownerUserId },
     });
-    if (!target || target.role !== UserRole.SALES) {
-      throw new BadRequestException('负责销售必须是销售角色用户');
+    if (
+      !target ||
+      !([UserRole.SALES, UserRole.BUSINESS_SUPERVISOR] as UserRole[]).includes(
+        target.role,
+      )
+    ) {
+      throw new BadRequestException('负责销售必须是销售或营业主管角色用户');
     }
     return this.prisma.customer.update({
       where: { id },
