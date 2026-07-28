@@ -99,7 +99,6 @@ export default function Refunds() {
         columns={[
           { title: '退款号', dataIndex: 'refundNo', width: COL.no },
           { title: '客户', width: COL.person, render: (_, r) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
-          { title: '订单', width: COL.no, render: (_, r) => <a onClick={() => nav(`/orders/${r.order?.id}`)}>{r.order?.orderNo}</a> },
           { title: '名义额', dataIndex: 'nominalAmount', width: COL.money, render: moneyOut, align: 'right' },
           { title: '实退现金', dataIndex: 'cashAmount', width: COL.money, render: moneyOut, align: 'right' },
           { title: '抵减', dataIndex: 'offsetAmount', width: COL.money, render: moneyOut, align: 'right' },

@@ -107,7 +107,6 @@ export default function Payments() {
         columns={[
           { title: '收款号', dataIndex: 'paymentNo', width: COL.no },
           { title: '客户', width: COL.person, render: (_, r) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
-          { title: '订单', width: COL.no, render: (_, r) => <a onClick={() => nav(`/orders/${r.order?.id}`)}>{r.order?.orderNo}</a> },
           { title: '金额', dataIndex: 'amount', width: COL.money, render: moneyIn, align: 'right' },
           { title: '币种', dataIndex: 'currency', width: COL.currency, render: (c) => CURRENCY_LABEL[c] },
           {
