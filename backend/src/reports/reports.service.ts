@@ -71,21 +71,11 @@ export class ReportsService {
         where: { deletedAt: null, confirmStatus: PaymentConfirmStatus.PENDING },
       }),
     ]);
-    const orders = await this.prisma.order.groupBy({
-      by: ['currency'],
-      where: { deletedAt: null },
-      _sum: {
-        receivableAmount: true,
-        paidAmount: true,
-        unpaidAmount: true,
-        refundAmount: true,
-      },
-    });
-    const commissions = await this.prisma.commission.groupBy({
-      by: ['currency'],
-      where: { deletedAt: null, fundSettlementMode: FundSettlementMode.COMPANY_REBATE },
-      _sum: { payableAmount: true, paidAmount: true, unpaidAmount: true },
-    });
+    const [channelLeads, productLeads, salesLeads] = await Promise.all([
+      this.channelLeadStats(),
+      this.productLeadStats(),
+      this.sales(),
+    ]);
     return {
       role: 'ADMIN',
       counts: {
@@ -97,8 +87,112 @@ export class ReportsService {
         pendingReview,
         pendingPay,
       },
-      byCurrency: { orders, commissions },
+      leadStats: {
+        channels: channelLeads,
+        products: productLeads,
+        sales: salesLeads,
+      },
     };
+  }
+
+  private async channelLeadStats() {
+    const [customers, channels, acquisitionChannels] = await Promise.all([
+      this.prisma.customer.findMany({
+        where: { deletedAt: null },
+        select: {
+          sourceCategory: true,
+          channelId: true,
+          acquisitionChannelId: true,
+        },
+      }),
+      this.prisma.channel.findMany({
+        where: { deletedAt: null },
+        select: { id: true, name: true, channelType: true },
+      }),
+      this.prisma.acquisitionChannel.findMany({
+        where: { deletedAt: null },
+        select: { id: true, name: true },
+      }),
+    ]);
+
+    const rows = new Map<
+      string,
+      { key: string; name: string; type: string; customerCount: number }
+    >();
+    acquisitionChannels.forEach((c) =>
+      rows.set(`acq:${c.id}`, {
+        key: `acq:${c.id}`,
+        name: c.name,
+        type: '自获取',
+        customerCount: 0,
+      }),
+    );
+    channels.forEach((c) =>
+      rows.set(`channel:${c.id}`, {
+        key: `channel:${c.id}`,
+        name: c.name,
+        type: c.channelType === 'INDIVIDUAL' ? '个人第三方' : '企业第三方',
+        customerCount: 0,
+      }),
+    );
+
+    const fallback = (type: string) => {
+      const key = `missing:${type}`;
+      if (!rows.has(key)) {
+        rows.set(key, { key, name: '未设置渠道', type, customerCount: 0 });
+      }
+      return rows.get(key)!;
+    };
+
+    for (const c of customers) {
+      if (c.sourceCategory === 'SELF') {
+        const row = c.acquisitionChannelId
+          ? rows.get(`acq:${c.acquisitionChannelId}`)
+          : fallback('自获取');
+        (row ?? fallback('自获取')).customerCount += 1;
+        continue;
+      }
+      const type =
+        c.sourceCategory === 'INDIVIDUAL_THIRD_PARTY'
+          ? '个人第三方'
+          : '企业第三方';
+      const row = c.channelId ? rows.get(`channel:${c.channelId}`) : fallback(type);
+      (row ?? fallback(type)).customerCount += 1;
+    }
+
+    return [...rows.values()].sort(
+      (a, b) => b.customerCount - a.customerCount || a.type.localeCompare(b.type),
+    );
+  }
+
+  private async productLeadStats() {
+    const [products, orders] = await Promise.all([
+      this.prisma.product.findMany({
+        where: { deletedAt: null },
+        select: { id: true, name: true, category: true },
+      }),
+      this.prisma.order.findMany({
+        where: { deletedAt: null },
+        select: { productId: true, customerId: true },
+      }),
+    ]);
+
+    const productCustomers = new Map<number, Set<number>>();
+    orders.forEach((o) => {
+      if (!productCustomers.has(o.productId)) {
+        productCustomers.set(o.productId, new Set());
+      }
+      productCustomers.get(o.productId)!.add(o.customerId);
+    });
+
+    return products
+      .map((p) => ({
+        productId: p.id,
+        name: p.name,
+        category: p.category,
+        customerCount: productCustomers.get(p.id)?.size ?? 0,
+      }))
+      .sort((a, b) => b.customerCount - a.customerCount || a.name.localeCompare(b.name));
   }
 
   private async salesDashboard(uid: number) {
@@ -355,14 +449,20 @@ export class ReportsService {
       _count: true,
     });
     const users = await this.prisma.user.findMany({
-      where: { role: { in: [UserRole.SALES, UserRole.BUSINESS_SUPERVISOR] } },
+      where: {
+        deletedAt: null,
+        status: 'active',
+        role: { in: [UserRole.SALES, UserRole.BUSINESS_SUPERVISOR] },
+      },
       select: { id: true, name: true },
     });
-    const nameMap = new Map(users.map((u) => [u.id, u.name]));
-    return byOwner.map((o) => ({
-      ownerUserId: o.ownerUserId,
-      name: o.ownerUserId ? (nameMap.get(o.ownerUserId) ?? '—') : '—',
-      customerCount: o._count,
-    }));
+    const countMap = new Map(byOwner.map((o) => [o.ownerUserId, o._count]));
+    return users
+      .map((u) => ({
+        ownerUserId: u.id,
+        name: u.name,
+        customerCount: countMap.get(u.id) ?? 0,
+      }))
+      .sort((a, b) => b.customerCount - a.customerCount || a.name.localeCompare(b.name));
   }
 }

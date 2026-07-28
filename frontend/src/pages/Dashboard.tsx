@@ -65,6 +65,32 @@ function MoneyByCurrency({ rows, fields }: { rows: Any[]; fields: [string, strin
   )
 }
 
+function LeadCountTable({
+  rows,
+  rowKey,
+  nameTitle,
+  extraColumns = [],
+}: {
+  rows: Any[]
+  rowKey: (r: Any) => string | number
+  nameTitle: string
+  extraColumns?: Any[]
+}) {
+  return (
+    <Table
+      {...smallTableProps}
+      pagination={false}
+      rowKey={rowKey}
+      dataSource={rows || []}
+      columns={[
+        ...extraColumns,
+        { title: nameTitle, dataIndex: 'name', width: COL.name },
+        { title: '客户线索数', dataIndex: 'customerCount', width: COL.count, align: 'right' },
+      ]}
+    />
+  )
+}
+
 export default function Dashboard() {
   const [data, setData] = useState<Any | null>(null)
   const [loading, setLoading] = useState(true)
@@ -95,13 +121,31 @@ export default function Dashboard() {
             </div>
           ))}
         </div>
-        <SectionTitle eyebrow="FINANCE" title="订单金额（分币种）" />
+        <SectionTitle eyebrow="CHANNELS" title="按渠道统计客户线索" />
         <Card size="small">
-          <MoneyByCurrency rows={data.byCurrency?.orders} fields={[['receivableAmount', '应收'], ['paidAmount', '已收', 'in'], ['unpaidAmount', '未收'], ['refundAmount', '退款', 'out']]} />
+          <LeadCountTable
+            rows={data.leadStats?.channels}
+            rowKey={(r) => r.key}
+            nameTitle="渠道"
+            extraColumns={[{ title: '类型', dataIndex: 'type', width: COL.type }]}
+          />
         </Card>
-        <SectionTitle eyebrow="COMMISSION" title="渠道分成（模式二·分币种）" />
+        <SectionTitle eyebrow="PRODUCTS" title="按产品统计客户线索" />
         <Card size="small">
-          <MoneyByCurrency rows={data.byCurrency?.commissions} fields={[['payableAmount', '应付'], ['paidAmount', '已付'], ['unpaidAmount', '未付']]} />
+          <LeadCountTable
+            rows={data.leadStats?.products}
+            rowKey={(r) => r.productId}
+            nameTitle="产品"
+            extraColumns={[{ title: '类别', dataIndex: 'category', width: COL.type, render: (v: string) => v || '—' }]}
+          />
+        </Card>
+        <SectionTitle eyebrow="SALES" title="按销售统计客户线索" />
+        <Card size="small">
+          <LeadCountTable
+            rows={data.leadStats?.sales}
+            rowKey={(r) => r.ownerUserId}
+            nameTitle="销售"
+          />
         </Card>
       </div>
     )
