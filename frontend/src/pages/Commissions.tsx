@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button, Modal, Select, Space, Table, Tabs, Tag, message } from 'antd'
+import { Modal, Select, Space, Table, Tabs, Tag, message } from 'antd'
 import client from '../api/client'
 import { ActionBtn, DeleteBtn } from '../components/Actions'
 import { COL, scrollTableProps } from '../components/tableLayout'
@@ -34,18 +34,8 @@ export default function Commissions() {
   const [data, setData] = useState<{ items: Any[]; total: number }>({ items: [], total: 0 })
   const [status, setStatus] = useState<string>()
   const [loading, setLoading] = useState(false)
-  const [selected, setSelected] = useState<number[]>([])
   const [cashData, setCashData] = useState<{ items: Any[]; total: number }>({ items: [], total: 0 })
   const [cashLoading, setCashLoading] = useState(false)
-
-  const batch = async () => {
-    if (!selected.length) return
-    const { data: res } = await client.post('/commissions/batch-pay', { ids: selected })
-    message.success(`已确认支付 ${res.paid}/${res.total}`)
-    setSelected([])
-    load()
-    loadCash()
-  }
 
   const load = () => {
     setLoading(true)
@@ -90,23 +80,15 @@ export default function Commissions() {
           placeholder="状态筛选"
           style={{ width: 160 }}
           value={status}
-          onChange={(v) => { setSelected([]); setStatus(v) }}
+          onChange={setStatus}
           options={Object.entries(COMMISSION_STATUS_LABEL).map(([k, v]) => ({ value: k, label: v }))}
         />
-        <Button type="primary" disabled={!selected.length} onClick={batch}>批量确认支付（{selected.length}）</Button>
       </Space>
       <Table
         {...scrollTableProps}
         rowKey="id"
         loading={loading}
         dataSource={data.items}
-        rowSelection={{
-          selectedRowKeys: selected,
-          onChange: (k) => setSelected(k as number[]),
-          getCheckboxProps: (r: Any) => ({
-            disabled: !canConfirmPayment(r),
-          }),
-        }}
         columns={[
           { title: '客户', width: COL.person, render: (_, r) => r.customer?.name },
           { title: '订单', width: COL.no, render: (_, r) => r.order?.orderNo },
