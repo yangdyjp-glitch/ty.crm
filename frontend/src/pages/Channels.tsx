@@ -14,6 +14,7 @@ import {
 import dayjs from 'dayjs'
 import client from '../api/client'
 import { ActionBtn, DeleteBtn } from '../components/Actions'
+import { COL, pageTableProps, smallTableProps } from '../components/tableLayout'
 import { useAuth } from '../auth/AuthContext'
 import {
   CHANNEL_TYPE_LABEL,
@@ -124,19 +125,21 @@ export default function Channels() {
         {isAdmin ? '新增渠道' : '新增个人渠道'}
       </Button>
       <Table
+        {...pageTableProps}
         rowKey="id"
         loading={loading}
         dataSource={rows}
         columns={[
-          { title: '编号', dataIndex: 'channelNo' },
-          { title: '名称', dataIndex: 'name' },
-          { title: '类型', dataIndex: 'channelType', render: (t) => <Tag>{CHANNEL_TYPE_LABEL[t]}</Tag> },
-          { title: '默认比例', dataIndex: 'defaultCommissionRate', render: (r) => (r != null ? r + '%' : '—') },
-          { title: '计算方式', dataIndex: 'commissionMethod', render: (m) => COMMISSION_METHOD_LABEL[m] },
-          { title: '资金模式', dataIndex: 'fundSettlementMode', render: (m) => FUND_MODE_LABEL[m] },
-          { title: '结算条件', dataIndex: 'settlementCondition', render: (s) => SETTLEMENT_COND_LABEL[s] },
+          { title: '编号', dataIndex: 'channelNo', width: COL.no },
+          { title: '名称', dataIndex: 'name', width: COL.channel },
+          { title: '类型', dataIndex: 'channelType', width: COL.type, render: (t) => <Tag>{CHANNEL_TYPE_LABEL[t]}</Tag> },
+          { title: '默认比例', dataIndex: 'defaultCommissionRate', width: COL.percent, render: (r) => (r != null ? r + '%' : '—') },
+          { title: '计算方式', dataIndex: 'commissionMethod', width: COL.method, render: (m) => COMMISSION_METHOD_LABEL[m] },
+          { title: '资金模式', dataIndex: 'fundSettlementMode', width: COL.mode, render: (m) => FUND_MODE_LABEL[m] },
+          { title: '结算条件', dataIndex: 'settlementCondition', width: COL.condition, render: (s) => SETTLEMENT_COND_LABEL[s] },
           {
             title: '操作',
+            width: COL.action,
             render: (_, r) =>
               isAdmin ? (
                 <Space wrap>
@@ -156,17 +159,17 @@ export default function Channels() {
               当前余额（正=第三方欠公司，负=公司欠第三方）： CNY <b>{ledger.balances.CNY}</b> ， JPY <b>{ledger.balances.JPY}</b>
             </div>
             <Table
-              size="small"
+              {...smallTableProps}
               rowKey="id"
               pagination={false}
               dataSource={ledger.entries}
               columns={[
-                { title: '时间', dataIndex: 'createdAt', render: (t: string) => dayjs(t).format('MM-DD HH:mm') },
-                { title: '币种', dataIndex: 'currency' },
-                { title: '类型', dataIndex: 'entryType', render: (e: string) => LEDGER_TYPE_LABEL[e] || e },
-                { title: '金额', dataIndex: 'amount', align: 'right' },
-                { title: '余额', dataIndex: 'balanceAfter', align: 'right' },
-                { title: '说明', dataIndex: 'note' },
+                { title: '时间', dataIndex: 'createdAt', width: COL.datetime, render: (t: string) => dayjs(t).format('MM-DD HH:mm') },
+                { title: '币种', dataIndex: 'currency', width: COL.currency },
+                { title: '类型', dataIndex: 'entryType', width: COL.method, render: (e: string) => LEDGER_TYPE_LABEL[e] || e },
+                { title: '金额', dataIndex: 'amount', width: COL.money, align: 'right' },
+                { title: '余额', dataIndex: 'balanceAfter', width: COL.money, align: 'right' },
+                { title: '说明', dataIndex: 'note', width: COL.note },
               ]}
             />
           </>
@@ -205,15 +208,16 @@ export default function Channels() {
           <Button type="primary" onClick={() => openAcq()}>新增获取渠道</Button>
         </Space>
         <Table
-          size="small"
+          {...smallTableProps}
           rowKey="id"
           pagination={false}
           dataSource={acqRows}
           columns={[
-            { title: '名称', dataIndex: 'name' },
-            { title: '状态', dataIndex: 'active', render: (a: boolean) => <Tag color={a ? 'green' : 'default'}>{a ? '启用' : '停用'}</Tag> },
+            { title: '名称', dataIndex: 'name', width: COL.name },
+            { title: '状态', dataIndex: 'active', width: COL.status, render: (a: boolean) => <Tag color={a ? 'green' : 'default'}>{a ? '启用' : '停用'}</Tag> },
             {
               title: '操作',
+              width: COL.actionWide,
               render: (_: any, r: Any) => (
                 <Space wrap>
                   <ActionBtn tone="edit" onClick={() => openAcq(r)}>重命名</ActionBtn>

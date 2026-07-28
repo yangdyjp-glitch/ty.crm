@@ -15,6 +15,7 @@ import {
 } from 'antd'
 import client from '../api/client'
 import { ActionBtn, DeleteBtn } from '../components/Actions'
+import { COL, pageTableProps } from '../components/tableLayout'
 import { useAuth } from '../auth/AuthContext'
 import {
   REFUND_BEARER_LABEL,
@@ -91,25 +92,28 @@ export default function Refunds() {
     <div>
       <Button type="primary" style={{ marginBottom: 16 }} onClick={openCreate}>发起退款</Button>
       <Table
+        {...pageTableProps}
         rowKey="id"
         loading={loading}
         dataSource={rows}
         columns={[
-          { title: '退款号', dataIndex: 'refundNo' },
-          { title: '客户', render: (_, r) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
-          { title: '订单', render: (_, r) => <a onClick={() => nav(`/orders/${r.order?.id}`)}>{r.order?.orderNo}</a> },
-          { title: '名义额', dataIndex: 'nominalAmount', render: moneyOut, align: 'right' },
-          { title: '实退现金', dataIndex: 'cashAmount', render: moneyOut, align: 'right' },
-          { title: '抵减', dataIndex: 'offsetAmount', render: moneyOut, align: 'right' },
-          { title: '原因', dataIndex: 'reason', render: (r) => REFUND_REASON_LABEL[r] },
-          { title: '承担方', dataIndex: 'bearer', render: (b) => REFUND_BEARER_LABEL[b] },
+          { title: '退款号', dataIndex: 'refundNo', width: COL.no },
+          { title: '客户', width: COL.person, render: (_, r) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
+          { title: '订单', width: COL.no, render: (_, r) => <a onClick={() => nav(`/orders/${r.order?.id}`)}>{r.order?.orderNo}</a> },
+          { title: '名义额', dataIndex: 'nominalAmount', width: COL.money, render: moneyOut, align: 'right' },
+          { title: '实退现金', dataIndex: 'cashAmount', width: COL.money, render: moneyOut, align: 'right' },
+          { title: '抵减', dataIndex: 'offsetAmount', width: COL.money, render: moneyOut, align: 'right' },
+          { title: '原因', dataIndex: 'reason', width: COL.type, render: (r) => REFUND_REASON_LABEL[r] },
+          { title: '承担方', dataIndex: 'bearer', width: COL.type, render: (b) => REFUND_BEARER_LABEL[b] },
           {
             title: '状态',
             dataIndex: 'status',
+            width: COL.status,
             render: (s) => <Tag color={s === 'REFUNDED' ? 'green' : s === 'REJECTED' ? 'red' : s === 'APPROVED' ? 'gold' : 'orange'}>{REFUND_STATUS_LABEL[s]}</Tag>,
           },
           {
             title: '操作',
+            width: COL.actionWide,
             render: (_, r) => (
               <Space wrap>
                 {isAdmin && r.status === 'PENDING' && (

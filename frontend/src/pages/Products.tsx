@@ -15,6 +15,7 @@ import {
 import client from '../api/client'
 import { CURRENCY_LABEL, fmtMoney } from '../api/types'
 import { ActionBtn, DeleteBtn } from '../components/Actions'
+import { COL, pageTableProps } from '../components/tableLayout'
 
 type Any = Record<string, any>
 
@@ -68,18 +69,20 @@ export default function Products() {
     <div>
       <Button type="primary" style={{ marginBottom: 16 }} onClick={() => openForm()}>新增项目</Button>
       <Table
+        {...pageTableProps}
         rowKey="id"
         loading={loading}
         dataSource={rows}
         columns={[
-          { title: '项目名称', dataIndex: 'name' },
-          { title: '分类', dataIndex: 'category' },
-          { title: '标准价', dataIndex: 'standardPrice', render: fmtMoney, align: 'right' },
-          { title: '币种', dataIndex: 'currency', render: (c) => CURRENCY_LABEL[c] },
-          { title: '参与分成', dataIndex: 'participateCommission', render: (b) => (b ? '是' : '否') },
-          { title: '状态', dataIndex: 'status', render: (s) => <Tag color={s === 'active' ? 'green' : 'default'}>{s === 'active' ? '启用' : '停用'}</Tag> },
+          { title: '项目名称', dataIndex: 'name', width: COL.project },
+          { title: '分类', dataIndex: 'category', width: COL.type },
+          { title: '标准价', dataIndex: 'standardPrice', width: COL.money, render: fmtMoney, align: 'right' },
+          { title: '币种', dataIndex: 'currency', width: COL.currency, render: (c) => CURRENCY_LABEL[c] },
+          { title: '参与分成', dataIndex: 'participateCommission', width: COL.status, render: (b) => (b ? '是' : '否') },
+          { title: '状态', dataIndex: 'status', width: COL.status, render: (s) => <Tag color={s === 'active' ? 'green' : 'default'}>{s === 'active' ? '启用' : '停用'}</Tag> },
           {
             title: '操作',
+            width: COL.action,
             render: (_, r) => (
               <Space wrap>
                 <ActionBtn tone="edit" onClick={() => openForm(r)}>编辑</ActionBtn>

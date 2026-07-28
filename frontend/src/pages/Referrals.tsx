@@ -16,6 +16,7 @@ import dayjs from 'dayjs'
 import client from '../api/client'
 import { CURRENCY_LABEL, fmtMoney } from '../api/types'
 import { ActionBtn, DeleteBtn } from '../components/Actions'
+import { COL, pageTableProps } from '../components/tableLayout'
 
 type Any = Record<string, any>
 
@@ -74,23 +75,26 @@ export default function Referrals() {
     <div>
       <Button type="primary" style={{ marginBottom: 16 }} onClick={openCreate}>登记转介绍收佣</Button>
       <Table
+        {...pageTableProps}
         rowKey="id"
         loading={loading}
         dataSource={rows}
         columns={[
-          { title: '客户', render: (_, r) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
-          { title: '服务种类', dataIndex: 'serviceType' },
-          { title: '下游公司', dataIndex: 'downstreamCompany' },
-          { title: '佣金', dataIndex: 'commissionAmount', render: fmtMoney, align: 'right' },
-          { title: '币种', dataIndex: 'currency', render: (c) => CURRENCY_LABEL[c] },
-          { title: '结款时间', dataIndex: 'settlementDate', render: (t) => (t ? dayjs(t).format('YYYY-MM-DD') : '—') },
+          { title: '客户', width: COL.person, render: (_, r) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
+          { title: '服务种类', dataIndex: 'serviceType', width: COL.type },
+          { title: '下游公司', dataIndex: 'downstreamCompany', width: COL.company },
+          { title: '佣金', dataIndex: 'commissionAmount', width: COL.money, render: fmtMoney, align: 'right' },
+          { title: '币种', dataIndex: 'currency', width: COL.currency, render: (c) => CURRENCY_LABEL[c] },
+          { title: '结款时间', dataIndex: 'settlementDate', width: COL.date, render: (t) => (t ? dayjs(t).format('YYYY-MM-DD') : '—') },
           {
             title: '收款状态',
             dataIndex: 'collectionStatus',
+            width: COL.status,
             render: (s) => <Tag color={s === 'COLLECTED' ? 'green' : 'orange'}>{s === 'COLLECTED' ? '已收款' : '待收款'}</Tag>,
           },
           {
             title: '操作',
+            width: COL.action,
             render: (_, r) => (
               <Space wrap>
                 {r.collectionStatus === 'PENDING' ? (

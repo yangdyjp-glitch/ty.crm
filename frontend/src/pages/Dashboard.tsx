@@ -3,6 +3,7 @@ import { Card, Col, Row, Spin, Table, Tag } from 'antd'
 import client from '../api/client'
 import { CURRENCY_LABEL, CUSTOMER_STATUS_LABEL, fmtMoney } from '../api/types'
 import { moneyIn, moneyOut } from '../api/money'
+import { COL, smallTableProps } from '../components/tableLayout'
 
 type Any = Record<string, any>
 
@@ -44,14 +45,15 @@ function Stat({ title, value, unit, color }: { title: string; value: ReactNode; 
 function MoneyByCurrency({ rows, fields }: { rows: Any[]; fields: [string, string, ('in' | 'out')?][] }) {
   return (
     <Table
-      size="small"
+      {...smallTableProps}
       pagination={false}
       rowKey={(r) => r.currency}
       dataSource={rows || []}
       columns={[
-        { title: '币种', dataIndex: 'currency', render: (c) => <b>{CURRENCY_LABEL[c] || c}</b> },
+        { title: '币种', dataIndex: 'currency', width: COL.currency, render: (c) => <b>{CURRENCY_LABEL[c] || c}</b> },
         ...fields.map(([key, title, tone]) => ({
           title,
+          width: COL.money,
           align: 'right' as const,
           render: (_: any, r: Any) => {
             const val = r._sum?.[key]
@@ -164,15 +166,15 @@ export default function Dashboard() {
         <PageHead eyebrow="总览 · OVERVIEW" title="我的转介绍收佣" />
         <Card size="small">
           <Table
-            size="small"
+            {...smallTableProps}
             pagination={false}
             rowKey={(r) => r.currency + r.collectionStatus}
             dataSource={data.referrals || []}
             columns={[
-              { title: '币种', dataIndex: 'currency', render: (c) => <b>{CURRENCY_LABEL[c]}</b> },
-              { title: '状态', dataIndex: 'collectionStatus', render: (s) => (s === 'COLLECTED' ? '已收款' : '待收款') },
-              { title: '笔数', dataIndex: '_count' },
-              { title: '金额', align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.commissionAmount) },
+              { title: '币种', dataIndex: 'currency', width: COL.currency, render: (c) => <b>{CURRENCY_LABEL[c]}</b> },
+              { title: '状态', dataIndex: 'collectionStatus', width: COL.status, render: (s) => (s === 'COLLECTED' ? '已收款' : '待收款') },
+              { title: '笔数', dataIndex: '_count', width: COL.count },
+              { title: '金额', width: COL.money, align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.commissionAmount) },
             ]}
           />
         </Card>

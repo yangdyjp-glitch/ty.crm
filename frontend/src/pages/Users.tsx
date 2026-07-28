@@ -4,6 +4,7 @@ import client from '../api/client'
 import { ROLE_LABEL } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { ActionBtn, DeleteBtn } from '../components/Actions'
+import { COL, pageTableProps } from '../components/tableLayout'
 
 type Any = Record<string, any>
 
@@ -82,17 +83,19 @@ export default function Users() {
     <div>
       <Button type="primary" style={{ marginBottom: 16 }} onClick={() => openForm()}>新增用户</Button>
       <Table
+        {...pageTableProps}
         rowKey="id"
         loading={loading}
         dataSource={rows}
         columns={[
-          { title: '用户编号', render: (_: any, r: Any) => 'YH' + String(r.id).padStart(6, '0') },
-          { title: '账号', dataIndex: 'username' },
-          { title: '姓名', dataIndex: 'name' },
-          { title: '角色', dataIndex: 'role', render: (r) => <Tag color="blue">{ROLE_LABEL[r]}</Tag> },
-          { title: '状态', dataIndex: 'status', render: (s) => <Tag color={s === 'active' ? 'green' : 'red'}>{s === 'active' ? '启用' : '停用'}</Tag> },
+          { title: '用户编号', width: COL.no, render: (_: any, r: Any) => 'YH' + String(r.id).padStart(6, '0') },
+          { title: '账号', dataIndex: 'username', width: COL.name },
+          { title: '姓名', dataIndex: 'name', width: COL.person },
+          { title: '角色', dataIndex: 'role', width: COL.status, render: (r) => <Tag color="blue">{ROLE_LABEL[r]}</Tag> },
+          { title: '状态', dataIndex: 'status', width: COL.status, render: (s) => <Tag color={s === 'active' ? 'green' : 'red'}>{s === 'active' ? '启用' : '停用'}</Tag> },
           {
             title: '操作',
+            width: COL.actionWide,
             render: (_, r) => (
               <Space wrap>
                 <ActionBtn tone="edit" onClick={() => openForm(r)}>编辑</ActionBtn>

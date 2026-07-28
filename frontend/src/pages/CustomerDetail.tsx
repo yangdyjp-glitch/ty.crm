@@ -31,6 +31,7 @@ import {
 } from '../api/types'
 import { moneyIn } from '../api/money'
 import { ActionBtn, DeleteBtn } from '../components/Actions'
+import { COL, smallTableProps } from '../components/tableLayout'
 
 type Any = Record<string, any>
 
@@ -143,16 +144,16 @@ export default function CustomerDetail() {
                   </Button>
                 )}
                 <Table
+                  {...smallTableProps}
                   rowKey="id"
-                  size="small"
                   dataSource={c.followUps || []}
                   pagination={false}
                   columns={[
-                    { title: '时间', dataIndex: 'followedAt', render: (t) => dayjs(t).format('MM-DD HH:mm') },
-                    { title: '方式', dataIndex: 'method', render: (m) => FOLLOW_METHOD_LABEL[m] },
-                    { title: '内容', dataIndex: 'content' },
-                    { title: '结果', dataIndex: 'result' },
-                    { title: '下次', dataIndex: 'nextFollowUpAt', render: (t) => (t ? dayjs(t).format('MM-DD') : '—') },
+                    { title: '时间', dataIndex: 'followedAt', width: COL.datetime, render: (t) => dayjs(t).format('MM-DD HH:mm') },
+                    { title: '方式', dataIndex: 'method', width: COL.type, render: (m) => FOLLOW_METHOD_LABEL[m] },
+                    { title: '内容', dataIndex: 'content', width: COL.note },
+                    { title: '结果', dataIndex: 'result', width: COL.text },
+                    { title: '下次', dataIndex: 'nextFollowUpAt', width: COL.date, render: (t) => (t ? dayjs(t).format('MM-DD') : '—') },
                   ]}
                 />
               </>
@@ -163,21 +164,22 @@ export default function CustomerDetail() {
             label: `订单 (${c.orders?.length || 0})`,
             children: (
               <Table
+                {...smallTableProps}
                 rowKey="id"
-                size="small"
                 dataSource={c.orders || []}
                 pagination={false}
                 columns={[
-                  { title: '订单号', dataIndex: 'orderNo' },
-                  { title: '币种', dataIndex: 'currency' },
-                  { title: '应收', dataIndex: 'receivableAmount', render: fmtMoney, align: 'right' },
-                  { title: '已收', dataIndex: 'paidAmount', render: moneyIn, align: 'right' },
-                  { title: '未收', dataIndex: 'unpaidAmount', render: fmtMoney, align: 'right' },
-                  { title: '状态', dataIndex: 'status', render: (s) => <Tag>{ORDER_STATUS_LABEL[s]}</Tag> },
+                  { title: '订单号', dataIndex: 'orderNo', width: COL.no },
+                  { title: '币种', dataIndex: 'currency', width: COL.currency },
+                  { title: '应收', dataIndex: 'receivableAmount', width: COL.money, render: fmtMoney, align: 'right' },
+                  { title: '已收', dataIndex: 'paidAmount', width: COL.money, render: moneyIn, align: 'right' },
+                  { title: '未收', dataIndex: 'unpaidAmount', width: COL.money, render: fmtMoney, align: 'right' },
+                  { title: '状态', dataIndex: 'status', width: COL.status, render: (s) => <Tag>{ORDER_STATUS_LABEL[s]}</Tag> },
                   ...(isAdmin
                     ? [
                         {
                           title: '操作',
+                          width: COL.action,
                           render: (_: any, r: Any) => <DeleteBtn onConfirm={() => delOrder(r.id)} />,
                         },
                       ]
@@ -191,16 +193,16 @@ export default function CustomerDetail() {
             label: `转介绍收佣 (${c.referrals?.length || 0})`,
             children: (
               <Table
+                {...smallTableProps}
                 rowKey="id"
-                size="small"
                 dataSource={c.referrals || []}
                 pagination={false}
                 columns={[
-                  { title: '服务种类', dataIndex: 'serviceType' },
-                  { title: '下游公司', dataIndex: 'downstreamCompany' },
-                  { title: '佣金', dataIndex: 'commissionAmount', render: fmtMoney, align: 'right' },
-                  { title: '币种', dataIndex: 'currency' },
-                  { title: '收款', dataIndex: 'collectionStatus', render: (s) => (s === 'COLLECTED' ? '已收款' : '待收款') },
+                  { title: '服务种类', dataIndex: 'serviceType', width: COL.type },
+                  { title: '下游公司', dataIndex: 'downstreamCompany', width: COL.company },
+                  { title: '佣金', dataIndex: 'commissionAmount', width: COL.money, render: fmtMoney, align: 'right' },
+                  { title: '币种', dataIndex: 'currency', width: COL.currency },
+                  { title: '收款', dataIndex: 'collectionStatus', width: COL.status, render: (s) => (s === 'COLLECTED' ? '已收款' : '待收款') },
                 ]}
               />
             ),
@@ -225,16 +227,17 @@ export default function CustomerDetail() {
                   <Button icon={<UploadOutlined />} style={{ marginBottom: 12 }}>上传合同 / 凭证</Button>
                 </Upload>
                 <Table
+                  {...smallTableProps}
                   rowKey="id"
-                  size="small"
                   dataSource={attachments}
                   pagination={false}
                   columns={[
-                    { title: '文件名', dataIndex: 'fileName' },
-                    { title: '类型', dataIndex: 'fileType' },
-                    { title: '上传时间', dataIndex: 'createdAt', render: (t) => dayjs(t).format('MM-DD HH:mm') },
+                    { title: '文件名', dataIndex: 'fileName', width: COL.note },
+                    { title: '类型', dataIndex: 'fileType', width: COL.type },
+                    { title: '上传时间', dataIndex: 'createdAt', width: COL.datetime, render: (t) => dayjs(t).format('MM-DD HH:mm') },
                     {
                       title: '操作',
+                      width: COL.action,
                       render: (_: any, r: Any) => (
                         <ActionBtn tone="view" onClick={() => downloadFile(`/attachments/${r.id}/file`, r.fileName)}>下载</ActionBtn>
                       ),

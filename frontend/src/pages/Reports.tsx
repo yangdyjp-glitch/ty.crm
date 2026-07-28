@@ -7,6 +7,7 @@ import {
   SALES_STAGE_LABEL,
   fmtMoney,
 } from '../api/types'
+import { COL, smallTableProps } from '../components/tableLayout'
 
 type Any = Record<string, any>
 
@@ -33,31 +34,31 @@ export default function Reports() {
             <>
               <Card title="订单金额" size="small" style={{ marginBottom: 16 }}>
                 <Table
-                  size="small"
+                  {...smallTableProps}
                   pagination={false}
                   rowKey={(r: Any) => r.currency}
                   dataSource={finance?.orders || []}
                   columns={[
-                    { title: '币种', dataIndex: 'currency', render: (c: string) => CURRENCY_LABEL[c] },
-                    { title: '应收', align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.receivableAmount) },
-                    { title: '已收', align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.paidAmount) },
-                    { title: '未收', align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.unpaidAmount) },
-                    { title: '退款', align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.refundAmount) },
+                    { title: '币种', dataIndex: 'currency', width: COL.currency, render: (c: string) => CURRENCY_LABEL[c] },
+                    { title: '应收', width: COL.money, align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.receivableAmount) },
+                    { title: '已收', width: COL.money, align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.paidAmount) },
+                    { title: '未收', width: COL.money, align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.unpaidAmount) },
+                    { title: '退款', width: COL.money, align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.refundAmount) },
                   ]}
                 />
               </Card>
               <Card title="渠道分成（按币种 × 模式）" size="small">
                 <Table
-                  size="small"
+                  {...smallTableProps}
                   pagination={false}
                   rowKey={(r: Any) => r.currency + r.fundSettlementMode}
                   dataSource={finance?.commissions || []}
                   columns={[
-                    { title: '币种', dataIndex: 'currency', render: (c: string) => CURRENCY_LABEL[c] },
-                    { title: '资金模式', dataIndex: 'fundSettlementMode', render: (m: string) => FUND_MODE_LABEL[m] },
-                    { title: '应付', align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.payableAmount) },
-                    { title: '已付', align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.paidAmount) },
-                    { title: '未付', align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.unpaidAmount) },
+                    { title: '币种', dataIndex: 'currency', width: COL.currency, render: (c: string) => CURRENCY_LABEL[c] },
+                    { title: '资金模式', dataIndex: 'fundSettlementMode', width: COL.mode, render: (m: string) => FUND_MODE_LABEL[m] },
+                    { title: '应付', width: COL.money, align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.payableAmount) },
+                    { title: '已付', width: COL.money, align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.paidAmount) },
+                    { title: '未付', width: COL.money, align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.unpaidAmount) },
                   ]}
                 />
               </Card>
@@ -69,17 +70,17 @@ export default function Reports() {
           label: '渠道',
           children: (
             <Table
-              size="small"
+              {...smallTableProps}
               pagination={false}
               rowKey={(r: Any) => r.channelId + r.currency}
               dataSource={channels}
               columns={[
-                { title: '渠道', render: (_: any, r: Any) => r.channel?.name || r.channelId },
-                { title: '币种', dataIndex: 'currency', render: (c: string) => CURRENCY_LABEL[c] },
-                { title: '笔数', dataIndex: '_count' },
-                { title: '应付分成', align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.payableAmount) },
-                { title: '已付', align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.paidAmount) },
-                { title: '未付', align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.unpaidAmount) },
+                { title: '渠道', width: COL.channel, render: (_: any, r: Any) => r.channel?.name || r.channelId },
+                { title: '币种', dataIndex: 'currency', width: COL.currency, render: (c: string) => CURRENCY_LABEL[c] },
+                { title: '笔数', dataIndex: '_count', width: COL.count },
+                { title: '应付分成', width: COL.money, align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.payableAmount) },
+                { title: '已付', width: COL.money, align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.paidAmount) },
+                { title: '未付', width: COL.money, align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.unpaidAmount) },
               ]}
             />
           ),
@@ -89,13 +90,13 @@ export default function Reports() {
           label: '销售',
           children: (
             <Table
-              size="small"
+              {...smallTableProps}
               pagination={false}
               rowKey={(r: Any) => r.ownerUserId}
               dataSource={sales}
               columns={[
-                { title: '销售', dataIndex: 'name' },
-                { title: '负责客户数', dataIndex: 'customerCount' },
+                { title: '销售', dataIndex: 'name', width: COL.person },
+                { title: '负责客户数', dataIndex: 'customerCount', width: COL.count },
               ]}
             />
           ),

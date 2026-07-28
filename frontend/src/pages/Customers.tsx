@@ -14,6 +14,7 @@ import {
 } from 'antd'
 import { UploadOutlined } from '@ant-design/icons'
 import { ActionBtn, DeleteBtn } from '../components/Actions'
+import { COL, pageTableProps } from '../components/tableLayout'
 import client, { downloadFile } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import {
@@ -147,14 +148,16 @@ export default function Customers() {
   }
 
   const columns = [
-    { title: '编号', dataIndex: 'customerNo' },
-    { title: '姓名', dataIndex: 'name', render: (n: string, r: Any) => <a onClick={() => nav(`/customers/${r.id}`)}>{n}</a> },
+    { title: '编号', dataIndex: 'customerNo', width: COL.no },
+    { title: '姓名', dataIndex: 'name', width: COL.person, render: (n: string, r: Any) => <a onClick={() => nav(`/customers/${r.id}`)}>{n}</a> },
     {
       title: '联系方式',
+      width: COL.contact,
       render: (_: any, r: Any) => [r.phone, r.wechat, r.email].filter(Boolean).join(' / ') || '—',
     },
     {
       title: '来源 / 渠道',
+      width: COL.source,
       render: (_: any, r: Any) => (
         <a onClick={() => openQuickEdit(r)}>
           {`${SOURCE_LABEL[r.sourceCategory] || ''}${r.channel ? '：' + r.channel.name : r.acquisitionChannel ? '：' + r.acquisitionChannel.name : ''}`}
@@ -164,15 +167,17 @@ export default function Customers() {
     {
       title: '状态',
       dataIndex: 'mainStatus',
+      width: COL.status,
       render: (s: string, r: Any) => (
         <a onClick={() => openQuickEdit(r)}>
           <Tag color={CUSTOMER_STATUS_COLOR[s]}>{CUSTOMER_STATUS_LABEL[s]}</Tag>
         </a>
       ),
     },
-    { title: '意向', dataIndex: 'intentionLevel', render: (i: string, r: Any) => <a onClick={() => openQuickEdit(r)}>{i ? INTENTION_LABEL[i] : '—'}</a> },
+    { title: '意向', dataIndex: 'intentionLevel', width: COL.status, render: (i: string, r: Any) => <a onClick={() => openQuickEdit(r)}>{i ? INTENTION_LABEL[i] : '—'}</a> },
     {
       title: '分配',
+      width: COL.status,
       render: (_: any, r: Any) => {
         const label = r.ownerName ? <Tag color="green">{r.ownerName}</Tag> : <Tag>未分配</Tag>
         return canCreate ? (
@@ -184,6 +189,7 @@ export default function Customers() {
     },
     {
       title: '操作',
+      width: COL.action,
       render: (_: any, r: Any) => (
         <Space wrap>
           <ActionBtn tone="view" onClick={() => nav(`/customers/${r.id}`)}>详情</ActionBtn>
@@ -225,6 +231,7 @@ export default function Customers() {
       </Space>
 
       <Table
+        {...pageTableProps}
         rowKey="id"
         loading={loading}
         columns={columns as any}

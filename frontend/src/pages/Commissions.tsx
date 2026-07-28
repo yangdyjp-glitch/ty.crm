@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Button, Modal, Select, Space, Table, Tabs, Tag, message } from 'antd'
 import client from '../api/client'
 import { ActionBtn, DeleteBtn } from '../components/Actions'
+import { COL, pageTableProps } from '../components/tableLayout'
 import {
   COMMISSION_STATUS_COLOR,
   COMMISSION_STATUS_LABEL,
@@ -97,6 +98,7 @@ export default function Commissions() {
         <Button type="primary" disabled={!selected.length} onClick={batch}>批量确认支付（{selected.length}）</Button>
       </Space>
       <Table
+        {...pageTableProps}
         rowKey="id"
         loading={loading}
         dataSource={data.items}
@@ -109,15 +111,16 @@ export default function Commissions() {
         }}
         pagination={{ current: page, pageSize: 10, total: data.total, onChange: setPage, showSizeChanger: false }}
         columns={[
-          { title: '客户', render: (_, r) => r.customer?.name },
-          { title: '订单', render: (_, r) => r.order?.orderNo },
-          { title: '渠道(快照)', dataIndex: 'channelNameSnapshot' },
-          { title: '资金模式', dataIndex: 'fundSettlementMode', render: (m) => FUND_MODE_LABEL[m] },
-          { title: '币种', dataIndex: 'currency', render: (c: string) => CURRENCY_LABEL[c] || c },
-          { title: '应付', dataIndex: 'payableAmount', render: fmtMoney, align: 'right' },
-          { title: '已付', dataIndex: 'paidAmount', render: fmtMoney, align: 'right' },
+          { title: '客户', width: COL.person, render: (_, r) => r.customer?.name },
+          { title: '订单', width: COL.no, render: (_, r) => r.order?.orderNo },
+          { title: '渠道(快照)', dataIndex: 'channelNameSnapshot', width: COL.channel },
+          { title: '资金模式', dataIndex: 'fundSettlementMode', width: COL.mode, render: (m) => FUND_MODE_LABEL[m] },
+          { title: '币种', dataIndex: 'currency', width: COL.currency, render: (c: string) => CURRENCY_LABEL[c] || c },
+          { title: '应付', dataIndex: 'payableAmount', width: COL.money, render: fmtMoney, align: 'right' },
+          { title: '已付', dataIndex: 'paidAmount', width: COL.money, render: fmtMoney, align: 'right' },
           {
             title: '状态',
+            width: COL.status,
             render: (_, r) => (
               <Space>
                 <Tag color={COMMISSION_STATUS_COLOR[r.status]}>{COMMISSION_STATUS_LABEL[r.status]}</Tag>
@@ -127,6 +130,7 @@ export default function Commissions() {
           },
           {
             title: '操作',
+            width: COL.actionWide,
             render: (_, r) => {
               if (isSelfDeducted(r)) return <Tag color="default">已自扣(报表)</Tag>
 
@@ -161,23 +165,25 @@ export default function Commissions() {
 
   const cashTable = (
     <Table
+      {...pageTableProps}
       rowKey="orderId"
       loading={cashLoading}
       dataSource={cashData.items}
       pagination={{ current: cashPage, pageSize: 10, total: cashData.total, onChange: setCashPage, showSizeChanger: false }}
       columns={[
-        { title: '客户名称', dataIndex: 'customerName' },
-        { title: '渠道', dataIndex: 'channelName' },
+        { title: '客户名称', dataIndex: 'customerName', width: COL.person },
+        { title: '渠道', dataIndex: 'channelName', width: COL.channel },
         {
           title: '返佣状态',
           dataIndex: 'rebateStatus',
+          width: COL.status,
           render: (s: string) => <Tag color={REBATE_STATUS_COLOR[s]}>{s}</Tag>,
         },
-        { title: '资金模式', dataIndex: 'fundSettlementMode', render: (m: string) => FUND_MODE_LABEL[m] },
-        { title: '币种', dataIndex: 'currency', render: (c: string) => CURRENCY_LABEL[c] || c },
-        { title: '合同金额', dataIndex: 'contractAmount', render: fmtMoney, align: 'right' },
-        { title: '实际入账', dataIndex: 'actualReceived', render: fmtMoney, align: 'right' },
-        { title: '当前结余', dataIndex: 'balance', render: fmtMoney, align: 'right' },
+        { title: '资金模式', dataIndex: 'fundSettlementMode', width: COL.mode, render: (m: string) => FUND_MODE_LABEL[m] },
+        { title: '币种', dataIndex: 'currency', width: COL.currency, render: (c: string) => CURRENCY_LABEL[c] || c },
+        { title: '合同金额', dataIndex: 'contractAmount', width: COL.money, render: fmtMoney, align: 'right' },
+        { title: '实际入账', dataIndex: 'actualReceived', width: COL.money, render: fmtMoney, align: 'right' },
+        { title: '当前结余', dataIndex: 'balance', width: COL.money, render: fmtMoney, align: 'right' },
       ]}
     />
   )

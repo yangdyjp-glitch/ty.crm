@@ -13,6 +13,7 @@ import {
   message,
 } from 'antd'
 import { ActionBtn, DeleteBtn } from '../components/Actions'
+import { COL, pageTableProps } from '../components/tableLayout'
 import client from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import { CURRENCY_LABEL, PAYMENT_CONFIRM_LABEL, fmtMoney } from '../api/types'
@@ -99,22 +100,25 @@ export default function Payments() {
     <div>
       <Button type="primary" style={{ marginBottom: 16 }} onClick={openCreate}>录入收款</Button>
       <Table
+        {...pageTableProps}
         rowKey="id"
         loading={loading}
         dataSource={rows}
         columns={[
-          { title: '收款号', dataIndex: 'paymentNo' },
-          { title: '客户', render: (_, r) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
-          { title: '订单', render: (_, r) => <a onClick={() => nav(`/orders/${r.order?.id}`)}>{r.order?.orderNo}</a> },
-          { title: '金额', dataIndex: 'amount', render: moneyIn, align: 'right' },
-          { title: '币种', dataIndex: 'currency', render: (c) => CURRENCY_LABEL[c] },
+          { title: '收款号', dataIndex: 'paymentNo', width: COL.no },
+          { title: '客户', width: COL.person, render: (_, r) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
+          { title: '订单', width: COL.no, render: (_, r) => <a onClick={() => nav(`/orders/${r.order?.id}`)}>{r.order?.orderNo}</a> },
+          { title: '金额', dataIndex: 'amount', width: COL.money, render: moneyIn, align: 'right' },
+          { title: '币种', dataIndex: 'currency', width: COL.currency, render: (c) => CURRENCY_LABEL[c] },
           {
             title: '确认状态',
             dataIndex: 'confirmStatus',
+            width: COL.status,
             render: (s) => <Tag color={s === 'CONFIRMED' ? 'green' : s === 'PROBLEM' ? 'red' : 'orange'}>{PAYMENT_CONFIRM_LABEL[s]}</Tag>,
           },
           {
             title: '操作',
+            width: COL.actionWide,
             render: (_, r) =>
               r.confirmStatus === 'CONFIRMED' ? (
                 <Space wrap>

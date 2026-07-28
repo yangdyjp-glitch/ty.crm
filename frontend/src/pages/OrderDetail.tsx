@@ -10,6 +10,7 @@ import {
   fmtMoney,
 } from '../api/types'
 import { moneyIn, moneyOut } from '../api/money'
+import { COL, smallTableProps } from '../components/tableLayout'
 
 type Any = Record<string, any>
 
@@ -100,29 +101,29 @@ export default function OrderDetail() {
 
       <Card title="收款记录" size="small" style={{ marginBottom: 16 }}>
         <Table
-          size="small"
+          {...smallTableProps}
           rowKey="id"
           pagination={false}
           dataSource={o.payments || []}
           columns={[
-            { title: '收款号', dataIndex: 'paymentNo' },
-            { title: '金额', dataIndex: 'amount', render: moneyIn, align: 'right' },
-            { title: '状态', dataIndex: 'confirmStatus', render: (s: string) => PAYMENT_CONFIRM_LABEL[s] },
-            { title: '备注', dataIndex: 'remark' },
+            { title: '收款号', dataIndex: 'paymentNo', width: COL.no },
+            { title: '金额', dataIndex: 'amount', width: COL.money, render: moneyIn, align: 'right' },
+            { title: '状态', dataIndex: 'confirmStatus', width: COL.status, render: (s: string) => PAYMENT_CONFIRM_LABEL[s] },
+            { title: '备注', dataIndex: 'remark', width: COL.note },
           ]}
         />
       </Card>
 
       <Card title="退款记录" size="small">
         <Table
-          size="small"
+          {...smallTableProps}
           rowKey="id"
           pagination={false}
           dataSource={o.refunds || []}
           columns={[
-            { title: '退款号', dataIndex: 'refundNo' },
-            { title: '名义额', dataIndex: 'nominalAmount', render: moneyOut, align: 'right' },
-            { title: '状态', dataIndex: 'status', render: (s: string) => REFUND_STATUS_LABEL[s] },
+            { title: '退款号', dataIndex: 'refundNo', width: COL.no },
+            { title: '名义额', dataIndex: 'nominalAmount', width: COL.money, render: moneyOut, align: 'right' },
+            { title: '状态', dataIndex: 'status', width: COL.status, render: (s: string) => REFUND_STATUS_LABEL[s] },
           ]}
         />
       </Card>

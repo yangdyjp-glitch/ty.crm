@@ -13,6 +13,7 @@ import {
   message,
 } from 'antd'
 import { ActionBtn, DeleteBtn } from '../components/Actions'
+import { COL, pageTableProps } from '../components/tableLayout'
 import client from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import { loadProducts } from '../api/options'
@@ -101,16 +102,17 @@ export default function Orders() {
   }
 
   const columns = [
-    { title: '订单号', dataIndex: 'orderNo', render: (n: string, r: Any) => <a onClick={() => nav(`/orders/${r.id}`)}>{n}</a> },
-    { title: '客户', render: (_: any, r: Any) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
-    { title: '项目', render: (_: any, r: Any) => r.product?.name },
-    { title: '币种', dataIndex: 'currency', render: (c: string) => CURRENCY_LABEL[c] },
-    { title: '应收', dataIndex: 'receivableAmount', render: fmtMoney, align: 'right' as const },
-    { title: '已收', dataIndex: 'paidAmount', render: moneyIn, align: 'right' as const },
-    { title: '未收', dataIndex: 'unpaidAmount', render: fmtMoney, align: 'right' as const },
-    { title: '状态', dataIndex: 'status', render: (s: string) => <Tag>{ORDER_STATUS_LABEL[s]}</Tag> },
+    { title: '订单号', dataIndex: 'orderNo', width: COL.no, render: (n: string, r: Any) => <a onClick={() => nav(`/orders/${r.id}`)}>{n}</a> },
+    { title: '客户', width: COL.person, render: (_: any, r: Any) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
+    { title: '项目', width: COL.project, render: (_: any, r: Any) => r.product?.name },
+    { title: '币种', dataIndex: 'currency', width: COL.currency, render: (c: string) => CURRENCY_LABEL[c] },
+    { title: '应收', dataIndex: 'receivableAmount', width: COL.money, render: fmtMoney, align: 'right' as const },
+    { title: '已收', dataIndex: 'paidAmount', width: COL.money, render: moneyIn, align: 'right' as const },
+    { title: '未收', dataIndex: 'unpaidAmount', width: COL.money, render: fmtMoney, align: 'right' as const },
+    { title: '状态', dataIndex: 'status', width: COL.status, render: (s: string) => <Tag>{ORDER_STATUS_LABEL[s]}</Tag> },
     {
       title: '操作',
+      width: COL.actionWide,
       render: (_: any, r: Any) => (
         <Space wrap>
           <ActionBtn tone="view" onClick={() => nav(`/orders/${r.id}`)}>详情</ActionBtn>
@@ -132,6 +134,7 @@ export default function Orders() {
     <div>
       <Button type="primary" style={{ marginBottom: 16 }} onClick={openCreate}>签约（新建订单）</Button>
       <Table
+        {...pageTableProps}
         rowKey="id"
         loading={loading}
         columns={columns}

@@ -75,6 +75,7 @@ h4,
 td.ant-table-cell[align='right'] {
   font-weight: 400;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 /* 外层白色卡片：去金边、圆角、淡阴影 */
@@ -89,12 +90,20 @@ td.ant-table-cell[align='right'] {
   border-radius: 8px;
   overflow: hidden;
 }
-/* 列宽按内容自适应 */
+/* 表格固定布局：配合列宽常量保持各页面列宽一致，窄屏用横向滚动。 */
 .ant-table-wrapper table {
-  table-layout: auto !important;
+  table-layout: fixed !important;
+  min-width: 100%;
 }
 .ant-table-wrapper .ant-table-content {
   overflow-x: auto;
+}
+.ant-table-wrapper .ant-table-cell {
+  vertical-align: middle;
+  line-height: 1.45;
+}
+.ant-table-thead > tr > th {
+  white-space: nowrap;
 }
 .ant-table-tbody > tr > td {
   word-break: break-word;
