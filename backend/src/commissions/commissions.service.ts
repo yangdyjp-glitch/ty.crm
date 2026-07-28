@@ -16,7 +16,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { LedgerService } from '../ledger/ledger.service';
 import { AuditService } from '../audit/audit.service';
 import { AuthUser } from '../auth/current-user.decorator';
-import { nextNo } from '../common/util';
+import { nextPairedNo } from '../common/util';
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -65,7 +65,12 @@ export class CommissionsService {
       const payable = computePayable(method, rateOrAmount, base);
       await this.prisma.commission.create({
         data: {
-          commissionNo: await nextNo(this.prisma.commission, 'commissionNo', 'FC'),
+          commissionNo: await nextPairedNo(
+            this.prisma.commission,
+            'commissionNo',
+            'FC',
+            order.customer.customerNo,
+          ),
           customerId: order.customerId,
           orderId,
           channelId: ch.id,
@@ -94,7 +99,12 @@ export class CommissionsService {
       const dueNow = ch.settlementCondition === SettlementCondition.ON_SIGN;
       await this.prisma.commission.create({
         data: {
-          commissionNo: await nextNo(this.prisma.commission, 'commissionNo', 'FC'),
+          commissionNo: await nextPairedNo(
+            this.prisma.commission,
+            'commissionNo',
+            'FC',
+            order.customer.customerNo,
+          ),
           customerId: order.customerId,
           orderId,
           channelId: ch.id,

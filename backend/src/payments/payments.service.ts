@@ -12,7 +12,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CommissionsService } from '../commissions/commissions.service';
 import { AuthUser } from '../auth/current-user.decorator';
 import { customerScopeWhere } from '../common/scope';
-import { nextNo } from '../common/util';
+import { nextPairedNo } from '../common/util';
 import { CreatePaymentDto, UpdatePaymentDto } from './dto/payment.dto';
 
 @Injectable()
@@ -25,6 +25,7 @@ export class PaymentsService {
   async create(user: AuthUser, dto: CreatePaymentDto) {
     const order = await this.prisma.order.findFirst({
       where: { id: dto.orderId, deletedAt: null, customer: customerScopeWhere(user) },
+      include: { customer: { select: { customerNo: true } } },
     });
     if (!order) throw new NotFoundException('订单不存在或无权访问');
     if (
@@ -36,7 +37,12 @@ export class PaymentsService {
     }
     return this.prisma.payment.create({
       data: {
-        paymentNo: await nextNo(this.prisma.payment, 'paymentNo', 'SK'),
+        paymentNo: await nextPairedNo(
+          this.prisma.payment,
+          'paymentNo',
+          'SK',
+          order.customer.customerNo,
+        ),
         customerId: order.customerId,
         orderId: order.id,
         amount: dto.amount,

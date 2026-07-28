@@ -18,7 +18,7 @@ import { LedgerService } from '../ledger/ledger.service';
 import { AuditService } from '../audit/audit.service';
 import { AuthUser } from '../auth/current-user.decorator';
 import { customerScopeWhere } from '../common/scope';
-import { nextNo } from '../common/util';
+import { nextPairedNo } from '../common/util';
 import { CreateRefundDto } from './dto/refund.dto';
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -36,6 +36,7 @@ export class RefundsService {
   async create(user: AuthUser, dto: CreateRefundDto) {
     const order = await this.prisma.order.findFirst({
       where: { id: dto.orderId, deletedAt: null, customer: customerScopeWhere(user) },
+      include: { customer: { select: { customerNo: true } } },
     });
     if (!order) throw new NotFoundException('订单不存在或无权访问');
     if (
@@ -66,7 +67,12 @@ export class RefundsService {
 
     return this.prisma.refund.create({
       data: {
-        refundNo: await nextNo(this.prisma.refund, 'refundNo', 'TK'),
+        refundNo: await nextPairedNo(
+          this.prisma.refund,
+          'refundNo',
+          'TK',
+          order.customer.customerNo,
+        ),
         customerId: order.customerId,
         orderId: order.id,
         currency: order.currency,

@@ -15,7 +15,7 @@ import { CustomersService } from '../customers/customers.service';
 import { CommissionsService } from '../commissions/commissions.service';
 import { AuthUser } from '../auth/current-user.decorator';
 import { customerScopeWhere } from '../common/scope';
-import { nextNo } from '../common/util';
+import { nextPairedNo } from '../common/util';
 import { CreateOrderDto, UpdateOrderDto } from './dto/order.dto';
 
 @Injectable()
@@ -50,13 +50,31 @@ export class OrdersService {
       throw new BadRequestException('首款+尾款与应收不一致，请填写差异说明');
     }
 
-    const orderNo = await nextNo(this.prisma.order, 'orderNo', 'DD');
-    const contractNo = dto.contractNo || (await nextNo(this.prisma.order, 'contractNo', 'HT'));
-    const firstPayNo = await nextNo(this.prisma.payment, 'paymentNo', 'SK');
+    const orderNo = await nextPairedNo(
+      this.prisma.order,
+      'orderNo',
+      'DD',
+      customer.customerNo,
+    );
+    const contractNo =
+      dto.contractNo ||
+      (await nextPairedNo(this.prisma.order, 'contractNo', 'HT', customer.customerNo));
+    const firstPayNo = await nextPairedNo(
+      this.prisma.payment,
+      'paymentNo',
+      'SK',
+      customer.customerNo,
+    );
     const hasTail = !!dto.tailPaymentAmount && dto.tailPaymentAmount > 0;
-    // 尾款编号取首款 +1（同事务内顺延，避免重复查询撞号）
+    // 尾款继续沿用客户编号尾号，加后缀避免与首款编号撞号。
     const tailPayNo = hasTail
-      ? 'SK' + String(parseInt(firstPayNo.slice(2), 10) + 1).padStart(6, '0')
+      ? await nextPairedNo(
+          this.prisma.payment,
+          'paymentNo',
+          'SK',
+          customer.customerNo,
+          [firstPayNo],
+        )
       : null;
 
     const order = await this.prisma.$transaction(async (tx) => {
