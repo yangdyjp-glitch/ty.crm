@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import { ReportsService } from './reports.service';
 import { Roles } from '../auth/roles.decorator';
@@ -16,8 +16,11 @@ export class ReportsController {
 
   @Get('finance')
   @Roles(UserRole.ADMIN)
-  finance() {
-    return this.reports.finance();
+  finance(
+    @Query()
+    q: { period?: 'all' | 'year' | 'month'; year?: string; month?: string },
+  ) {
+    return this.reports.finance(q);
   }
 
   @Get('channels')

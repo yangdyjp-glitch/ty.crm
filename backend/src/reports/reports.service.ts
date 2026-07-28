@@ -1,12 +1,15 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import {
   CommissionStatus,
   FundSettlementMode,
   PaymentConfirmStatus,
+  Prisma,
   UserRole,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthUser } from '../auth/current-user.decorator';
+
+const r2 = (n: number) => Math.round(n * 100) / 100;
 
 @Injectable()
 export class ReportsService {
@@ -176,28 +179,147 @@ export class ReportsService {
 
   // ===== 管理员报表（分币种） =====
 
-  async finance() {
-    const orders = await this.prisma.order.groupBy({
-      by: ['currency'],
-      where: { deletedAt: null },
-      _sum: {
-        receivableAmount: true,
-        paidAmount: true,
-        unpaidAmount: true,
-        refundAmount: true,
-      },
+  private signedAtRange(q: {
+    period?: 'all' | 'year' | 'month';
+    year?: string;
+    month?: string;
+  }) {
+    const period = q.period || 'all';
+    if (period === 'all') return {};
+
+    if (period === 'year') {
+      const year = parseInt(q.year || '', 10);
+      if (!year || year < 2000 || year > 2100) {
+        throw new BadRequestException('请选择有效年份');
+      }
+      return {
+        signedAt: {
+          gte: new Date(year, 0, 1),
+          lt: new Date(year + 1, 0, 1),
+        },
+      };
+    }
+
+    if (period === 'month') {
+      const match = /^(\d{4})-(\d{2})$/.exec(q.month || '');
+      const year = match ? parseInt(match[1], 10) : 0;
+      const month = match ? parseInt(match[2], 10) : 0;
+      if (!year || month < 1 || month > 12) {
+        throw new BadRequestException('请选择有效月份');
+      }
+      return {
+        signedAt: {
+          gte: new Date(year, month - 1, 1),
+          lt: new Date(year, month, 1),
+        },
+      };
+    }
+
+    throw new BadRequestException('统计范围无效');
+  }
+
+  async finance(q: {
+    period?: 'all' | 'year' | 'month';
+    year?: string;
+    month?: string;
+  }) {
+    const where: Prisma.OrderWhereInput = {
+      deletedAt: null,
+      ...this.signedAtRange(q),
+    };
+    const orders = await this.prisma.order.findMany({
+      where,
+      orderBy: { id: 'desc' },
+      include: { commission: true },
     });
-    const commissions = await this.prisma.commission.groupBy({
-      by: ['currency', 'fundSettlementMode'],
-      where: { deletedAt: null },
-      _sum: { payableAmount: true, paidAmount: true, unpaidAmount: true },
+
+    const summary = new Map<string, any>();
+    const byMode = new Map<string, any>();
+    const empty = (currency: string, fundSettlementMode?: FundSettlementMode) => ({
+      currency,
+      fundSettlementMode,
+      orderCount: 0,
+      receivableAmount: 0,
+      confirmedReceived: 0,
+      unpaidAmount: 0,
+      refundAmount: 0,
+      channelPayable: 0,
+      channelSettled: 0,
+      pendingRebate: 0,
+      companyActualReceived: 0,
+      balance: 0,
     });
-    const referrals = await this.prisma.downstreamReferral.groupBy({
-      by: ['currency', 'collectionStatus'],
-      where: { deletedAt: null },
-      _sum: { commissionAmount: true },
-    });
-    return { orders, commissions, referrals };
+
+    for (const order of orders) {
+      const commission =
+        order.commission && !order.commission.deletedAt ? order.commission : null;
+      const currency = order.currency;
+      const fundSettlementMode =
+        commission?.fundSettlementMode ?? order.fundSettlementMode;
+      const contractAmount = Number(order.receivableAmount);
+      const confirmedReceived = Number(order.paidAmount);
+      const unpaidAmount = Number(order.unpaidAmount);
+      const refundAmount = Number(order.refundAmount);
+      const channelPayable = Number(commission?.payableAmount ?? 0);
+      const hasArrived = confirmedReceived > 0;
+      let channelSettled = 0;
+      let pendingRebate = 0;
+      let companyActualReceived = 0;
+      let balance = 0;
+
+      if (commission) {
+        if (fundSettlementMode === FundSettlementMode.AGENT_NET) {
+          channelSettled = channelPayable;
+        } else if (commission.status === CommissionStatus.PAID) {
+          channelSettled = Number(commission.paidAmount || commission.payableAmount);
+        } else if (commission.status !== CommissionStatus.CANCELLED) {
+          pendingRebate = Number(commission.unpaidAmount || commission.payableAmount);
+        }
+      }
+
+      if (hasArrived) {
+        if (!commission) {
+          companyActualReceived = contractAmount;
+          balance = contractAmount;
+        } else if (fundSettlementMode === FundSettlementMode.AGENT_NET) {
+          companyActualReceived = r2(contractAmount - channelPayable);
+          balance = companyActualReceived;
+        } else {
+          companyActualReceived = contractAmount;
+          balance =
+            commission.status === CommissionStatus.PAID
+              ? r2(contractAmount - channelPayable)
+              : contractAmount;
+        }
+      }
+
+      const rows = [
+        summary.get(currency) ?? empty(currency),
+        byMode.get(`${currency}:${fundSettlementMode}`) ??
+          empty(currency, fundSettlementMode),
+      ];
+      for (const row of rows) {
+        row.orderCount += 1;
+        row.receivableAmount = r2(row.receivableAmount + contractAmount);
+        row.confirmedReceived = r2(row.confirmedReceived + confirmedReceived);
+        row.unpaidAmount = r2(row.unpaidAmount + unpaidAmount);
+        row.refundAmount = r2(row.refundAmount + refundAmount);
+        row.channelPayable = r2(row.channelPayable + channelPayable);
+        row.channelSettled = r2(row.channelSettled + channelSettled);
+        row.pendingRebate = r2(row.pendingRebate + pendingRebate);
+        row.companyActualReceived = r2(
+          row.companyActualReceived + companyActualReceived,
+        );
+        row.balance = r2(row.balance + balance);
+      }
+      summary.set(currency, rows[0]);
+      byMode.set(`${currency}:${fundSettlementMode}`, rows[1]);
+    }
+
+    return {
+      summary: [...summary.values()],
+      byMode: [...byMode.values()],
+    };
   }
 
   async channels() {
