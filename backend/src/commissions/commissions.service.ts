@@ -229,6 +229,83 @@ export class CommissionsService {
     return { items, total, page, pageSize };
   }
 
+  async cashAccounts(q: { page?: string; pageSize?: string }) {
+    const page = Math.max(1, parseInt(q.page || '1', 10));
+    const pageSize = Math.min(100, Math.max(1, parseInt(q.pageSize || '20', 10)));
+    const where: Prisma.OrderWhereInput = { deletedAt: null };
+    const [orders, total] = await this.prisma.$transaction([
+      this.prisma.order.findMany({
+        where,
+        orderBy: { id: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: {
+          customer: {
+            select: {
+              name: true,
+              channelNameSnapshot: true,
+              channel: { select: { name: true } },
+            },
+          },
+          commission: true,
+        },
+      }),
+      this.prisma.order.count({ where }),
+    ]);
+
+    const items = orders.map((order) => {
+      const commission =
+        order.commission && !order.commission.deletedAt ? order.commission : null;
+      const contractAmount = Number(order.receivableAmount);
+      const payableAmount = Number(commission?.payableAmount ?? 0);
+      const hasArrived = Number(order.paidAmount) > 0;
+      const fundSettlementMode =
+        commission?.fundSettlementMode ?? order.fundSettlementMode;
+      let actualReceived = 0;
+      let balance = 0;
+      let rebateStatus = '未到账';
+
+      if (hasArrived) {
+        if (!commission) {
+          actualReceived = contractAmount;
+          balance = contractAmount;
+          rebateStatus = '无返佣';
+        } else if (fundSettlementMode === FundSettlementMode.AGENT_NET) {
+          actualReceived = r2(contractAmount - payableAmount);
+          balance = actualReceived;
+          rebateStatus = '已自扣';
+        } else {
+          actualReceived = contractAmount;
+          if (commission.status === CommissionStatus.PAID) {
+            balance = r2(contractAmount - payableAmount);
+            rebateStatus = '已返佣';
+          } else {
+            balance = contractAmount;
+            rebateStatus = '未返佣';
+          }
+        }
+      }
+
+      return {
+        orderId: order.id,
+        customerName: order.customer.name,
+        channelName:
+          commission?.channelNameSnapshot ||
+          order.customer.channelNameSnapshot ||
+          order.customer.channel?.name ||
+          '—',
+        rebateStatus,
+        fundSettlementMode,
+        currency: order.currency,
+        contractAmount: r2(contractAmount),
+        actualReceived: r2(actualReceived),
+        balance: r2(balance),
+      };
+    });
+
+    return { items, total, page, pageSize };
+  }
+
   private async load(id: number) {
     const c = await this.prisma.commission.findFirst({
       where: { id, deletedAt: null },

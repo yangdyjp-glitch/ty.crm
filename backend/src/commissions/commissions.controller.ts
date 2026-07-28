@@ -31,6 +31,11 @@ export class CommissionsController {
     return this.commissions.list(q);
   }
 
+  @Get('cash-accounts')
+  cashAccounts(@Query() q: { page?: string; pageSize?: string }) {
+    return this.commissions.cashAccounts(q);
+  }
+
   @Post('batch-review')
   batchReview(@Body() body: { ids: number[] }) {
     return this.commissions.batchReview(body?.ids || []);

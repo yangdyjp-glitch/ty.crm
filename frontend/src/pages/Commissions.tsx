@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button, Modal, Select, Space, Table, Tag, message } from 'antd'
+import { Button, Modal, Select, Space, Table, Tabs, Tag, message } from 'antd'
 import client from '../api/client'
 import { ActionBtn, DeleteBtn } from '../components/Actions'
 import {
@@ -12,31 +12,60 @@ import {
 
 type Any = Record<string, any>
 
+const CONFIRMABLE_STATUS = ['PENDING_REVIEW', 'PENDING_PAYMENT']
+const FINAL_STATUS = ['PAID', 'CANCELLED', 'SELF_DEDUCTED']
+const REBATE_STATUS_COLOR: Record<string, string> = {
+  未到账: 'default',
+  已自扣: 'blue',
+  未返佣: 'orange',
+  已返佣: 'green',
+  无返佣: 'default',
+}
+const isSelfDeducted = (r: Any) =>
+  r.fundSettlementMode === 'AGENT_NET' || r.status === 'SELF_DEDUCTED'
+
+const canConfirmPayment = (r: Any) =>
+  r.fundSettlementMode === 'COMPANY_REBATE' &&
+  CONFIRMABLE_STATUS.includes(r.status) &&
+  !r.suspended
+
 export default function Commissions() {
   const [data, setData] = useState<{ items: Any[]; total: number }>({ items: [], total: 0 })
   const [page, setPage] = useState(1)
   const [status, setStatus] = useState<string>()
   const [loading, setLoading] = useState(false)
   const [selected, setSelected] = useState<number[]>([])
+  const [cashData, setCashData] = useState<{ items: Any[]; total: number }>({ items: [], total: 0 })
+  const [cashPage, setCashPage] = useState(1)
+  const [cashLoading, setCashLoading] = useState(false)
 
-  const batch = async (action: 'batch-review' | 'batch-pay') => {
+  const batch = async () => {
     if (!selected.length) return
-    const { data: res } = await client.post(`/commissions/${action}`, { ids: selected })
-    message.success(`已结算 ${res.paid}/${res.total}`)
+    const { data: res } = await client.post('/commissions/batch-pay', { ids: selected })
+    message.success(`已确认支付 ${res.paid}/${res.total}`)
     setSelected([])
     load()
+    loadCash()
   }
 
   const load = () => {
     setLoading(true)
     client.get('/commissions', { params: { page, pageSize: 10, status } }).then((r) => setData(r.data)).finally(() => setLoading(false))
   }
+
+  const loadCash = () => {
+    setCashLoading(true)
+    client.get('/commissions/cash-accounts', { params: { page: cashPage, pageSize: 10 } }).then((r) => setCashData(r.data)).finally(() => setCashLoading(false))
+  }
+
   useEffect(load, [page, status])
+  useEffect(loadCash, [cashPage])
 
   const act = async (id: number, action: string) => {
     const { data: res } = await client.post(`/commissions/${id}/${action}`)
     if (action === 'pay') {
-      message.success(`已支付：应付 ${fmtMoney(res.payable)}，往来抵扣 ${fmtMoney(res.offset)}，实付现金 ${fmtMoney(res.cashOut)}`)
+      message.success(`已确认支付：应付 ${fmtMoney(res.payable)}，往来抵扣 ${fmtMoney(res.offset)}，实付现金 ${fmtMoney(res.cashOut)}`)
+      loadCash()
     } else {
       message.success('已更新')
     }
@@ -48,13 +77,14 @@ export default function Commissions() {
       await client.delete(`/commissions/${id}`)
       message.success('已删除')
       load()
+      loadCash()
     } catch (e: any) {
       message.error(e.response?.data?.message || '删除失败')
     }
   }
 
-  return (
-    <div>
+  const settlementTable = (
+    <>
       <Space style={{ marginBottom: 16 }}>
         <Select
           allowClear
@@ -64,7 +94,7 @@ export default function Commissions() {
           onChange={(v) => { setPage(1); setStatus(v) }}
           options={Object.entries(COMMISSION_STATUS_LABEL).map(([k, v]) => ({ value: k, label: v }))}
         />
-        <Button type="primary" disabled={!selected.length} onClick={() => batch('batch-pay')}>批量结算（{selected.length}）</Button>
+        <Button type="primary" disabled={!selected.length} onClick={batch}>批量确认支付（{selected.length}）</Button>
       </Space>
       <Table
         rowKey="id"
@@ -74,7 +104,7 @@ export default function Commissions() {
           selectedRowKeys: selected,
           onChange: (k) => setSelected(k as number[]),
           getCheckboxProps: (r: Any) => ({
-            disabled: !['PENDING_REVIEW', 'PENDING_PAYMENT'].includes(r.status) || r.suspended,
+            disabled: !canConfirmPayment(r),
           }),
         }}
         pagination={{ current: page, pageSize: 10, total: data.total, onChange: setPage, showSizeChanger: false }}
@@ -97,31 +127,67 @@ export default function Commissions() {
           },
           {
             title: '操作',
-            render: (_, r) => (
-              <Space wrap>
-                {['PENDING_REVIEW', 'PENDING_PAYMENT'].includes(r.status) && !r.suspended && <ActionBtn tone="confirm" onClick={() => act(r.id, 'pay')}>结算</ActionBtn>}
-                {!['PAID', 'CANCELLED', 'SELF_DEDUCTED'].includes(r.status) &&
-                  (r.suspended ? (
-                    <ActionBtn tone="confirm" onClick={() => act(r.id, 'resume')}>解除挂起</ActionBtn>
-                  ) : (
-                    <ActionBtn tone="reject" onClick={() => act(r.id, 'suspend')}>挂起</ActionBtn>
-                  ))}
-                {!['PAID', 'CANCELLED', 'SELF_DEDUCTED'].includes(r.status) && (
-                  <ActionBtn
-                    tone="reject"
-                    onClick={() =>
-                      Modal.confirm({ title: '确认取消该分成？', onOk: () => act(r.id, 'cancel') })
-                    }
-                  >
-                    取消
-                  </ActionBtn>
-                )}
-                <DeleteBtn onConfirm={() => doRemove(r.id)} />
-              </Space>
-            ),
+            render: (_, r) => {
+              if (isSelfDeducted(r)) return <Tag color="default">已自扣(报表)</Tag>
+
+              return (
+                <Space wrap>
+                  {canConfirmPayment(r) && <ActionBtn tone="confirm" onClick={() => act(r.id, 'pay')}>确认支付</ActionBtn>}
+                  {!FINAL_STATUS.includes(r.status) &&
+                    (r.suspended ? (
+                      <ActionBtn tone="confirm" onClick={() => act(r.id, 'resume')}>解除挂起</ActionBtn>
+                    ) : (
+                      <ActionBtn tone="reject" onClick={() => act(r.id, 'suspend')}>挂起</ActionBtn>
+                    ))}
+                  {!FINAL_STATUS.includes(r.status) && (
+                    <ActionBtn
+                      tone="reject"
+                      onClick={() =>
+                        Modal.confirm({ title: '确认取消该分成？', onOk: () => act(r.id, 'cancel') })
+                      }
+                    >
+                      取消
+                    </ActionBtn>
+                  )}
+                  <DeleteBtn onConfirm={() => doRemove(r.id)} />
+                </Space>
+              )
+            },
           },
         ]}
       />
-    </div>
+    </>
+  )
+
+  const cashTable = (
+    <Table
+      rowKey="orderId"
+      loading={cashLoading}
+      dataSource={cashData.items}
+      pagination={{ current: cashPage, pageSize: 10, total: cashData.total, onChange: setCashPage, showSizeChanger: false }}
+      columns={[
+        { title: '客户名称', dataIndex: 'customerName' },
+        { title: '渠道', dataIndex: 'channelName' },
+        {
+          title: '返佣状态',
+          dataIndex: 'rebateStatus',
+          render: (s: string) => <Tag color={REBATE_STATUS_COLOR[s]}>{s}</Tag>,
+        },
+        { title: '资金模式', dataIndex: 'fundSettlementMode', render: (m: string) => FUND_MODE_LABEL[m] },
+        { title: '币种', dataIndex: 'currency', render: (c: string) => CURRENCY_LABEL[c] || c },
+        { title: '合同金额', dataIndex: 'contractAmount', render: fmtMoney, align: 'right' },
+        { title: '实际入账', dataIndex: 'actualReceived', render: fmtMoney, align: 'right' },
+        { title: '当前结余', dataIndex: 'balance', render: fmtMoney, align: 'right' },
+      ]}
+    />
+  )
+
+  return (
+    <Tabs
+      items={[
+        { key: 'settlement', label: '分成结算', children: settlementTable },
+        { key: 'cash', label: '现金账目', children: cashTable },
+      ]}
+    />
   )
 }
