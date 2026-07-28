@@ -15,7 +15,7 @@ import {
 import client from '../api/client'
 import { CURRENCY_LABEL, fmtMoney } from '../api/types'
 import { ActionBtn, DeleteBtn } from '../components/Actions'
-import { COL, pageTableProps } from '../components/tableLayout'
+import { COL, scrollTableProps } from '../components/tableLayout'
 
 type Any = Record<string, any>
 
@@ -69,7 +69,7 @@ export default function Products() {
     <div>
       <Button type="primary" style={{ marginBottom: 16 }} onClick={() => openForm()}>新增项目</Button>
       <Table
-        {...pageTableProps}
+        {...scrollTableProps}
         rowKey="id"
         loading={loading}
         dataSource={rows}

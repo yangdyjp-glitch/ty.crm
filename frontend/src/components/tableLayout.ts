@@ -30,6 +30,12 @@ export const pageTableProps = {
   scroll: { x: 'max-content' as const },
 }
 
+export const scrollTableProps = {
+  ...pageTableProps,
+  pagination: false as const,
+  scroll: { x: 'max-content' as const, y: 'calc(100vh - 320px)' },
+}
+
 export const smallTableProps = {
   ...pageTableProps,
   size: 'small' as const,

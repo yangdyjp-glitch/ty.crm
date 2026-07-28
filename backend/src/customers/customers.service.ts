@@ -35,6 +35,7 @@ export interface CustomerListQuery {
   ownerUserId?: string;
   assignmentStatus?: AssignmentStatus;
   intentionLevel?: string;
+  all?: string;
   page?: string;
   pageSize?: string;
 }
@@ -126,6 +127,7 @@ export class CustomersService {
   }
 
   async list(user: AuthUser, q: CustomerListQuery) {
+    const showAll = q.all === '1' || q.all === 'true';
     const page = Math.max(1, parseInt(q.page || '1', 10));
     const pageSize = Math.min(100, Math.max(1, parseInt(q.pageSize || '20', 10)));
     const where: Prisma.CustomerWhereInput = {
@@ -152,8 +154,7 @@ export class CustomersService {
       this.prisma.customer.findMany({
         where,
         orderBy: { id: 'desc' },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
+        ...(showAll ? {} : { skip: (page - 1) * pageSize, take: pageSize }),
         include: {
           channel: { select: { id: true, name: true, channelType: true } },
           acquisitionChannel: { select: { id: true, name: true } },

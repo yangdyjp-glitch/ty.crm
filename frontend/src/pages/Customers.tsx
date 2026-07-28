@@ -14,7 +14,7 @@ import {
 } from 'antd'
 import { UploadOutlined } from '@ant-design/icons'
 import { ActionBtn, DeleteBtn } from '../components/Actions'
-import { COL, pageTableProps } from '../components/tableLayout'
+import { COL, scrollTableProps } from '../components/tableLayout'
 import client, { downloadFile } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import {
@@ -36,7 +36,6 @@ export default function Customers() {
   const nav = useNavigate()
   const [data, setData] = useState<{ items: Any[]; total: number }>({ items: [], total: 0 })
   const [loading, setLoading] = useState(false)
-  const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>()
   const [modalOpen, setModalOpen] = useState(false)
@@ -56,11 +55,11 @@ export default function Customers() {
   const load = () => {
     setLoading(true)
     client
-      .get('/customers', { params: { page, pageSize: 10, search: search || undefined, mainStatus: statusFilter } })
+      .get('/customers', { params: { all: 1, search: search || undefined, mainStatus: statusFilter } })
       .then((r) => setData(r.data))
       .finally(() => setLoading(false))
   }
-  useEffect(load, [page, search, statusFilter])
+  useEffect(load, [search, statusFilter])
 
   const openCreate = async () => {
     form.resetFields()
@@ -202,13 +201,13 @@ export default function Customers() {
   return (
     <div>
       <Space style={{ marginBottom: 16 }} wrap>
-        <Input.Search placeholder="姓名/电话/微信/编号" allowClear onSearch={(v) => { setPage(1); setSearch(v) }} style={{ width: 240 }} />
+        <Input.Search placeholder="姓名/电话/微信/编号" allowClear onSearch={setSearch} style={{ width: 240 }} />
         <Select
           allowClear
           placeholder="状态筛选"
           style={{ width: 140 }}
           value={statusFilter}
-          onChange={(v) => { setPage(1); setStatusFilter(v) }}
+          onChange={setStatusFilter}
           options={Object.entries(CUSTOMER_STATUS_LABEL).map(([k, v]) => ({ value: k, label: v }))}
         />
         {canCreate && <Button type="primary" onClick={openCreate}>新增客户</Button>}
@@ -231,12 +230,11 @@ export default function Customers() {
       </Space>
 
       <Table
-        {...pageTableProps}
+        {...scrollTableProps}
         rowKey="id"
         loading={loading}
         columns={columns as any}
         dataSource={data.items}
-        pagination={{ current: page, pageSize: 10, total: data.total, onChange: setPage, showSizeChanger: false }}
       />
 
       <Modal title="新增客户" open={modalOpen} onCancel={() => setModalOpen(false)} onOk={() => submitCreate(false)} confirmLoading={submitting} okText={submitting ? '处理中…' : '确定'} maskClosable={false} cancelButtonProps={{ disabled: submitting }} destroyOnClose>

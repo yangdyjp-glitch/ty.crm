@@ -14,7 +14,7 @@ import {
 import dayjs from 'dayjs'
 import client from '../api/client'
 import { ActionBtn, DeleteBtn } from '../components/Actions'
-import { COL, pageTableProps, smallTableProps } from '../components/tableLayout'
+import { COL, scrollTableProps, smallTableProps } from '../components/tableLayout'
 import { useAuth } from '../auth/AuthContext'
 import {
   CHANNEL_TYPE_LABEL,
@@ -125,7 +125,7 @@ export default function Channels() {
         {isAdmin ? '新增渠道' : '新增个人渠道'}
       </Button>
       <Table
-        {...pageTableProps}
+        {...scrollTableProps}
         rowKey="id"
         loading={loading}
         dataSource={rows}
