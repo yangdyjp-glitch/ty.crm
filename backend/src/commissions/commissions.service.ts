@@ -205,9 +205,11 @@ export class CommissionsService {
   async list(q: {
     channelId?: string;
     status?: CommissionStatus;
+    all?: string;
     page?: string;
     pageSize?: string;
   }) {
+    const showAll = q.all === '1' || q.all === 'true';
     const page = Math.max(1, parseInt(q.page || '1', 10));
     const pageSize = Math.min(100, Math.max(1, parseInt(q.pageSize || '20', 10)));
     const where: Prisma.CommissionWhereInput = { deletedAt: null };
@@ -217,8 +219,7 @@ export class CommissionsService {
       this.prisma.commission.findMany({
         where,
         orderBy: { id: 'desc' },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
+        ...(showAll ? {} : { skip: (page - 1) * pageSize, take: pageSize }),
         include: {
           customer: { select: { name: true } },
           order: { select: { orderNo: true } },
@@ -229,7 +230,8 @@ export class CommissionsService {
     return { items, total, page, pageSize };
   }
 
-  async cashAccounts(q: { page?: string; pageSize?: string }) {
+  async cashAccounts(q: { all?: string; page?: string; pageSize?: string }) {
+    const showAll = q.all === '1' || q.all === 'true';
     const page = Math.max(1, parseInt(q.page || '1', 10));
     const pageSize = Math.min(100, Math.max(1, parseInt(q.pageSize || '20', 10)));
     const where: Prisma.OrderWhereInput = { deletedAt: null };
@@ -237,8 +239,7 @@ export class CommissionsService {
       this.prisma.order.findMany({
         where,
         orderBy: { id: 'desc' },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
+        ...(showAll ? {} : { skip: (page - 1) * pageSize, take: pageSize }),
         include: {
           customer: {
             select: {

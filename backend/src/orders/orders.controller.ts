@@ -24,7 +24,7 @@ export class OrdersController {
   list(
     @CurrentUser() user: AuthUser,
     @Query()
-    q: { customerId?: string; status?: OrderStatus; page?: string; pageSize?: string },
+    q: { customerId?: string; status?: OrderStatus; all?: string; page?: string; pageSize?: string },
   ) {
     return this.orders.list(user, q);
   }

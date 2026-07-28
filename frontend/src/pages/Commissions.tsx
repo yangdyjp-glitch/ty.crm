@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Button, Modal, Select, Space, Table, Tabs, Tag, message } from 'antd'
 import client from '../api/client'
 import { ActionBtn, DeleteBtn } from '../components/Actions'
-import { COL, pageTableProps } from '../components/tableLayout'
+import { COL, scrollTableProps } from '../components/tableLayout'
 import {
   COMMISSION_STATUS_COLOR,
   COMMISSION_STATUS_LABEL,
@@ -32,12 +32,10 @@ const canConfirmPayment = (r: Any) =>
 
 export default function Commissions() {
   const [data, setData] = useState<{ items: Any[]; total: number }>({ items: [], total: 0 })
-  const [page, setPage] = useState(1)
   const [status, setStatus] = useState<string>()
   const [loading, setLoading] = useState(false)
   const [selected, setSelected] = useState<number[]>([])
   const [cashData, setCashData] = useState<{ items: Any[]; total: number }>({ items: [], total: 0 })
-  const [cashPage, setCashPage] = useState(1)
   const [cashLoading, setCashLoading] = useState(false)
 
   const batch = async () => {
@@ -51,16 +49,16 @@ export default function Commissions() {
 
   const load = () => {
     setLoading(true)
-    client.get('/commissions', { params: { page, pageSize: 10, status } }).then((r) => setData(r.data)).finally(() => setLoading(false))
+    client.get('/commissions', { params: { all: 1, status } }).then((r) => setData(r.data)).finally(() => setLoading(false))
   }
 
   const loadCash = () => {
     setCashLoading(true)
-    client.get('/commissions/cash-accounts', { params: { page: cashPage, pageSize: 10 } }).then((r) => setCashData(r.data)).finally(() => setCashLoading(false))
+    client.get('/commissions/cash-accounts', { params: { all: 1 } }).then((r) => setCashData(r.data)).finally(() => setCashLoading(false))
   }
 
-  useEffect(load, [page, status])
-  useEffect(loadCash, [cashPage])
+  useEffect(load, [status])
+  useEffect(loadCash, [])
 
   const act = async (id: number, action: string) => {
     const { data: res } = await client.post(`/commissions/${id}/${action}`)
@@ -92,13 +90,13 @@ export default function Commissions() {
           placeholder="状态筛选"
           style={{ width: 160 }}
           value={status}
-          onChange={(v) => { setPage(1); setStatus(v) }}
+          onChange={(v) => { setSelected([]); setStatus(v) }}
           options={Object.entries(COMMISSION_STATUS_LABEL).map(([k, v]) => ({ value: k, label: v }))}
         />
         <Button type="primary" disabled={!selected.length} onClick={batch}>批量确认支付（{selected.length}）</Button>
       </Space>
       <Table
-        {...pageTableProps}
+        {...scrollTableProps}
         rowKey="id"
         loading={loading}
         dataSource={data.items}
@@ -109,7 +107,6 @@ export default function Commissions() {
             disabled: !canConfirmPayment(r),
           }),
         }}
-        pagination={{ current: page, pageSize: 10, total: data.total, onChange: setPage, showSizeChanger: false }}
         columns={[
           { title: '客户', width: COL.person, render: (_, r) => r.customer?.name },
           { title: '订单', width: COL.no, render: (_, r) => r.order?.orderNo },
@@ -165,11 +162,10 @@ export default function Commissions() {
 
   const cashTable = (
     <Table
-      {...pageTableProps}
+      {...scrollTableProps}
       rowKey="orderId"
       loading={cashLoading}
       dataSource={cashData.items}
-      pagination={{ current: cashPage, pageSize: 10, total: cashData.total, onChange: setCashPage, showSizeChanger: false }}
       columns={[
         { title: '客户名称', dataIndex: 'customerName', width: COL.person },
         { title: '渠道', dataIndex: 'channelName', width: COL.channel },

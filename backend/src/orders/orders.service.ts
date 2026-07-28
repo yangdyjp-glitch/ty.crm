@@ -125,8 +125,9 @@ export class OrdersService {
 
   async list(
     user: AuthUser,
-    q: { customerId?: string; status?: OrderStatus; page?: string; pageSize?: string },
+    q: { customerId?: string; status?: OrderStatus; all?: string; page?: string; pageSize?: string },
   ) {
+    const showAll = q.all === '1' || q.all === 'true';
     const page = Math.max(1, parseInt(q.page || '1', 10));
     const pageSize = Math.min(100, Math.max(1, parseInt(q.pageSize || '20', 10)));
     const where: Prisma.OrderWhereInput = {
@@ -140,8 +141,7 @@ export class OrdersService {
       this.prisma.order.findMany({
         where,
         orderBy: { id: 'desc' },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
+        ...(showAll ? {} : { skip: (page - 1) * pageSize, take: pageSize }),
         include: {
           customer: { select: { id: true, name: true, customerNo: true } },
           product: { select: { id: true, name: true } },

@@ -13,7 +13,7 @@ import {
   message,
 } from 'antd'
 import { ActionBtn, DeleteBtn } from '../components/Actions'
-import { COL, pageTableProps } from '../components/tableLayout'
+import { COL, scrollTableProps } from '../components/tableLayout'
 import client from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import { loadProducts } from '../api/options'
@@ -27,7 +27,6 @@ export default function Orders() {
   const isAdmin = user?.role === 'ADMIN'
   const nav = useNavigate()
   const [data, setData] = useState<{ items: Any[]; total: number }>({ items: [], total: 0 })
-  const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -44,13 +43,13 @@ export default function Orders() {
 
   const load = () => {
     setLoading(true)
-    client.get('/orders', { params: { page, pageSize: 12 } }).then((r) => setData(r.data)).finally(() => setLoading(false))
+    client.get('/orders', { params: { all: 1 } }).then((r) => setData(r.data)).finally(() => setLoading(false))
   }
-  useEffect(load, [page])
+  useEffect(load, [])
 
   const openCreate = async () => {
     form.resetFields()
-    const cs = await client.get('/customers', { params: { pageSize: 100 } })
+    const cs = await client.get('/customers', { params: { all: 1 } })
     setCustomers(cs.data.items)
     setProducts(await loadProducts().catch(() => []))
     setOpen(true)
@@ -134,12 +133,11 @@ export default function Orders() {
     <div>
       <Button type="primary" style={{ marginBottom: 16 }} onClick={openCreate}>签约（新建订单）</Button>
       <Table
-        {...pageTableProps}
+        {...scrollTableProps}
         rowKey="id"
         loading={loading}
         columns={columns}
         dataSource={data.items}
-        pagination={{ current: page, pageSize: 12, total: data.total, onChange: setPage, showSizeChanger: false }}
       />
       <Modal title="签约（首款必填 / 尾款选填）" open={open} onCancel={() => setOpen(false)} onOk={submit} confirmLoading={submitting} okText={submitting ? '处理中…' : '确定'} maskClosable={false} cancelButtonProps={{ disabled: submitting }} destroyOnClose>
         <Form form={form} layout="vertical" initialValues={{ currency: 'JPY' }}>

@@ -13,7 +13,7 @@ import {
   message,
 } from 'antd'
 import { ActionBtn, DeleteBtn } from '../components/Actions'
-import { COL, pageTableProps } from '../components/tableLayout'
+import { COL, scrollTableProps } from '../components/tableLayout'
 import client from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import { CURRENCY_LABEL, PAYMENT_CONFIRM_LABEL, fmtMoney } from '../api/types'
@@ -42,7 +42,7 @@ export default function Payments() {
 
   const openCreate = async () => {
     form.resetFields()
-    const o = await client.get('/orders', { params: { pageSize: 100 } })
+    const o = await client.get('/orders', { params: { all: 1 } })
     setOrders(o.data.items.filter((x: Any) => !['REFUNDED', 'CANCELLED'].includes(x.status)))
     setOpen(true)
   }
@@ -100,7 +100,7 @@ export default function Payments() {
     <div>
       <Button type="primary" style={{ marginBottom: 16 }} onClick={openCreate}>录入收款</Button>
       <Table
-        {...pageTableProps}
+        {...scrollTableProps}
         rowKey="id"
         loading={loading}
         dataSource={rows}

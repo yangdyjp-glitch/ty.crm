@@ -24,6 +24,7 @@ export class CommissionsController {
     q: {
       channelId?: string;
       status?: CommissionStatus;
+      all?: string;
       page?: string;
       pageSize?: string;
     },
@@ -32,7 +33,7 @@ export class CommissionsController {
   }
 
   @Get('cash-accounts')
-  cashAccounts(@Query() q: { page?: string; pageSize?: string }) {
+  cashAccounts(@Query() q: { all?: string; page?: string; pageSize?: string }) {
     return this.commissions.cashAccounts(q);
   }
 
