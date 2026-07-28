@@ -14,7 +14,7 @@ const NAV: Item[] = [
   { key: '/customers', cn: '客户 / 线索', en: 'CUSTOMERS', roles: ['ADMIN', 'SALES', 'MARKET', 'BUSINESS_SUPERVISOR'] },
   { key: '/orders', cn: '订单 / 签约', en: 'ORDERS', roles: ['ADMIN', 'SALES', 'BUSINESS_SUPERVISOR'] },
   { key: '/payments', cn: '收款 / 退款', en: 'PAYMENTS', roles: ['ADMIN', 'SALES', 'BUSINESS_SUPERVISOR'] },
-  { key: '/commissions', cn: '分成/账目', en: 'SETTLEMENT', roles: ['ADMIN'] },
+  { key: '/commissions', cn: '分成 / 账目', en: 'SETTLEMENT', roles: ['ADMIN'] },
   { key: '/products', cn: '项目管理', en: 'PRODUCTS', roles: ['ADMIN'], admin: true },
   { key: '/channels', cn: '渠道管理', en: 'CHANNELS', roles: ['ADMIN', 'MARKET', 'BUSINESS_SUPERVISOR'], admin: true },
   { key: '/reports', cn: '报表', en: 'REPORTS', roles: ['ADMIN'], admin: true },
