@@ -23,7 +23,6 @@ import {
   loadUserOptions,
 } from '../api/options'
 import {
-  CUSTOMER_STATUS_COLOR,
   CUSTOMER_STATUS_LABEL,
   INTENTION_LABEL,
   SOURCE_LABEL,
@@ -68,6 +67,7 @@ export default function Customers() {
   const [editCust, setEditCust] = useState<Any | null>(null)
   const [editForm] = Form.useForm()
   const [editSourceCat, setEditSourceCat] = useState('SELF')
+  const [inlineUpdatingId, setInlineUpdatingId] = useState<number | null>(null)
 
   const canCreate = user?.role === 'MARKET' || user?.role === 'BUSINESS_SUPERVISOR' || user?.role === 'ADMIN'
   const canEditCustomerName = user?.role === 'BUSINESS_SUPERVISOR' || user?.role === 'ADMIN'
@@ -174,6 +174,19 @@ export default function Customers() {
     }
   }
 
+  const updateInline = async (id: number, payload: Any) => {
+    setInlineUpdatingId(id)
+    try {
+      await client.patch(`/customers/${id}`, payload)
+      message.success('已修改')
+      load()
+    } catch (e: any) {
+      message.error(e.response?.data?.message || '操作失败')
+    } finally {
+      setInlineUpdatingId(null)
+    }
+  }
+
   const sourceFilters = useMemo(() => uniqueFilters(data.items, sourceChannelLabel), [data.items])
   const ownerFilters = useMemo(
     () =>
@@ -208,9 +221,15 @@ export default function Customers() {
       filters: Object.entries(CUSTOMER_STATUS_LABEL).map(([value, label]) => ({ text: label, value })),
       onFilter: (value: any, r: Any) => r.mainStatus === value,
       render: (s: string, r: Any) => (
-        <a onClick={() => openQuickEdit(r)}>
-          <Tag color={CUSTOMER_STATUS_COLOR[s]}>{CUSTOMER_STATUS_LABEL[s]}</Tag>
-        </a>
+        <Select
+          size="small"
+          value={s}
+          disabled={inlineUpdatingId === r.id}
+          popupMatchSelectWidth={false}
+          style={{ width: '100%' }}
+          options={Object.entries(CUSTOMER_STATUS_LABEL).map(([value, label]) => ({ value, label }))}
+          onChange={(value) => updateInline(r.id, { mainStatus: value })}
+        />
       ),
     },
     {
@@ -222,7 +241,19 @@ export default function Customers() {
         { text: '未填写', value: '__EMPTY__' },
       ],
       onFilter: (value: any, r: Any) => (value === '__EMPTY__' ? !r.intentionLevel : r.intentionLevel === value),
-      render: (i: string, r: Any) => <a onClick={() => openQuickEdit(r)}>{i ? INTENTION_LABEL[i] : '—'}</a>,
+      render: (i: string, r: Any) => (
+        <Select
+          allowClear
+          size="small"
+          placeholder="未填写"
+          value={i || undefined}
+          disabled={inlineUpdatingId === r.id}
+          popupMatchSelectWidth={false}
+          style={{ width: '100%' }}
+          options={Object.entries(INTENTION_LABEL).map(([value, label]) => ({ value, label }))}
+          onChange={(value) => updateInline(r.id, { intentionLevel: value ?? null })}
+        />
+      ),
     },
     {
       title: '分配',
