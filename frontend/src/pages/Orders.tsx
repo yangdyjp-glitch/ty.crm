@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Button,
@@ -12,6 +12,7 @@ import {
   Tag,
   message,
 } from 'antd'
+import dayjs from 'dayjs'
 import { ActionBtn, DeleteBtn } from '../components/Actions'
 import { COL, scrollTableProps } from '../components/tableLayout'
 import client from '../api/client'
@@ -21,6 +22,41 @@ import { CURRENCY_LABEL, ORDER_STATUS_LABEL, fmtDate, fmtMoney, todayDate } from
 import { moneyIn } from '../api/money'
 
 type Any = Record<string, any>
+const EMPTY_FILTER = '__EMPTY__'
+
+function filterValue(v: unknown) {
+  return v == null || v === '' ? EMPTY_FILTER : String(v)
+}
+
+function filterText(v: unknown) {
+  return v == null || v === '' ? '—' : String(v)
+}
+
+function uniqueFilters(rows: Any[], getValue: (row: Any) => unknown, getText: (row: Any) => unknown = getValue) {
+  const seen = new Map<string, string>()
+  rows.forEach((row) => {
+    const value = filterValue(getValue(row))
+    if (!seen.has(value)) seen.set(value, filterText(getText(row)))
+  })
+  return Array.from(seen.entries())
+    .sort(([, a], [, b]) => a.localeCompare(b, 'zh-CN'))
+    .map(([value, text]) => ({ value, text }))
+}
+
+function signedMonthValue(r: Any) {
+  return r.signedAt ? dayjs(r.signedAt).format('YYYY-MM') : EMPTY_FILTER
+}
+
+function monthFilters(rows: Any[]) {
+  const values = Array.from(new Set(rows.map(signedMonthValue)))
+  return values
+    .sort((a, b) => {
+      if (a === EMPTY_FILTER) return 1
+      if (b === EMPTY_FILTER) return -1
+      return b.localeCompare(a)
+    })
+    .map((value) => ({ value, text: value === EMPTY_FILTER ? '未填写' : value }))
+}
 
 export default function Orders() {
   const { user } = useAuth()
@@ -101,16 +137,58 @@ export default function Orders() {
     }
   }
 
+  const signedMonthFilters = useMemo(() => monthFilters(data.items), [data.items])
+  const productFilters = useMemo(
+    () => uniqueFilters(data.items, (r) => r.product?.id, (r) => r.product?.name),
+    [data.items],
+  )
+  const currencyFilters = useMemo(
+    () => uniqueFilters(data.items, (r) => r.currency, (r) => CURRENCY_LABEL[r.currency] || r.currency),
+    [data.items],
+  )
+  const statusFilters = useMemo(
+    () => uniqueFilters(data.items, (r) => r.status, (r) => ORDER_STATUS_LABEL[r.status] || r.status),
+    [data.items],
+  )
+
   const columns = [
     { title: '订单号', dataIndex: 'orderNo', width: COL.no, render: (n: string, r: Any) => <a onClick={() => nav(`/orders/${r.id}`)}>{n}</a> },
-    { title: '时间', dataIndex: 'signedAt', width: COL.date, render: fmtDate },
+    {
+      title: '时间',
+      dataIndex: 'signedAt',
+      width: COL.date,
+      filters: signedMonthFilters,
+      onFilter: (value: any, r: Any) => signedMonthValue(r) === value,
+      render: fmtDate,
+    },
     { title: '客户', width: COL.person, render: (_: any, r: Any) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
-    { title: '项目', width: COL.project, render: (_: any, r: Any) => r.product?.name },
-    { title: '币种', dataIndex: 'currency', width: COL.currency, render: (c: string) => CURRENCY_LABEL[c] },
+    {
+      title: '项目',
+      width: COL.project,
+      filters: productFilters,
+      filterSearch: true,
+      onFilter: (value: any, r: Any) => filterValue(r.product?.id) === value,
+      render: (_: any, r: Any) => r.product?.name,
+    },
+    {
+      title: '币种',
+      dataIndex: 'currency',
+      width: COL.currency,
+      filters: currencyFilters,
+      onFilter: (value: any, r: Any) => filterValue(r.currency) === value,
+      render: (c: string) => CURRENCY_LABEL[c],
+    },
     { title: '应收', dataIndex: 'receivableAmount', width: COL.money, render: fmtMoney, align: 'right' as const },
     { title: '已收', dataIndex: 'paidAmount', width: COL.money, render: moneyIn, align: 'right' as const },
     { title: '未收', dataIndex: 'unpaidAmount', width: COL.money, render: fmtMoney, align: 'right' as const },
-    { title: '状态', dataIndex: 'status', width: COL.status, render: (s: string) => <Tag>{ORDER_STATUS_LABEL[s]}</Tag> },
+    {
+      title: '确认状态',
+      dataIndex: 'status',
+      width: COL.status,
+      filters: statusFilters,
+      onFilter: (value: any, r: Any) => filterValue(r.status) === value,
+      render: (s: string) => <Tag>{ORDER_STATUS_LABEL[s]}</Tag>,
+    },
     {
       title: '操作',
       width: COL.actionWide,
