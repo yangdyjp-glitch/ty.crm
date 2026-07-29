@@ -122,11 +122,11 @@ function TrendChart({ rows }: { rows: TrendPoint[] }) {
   if (!data.length) return <div style={{ color: '#9ca3af', padding: 24 }}>暂无数据</div>
 
   const width = chartWidth
-  const height = 300
+  const height = 318
   const left = 56
   const right = 28
   const top = 30
-  const bottom = 46
+  const bottom = data.length > 18 ? 68 : 50
   const plotW = width - left - right
   const plotH = height - top - bottom
   const maxRaw = Math.max(1, ...data.flatMap((d) => [d.leads || 0, d.signed || 0]))
@@ -155,10 +155,11 @@ function TrendChart({ rows }: { rows: TrendPoint[] }) {
     const last = points[points.length - 1]
     return `${linePath(field)} L ${last.x} ${top + plotH} L ${first.x} ${top + plotH} Z`
   }
-  const labelStep = data.length <= 15 ? 2 : 5
+  const gridStep = data.length <= 15 ? 1 : 5
   const yTicks = Array.from({ length: Math.floor(maxValue / tickStep) + 1 }, (_, i) => maxValue - i * tickStep)
   const formatTick = (value: number) => Number(value.toFixed(2)).toLocaleString('zh-CN')
   const canShowPoint = (value: number, index: number) => value > 0 || index === data.length - 1
+  const tiltXLabels = data.length > 18
 
   return (
     <div ref={wrapRef} style={{ width: '100%', minHeight: 314, padding: '8px 14px 16px' }}>
@@ -188,7 +189,7 @@ function TrendChart({ rows }: { rows: TrendPoint[] }) {
           )
         })}
         {data.map((d, i) => (
-          (i % labelStep === 0 || i === data.length - 1) && (
+          (i % gridStep === 0 || i === data.length - 1) && (
             <line
               key={`grid-${d.date}`}
               x1={xAt(i)}
@@ -219,9 +220,16 @@ function TrendChart({ rows }: { rows: TrendPoint[] }) {
                 <circle cx={xAt(i)} cy={yAt(d.signed || 0)} r="2.2" fill="#b8860b" />
               </>
             )}
-            {(i % labelStep === 0 || i === data.length - 1) && (
-              <text x={xAt(i)} y={height - 18} textAnchor="middle" fill="#7c8797" fontSize="11">{d.label}</text>
-            )}
+            <text
+              x={xAt(i)}
+              y={height - (tiltXLabels ? 28 : 18)}
+              textAnchor={tiltXLabels ? 'end' : 'middle'}
+              fill="#7c8797"
+              fontSize={tiltXLabels ? '10' : '11'}
+              transform={tiltXLabels ? `rotate(-42 ${xAt(i)} ${height - 28})` : undefined}
+            >
+              {d.label}
+            </text>
           </g>
         ))}
       </svg>
