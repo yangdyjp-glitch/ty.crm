@@ -53,6 +53,7 @@ export default function Customers() {
   const [editSourceCat, setEditSourceCat] = useState('SELF')
 
   const canCreate = user?.role === 'MARKET' || user?.role === 'BUSINESS_SUPERVISOR' || user?.role === 'ADMIN'
+  const canEditCustomerName = user?.role === 'BUSINESS_SUPERVISOR' || user?.role === 'ADMIN'
 
   const load = () => {
     setLoading(true)
@@ -120,6 +121,7 @@ export default function Customers() {
     setAcq(await loadAcqChannels().catch(() => []))
     setEditSourceCat(r.sourceCategory)
     editForm.setFieldsValue({
+      name: r.name,
       intentionLevel: r.intentionLevel ?? undefined,
       mainStatus: r.mainStatus,
       sourceCategory: r.sourceCategory,
@@ -133,13 +135,17 @@ export default function Customers() {
     const v = await editForm.validateFields()
     setSubmitting(true)
     try {
-      await client.patch(`/customers/${editCust!.id}`, {
+      const payload: Any = {
         intentionLevel: v.intentionLevel ?? null,
         mainStatus: v.mainStatus,
         sourceCategory: v.sourceCategory,
         channelId: v.sourceCategory === 'SELF' ? null : (v.channelId ?? null),
         acquisitionChannelId: v.sourceCategory === 'SELF' ? (v.acquisitionChannelId ?? null) : null,
         discoveredAt: v.discoveredAt,
+      }
+      if (canEditCustomerName) payload.name = v.name
+      await client.patch(`/customers/${editCust!.id}`, {
+        ...payload,
       })
       message.success('已修改')
       setEditCust(null)
@@ -198,6 +204,7 @@ export default function Customers() {
       render: (_: any, r: Any) => (
         <Space wrap>
           <ActionBtn tone="view" onClick={() => nav(`/customers/${r.id}`)}>详情</ActionBtn>
+          {canEditCustomerName && <ActionBtn tone="edit" onClick={() => openQuickEdit(r)}>修改</ActionBtn>}
           {user?.role === 'ADMIN' && <DeleteBtn onConfirm={() => doDelete(r.id)} />}
         </Space>
       ),
@@ -287,8 +294,13 @@ export default function Customers() {
         />
       </Modal>
 
-      <Modal title="快速修改（意向 / 状态 / 来源渠道）" open={!!editCust} onCancel={() => setEditCust(null)} onOk={submitQuickEdit} confirmLoading={submitting} okText={submitting ? '处理中…' : '确定'} maskClosable={false} cancelButtonProps={{ disabled: submitting }} destroyOnClose>
+      <Modal title={canEditCustomerName ? '快速修改（姓名 / 意向 / 状态 / 来源渠道）' : '快速修改（意向 / 状态 / 来源渠道）'} open={!!editCust} onCancel={() => setEditCust(null)} onOk={submitQuickEdit} confirmLoading={submitting} okText={submitting ? '处理中…' : '确定'} maskClosable={false} cancelButtonProps={{ disabled: submitting }} destroyOnClose>
         <Form form={editForm} layout="vertical">
+          {canEditCustomerName && (
+            <Form.Item name="name" label="姓名" rules={[{ required: true, whitespace: true, message: '请输入客户姓名' }]}>
+              <Input />
+            </Form.Item>
+          )}
           <Form.Item name="intentionLevel" label="意向">
             <Select allowClear options={Object.entries(INTENTION_LABEL).map(([k, v]) => ({ value: k, label: v }))} />
           </Form.Item>

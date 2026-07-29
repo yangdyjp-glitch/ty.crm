@@ -218,6 +218,16 @@ export class CustomersService {
     await this.loadScoped(user, id);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data: any = { ...dto };
+    if (
+      dto.name !== undefined &&
+      !([UserRole.BUSINESS_SUPERVISOR, UserRole.ADMIN] as UserRole[]).includes(user.role)
+    ) {
+      delete data.name;
+    } else if (dto.name !== undefined) {
+      const name = dto.name.trim();
+      if (!name) throw new BadRequestException('客户姓名不能为空');
+      data.name = name;
+    }
     if (dto.discoveredAt !== undefined) {
       data.discoveredAt = dto.discoveredAt ? new Date(dto.discoveredAt) : null;
     }
