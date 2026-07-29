@@ -222,6 +222,7 @@ export default function Customers() {
       onFilter: (value: any, r: Any) => r.mainStatus === value,
       render: (s: string, r: Any) => (
         <Select
+          className="customer-inline-select"
           size="small"
           value={s}
           disabled={inlineUpdatingId === r.id}
@@ -243,6 +244,7 @@ export default function Customers() {
       onFilter: (value: any, r: Any) => (value === '__EMPTY__' ? !r.intentionLevel : r.intentionLevel === value),
       render: (i: string, r: Any) => (
         <Select
+          className="customer-inline-select"
           allowClear
           size="small"
           placeholder="未填写"
@@ -308,6 +310,7 @@ export default function Customers() {
 
       <Table
         {...scrollTableProps}
+        className="customer-list-table"
         rowKey="id"
         loading={loading}
         columns={columns as any}

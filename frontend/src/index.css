@@ -170,6 +170,31 @@ td.ant-table-cell[align='right'] {
   font-weight: 700 !important;
 }
 
+/* 客户列表：固定表头时只保留一条表头底线，避免和表体边缘叠成粗线。 */
+.customer-list-table .ant-table-header {
+  border-bottom: 1px solid var(--line);
+}
+.customer-list-table .ant-table-thead > tr > th {
+  border-bottom: none !important;
+}
+.customer-inline-select.ant-select-single.ant-select-sm {
+  height: 24px;
+}
+.customer-inline-select.ant-select-single.ant-select-sm .ant-select-selector {
+  height: 24px !important;
+  border-radius: 0 !important;
+  border-color: #d8bd7a !important;
+  padding: 0 8px !important;
+}
+.customer-inline-select.ant-select-single.ant-select-sm .ant-select-selection-item,
+.customer-inline-select.ant-select-single.ant-select-sm .ant-select-selection-placeholder {
+  line-height: 22px !important;
+}
+.customer-inline-select.ant-select .ant-select-arrow,
+.customer-inline-select.ant-select .ant-select-clear {
+  color: #9ca3af;
+}
+
 /* 滚动条 */
 ::-webkit-scrollbar {
   width: 9px;
