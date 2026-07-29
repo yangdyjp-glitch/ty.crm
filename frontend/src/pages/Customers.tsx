@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Button,
@@ -32,6 +32,24 @@ import {
 } from '../api/types'
 
 type Any = Record<string, any>
+const UNASSIGNED_FILTER = '__UNASSIGNED__'
+
+function sourceChannelLabel(r: Any) {
+  const channelName = r.channel?.name || r.acquisitionChannel?.name
+  return `${SOURCE_LABEL[r.sourceCategory] || ''}${channelName ? '：' + channelName : ''}` || '—'
+}
+
+function uniqueFilters(rows: Any[], getLabel: (row: Any) => string, getValue: (row: Any) => string = getLabel) {
+  const seen = new Map<string, string>()
+  rows.forEach((row) => {
+    const label = getLabel(row) || '—'
+    const value = getValue(row) || label
+    if (!seen.has(value)) seen.set(value, label)
+  })
+  return Array.from(seen.entries())
+    .sort(([, a], [, b]) => a.localeCompare(b, 'zh-CN'))
+    .map(([value, label]) => ({ text: label, value }))
+}
 
 export default function Customers() {
   const { user } = useAuth()
@@ -39,7 +57,6 @@ export default function Customers() {
   const [data, setData] = useState<{ items: Any[]; total: number }>({ items: [], total: 0 })
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<string>()
   const [modalOpen, setModalOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [assignTarget, setAssignTarget] = useState<Any | null>(null)
@@ -58,11 +75,11 @@ export default function Customers() {
   const load = () => {
     setLoading(true)
     client
-      .get('/customers', { params: { all: 1, search: search || undefined, mainStatus: statusFilter } })
+      .get('/customers', { params: { all: 1, search: search || undefined } })
       .then((r) => setData(r.data))
       .finally(() => setLoading(false))
   }
-  useEffect(load, [search, statusFilter])
+  useEffect(load, [search])
 
   const openCreate = async () => {
     form.resetFields()
@@ -157,6 +174,17 @@ export default function Customers() {
     }
   }
 
+  const sourceFilters = useMemo(() => uniqueFilters(data.items, sourceChannelLabel), [data.items])
+  const ownerFilters = useMemo(
+    () =>
+      uniqueFilters(
+        data.items,
+        (r) => r.ownerName || '未分配',
+        (r) => (r.ownerUserId ? String(r.ownerUserId) : UNASSIGNED_FILTER),
+      ),
+    [data.items],
+  )
+
   const columns = [
     { title: '编号', dataIndex: 'customerNo', width: COL.no },
     { title: '时间', dataIndex: 'discoveredAt', width: COL.date, render: (t: string, r: Any) => fmtDate(t ?? r.createdAt) },
@@ -164,9 +192,12 @@ export default function Customers() {
     {
       title: '来源 / 渠道',
       width: COL.source,
+      filters: sourceFilters,
+      filterSearch: true,
+      onFilter: (value: any, r: Any) => sourceChannelLabel(r) === value,
       render: (_: any, r: Any) => (
         <a onClick={() => openQuickEdit(r)}>
-          {`${SOURCE_LABEL[r.sourceCategory] || ''}${r.channel ? '：' + r.channel.name : r.acquisitionChannel ? '：' + r.acquisitionChannel.name : ''}`}
+          {sourceChannelLabel(r)}
         </a>
       ),
     },
@@ -174,16 +205,31 @@ export default function Customers() {
       title: '状态',
       dataIndex: 'mainStatus',
       width: COL.status,
+      filters: Object.entries(CUSTOMER_STATUS_LABEL).map(([value, label]) => ({ text: label, value })),
+      onFilter: (value: any, r: Any) => r.mainStatus === value,
       render: (s: string, r: Any) => (
         <a onClick={() => openQuickEdit(r)}>
           <Tag color={CUSTOMER_STATUS_COLOR[s]}>{CUSTOMER_STATUS_LABEL[s]}</Tag>
         </a>
       ),
     },
-    { title: '意向', dataIndex: 'intentionLevel', width: COL.status, render: (i: string, r: Any) => <a onClick={() => openQuickEdit(r)}>{i ? INTENTION_LABEL[i] : '—'}</a> },
+    {
+      title: '意向',
+      dataIndex: 'intentionLevel',
+      width: COL.status,
+      filters: [
+        ...Object.entries(INTENTION_LABEL).map(([value, label]) => ({ text: label, value })),
+        { text: '未填写', value: '__EMPTY__' },
+      ],
+      onFilter: (value: any, r: Any) => (value === '__EMPTY__' ? !r.intentionLevel : r.intentionLevel === value),
+      render: (i: string, r: Any) => <a onClick={() => openQuickEdit(r)}>{i ? INTENTION_LABEL[i] : '—'}</a>,
+    },
     {
       title: '分配',
       width: COL.status,
+      filters: ownerFilters,
+      filterSearch: true,
+      onFilter: (value: any, r: Any) => (r.ownerUserId ? String(r.ownerUserId) : UNASSIGNED_FILTER) === value,
       render: (_: any, r: Any) => {
         const label = r.ownerName ? <Tag color="green">{r.ownerName}</Tag> : <Tag>未分配</Tag>
         return canCreate ? (
@@ -210,14 +256,6 @@ export default function Customers() {
     <div>
       <Space style={{ marginBottom: 16 }} wrap>
         <Input.Search placeholder="姓名/电话/微信/编号" allowClear onSearch={setSearch} style={{ width: 240 }} />
-        <Select
-          allowClear
-          placeholder="状态筛选"
-          style={{ width: 140 }}
-          value={statusFilter}
-          onChange={setStatusFilter}
-          options={Object.entries(CUSTOMER_STATUS_LABEL).map(([k, v]) => ({ value: k, label: v }))}
-        />
         {canCreate && <Button type="primary" onClick={openCreate}>新增客户</Button>}
         {canCreate && (
           <Upload
