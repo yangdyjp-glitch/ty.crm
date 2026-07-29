@@ -143,6 +143,7 @@ export default function Reports() {
               columns={[
                 { title: '销售', dataIndex: 'name', width: COL.person },
                 { title: '负责客户数', dataIndex: 'customerCount', width: COL.count },
+                { title: '签约数', dataIndex: 'signedCount', width: COL.count },
               ]}
             />
           ),

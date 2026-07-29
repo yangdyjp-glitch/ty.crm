@@ -87,6 +87,7 @@ function LeadCountTable({
         ...extraColumns,
         { title: nameTitle, dataIndex: 'name', width: COL.name },
         { title: '客户线索数', dataIndex: 'customerCount', width: COL.count, align: 'right' },
+        { title: '签约数', dataIndex: 'signedCount', width: COL.count, align: 'right' },
       ]}
     />
   )
