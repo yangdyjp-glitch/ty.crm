@@ -76,6 +76,7 @@ export class ReportsService {
       this.productLeadStats(),
       this.sales(),
     ]);
+    const trend = await this.leadTrendStats();
     return {
       role: 'ADMIN',
       counts: {
@@ -92,7 +93,61 @@ export class ReportsService {
         products: productLeads,
         sales: salesLeads,
       },
+      trend,
     };
+  }
+
+  private dateKey(d: Date) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  private async leadTrendStats(days = 30) {
+    const today = this.dayStart();
+    const start = new Date(today);
+    start.setDate(today.getDate() - days + 1);
+
+    const points = Array.from({ length: days }, (_, index) => {
+      const d = new Date(start);
+      d.setDate(start.getDate() + index);
+      return {
+        date: this.dateKey(d),
+        label: `${d.getMonth() + 1}/${d.getDate()}`,
+        leads: 0,
+        signed: 0,
+      };
+    });
+    const byDate = new Map(points.map((p) => [p.date, p]));
+
+    const [customers, orders] = await Promise.all([
+      this.prisma.customer.findMany({
+        where: {
+          deletedAt: null,
+          OR: [
+            { discoveredAt: { gte: start } },
+            { discoveredAt: null, createdAt: { gte: start } },
+          ],
+        },
+        select: { discoveredAt: true, createdAt: true },
+      }),
+      this.prisma.order.findMany({
+        where: { deletedAt: null, signedAt: { gte: start } },
+        select: { signedAt: true },
+      }),
+    ]);
+
+    customers.forEach((c) => {
+      const row = byDate.get(this.dateKey(c.discoveredAt ?? c.createdAt));
+      if (row) row.leads += 1;
+    });
+    orders.forEach((o) => {
+      const row = byDate.get(this.dateKey(o.signedAt));
+      if (row) row.signed += 1;
+    });
+
+    return points;
   }
 
   private async channelLeadStats() {

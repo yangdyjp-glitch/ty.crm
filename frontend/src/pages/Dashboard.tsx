@@ -6,6 +6,7 @@ import { moneyIn, moneyOut } from '../api/money'
 import { COL, smallTableProps } from '../components/tableLayout'
 
 type Any = Record<string, any>
+type TrendPoint = { date: string; label: string; leads: number; signed: number }
 
 function PageHead({ eyebrow, title }: { eyebrow: string; title: string }) {
   const today = new Date()
@@ -91,6 +92,62 @@ function LeadCountTable({
   )
 }
 
+function TrendChart({ rows }: { rows: TrendPoint[] }) {
+  const data = rows || []
+  if (!data.length) return <div style={{ color: '#9ca3af', padding: 24 }}>暂无数据</div>
+
+  const width = 760
+  const height = 260
+  const left = 46
+  const right = 22
+  const top = 24
+  const bottom = 42
+  const plotW = width - left - right
+  const plotH = height - top - bottom
+  const maxRaw = Math.max(1, ...data.flatMap((d) => [d.leads || 0, d.signed || 0]))
+  const maxValue = Math.max(1, Math.ceil(maxRaw / 5) * 5)
+  const xAt = (index: number) => left + (data.length === 1 ? 0 : (plotW * index) / (data.length - 1))
+  const yAt = (value: number) => top + plotH - (plotH * value) / maxValue
+  const linePath = (field: 'leads' | 'signed') =>
+    data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${xAt(i)} ${yAt(d[field] || 0)}`).join(' ')
+  const labelStep = Math.max(1, Math.ceil(data.length / 6))
+  const yTicks = Array.from(new Set([maxValue, Math.round(maxValue / 2), 0]))
+
+  return (
+    <div style={{ width: '100%', minHeight: 282 }}>
+      <div style={{ display: 'flex', gap: 18, alignItems: 'center', justifyContent: 'flex-end', marginBottom: 8, color: '#374151', fontSize: 13 }}>
+        <span><i style={{ display: 'inline-block', width: 18, height: 3, background: '#15803d', marginRight: 6, verticalAlign: 'middle' }} />线索数量</span>
+        <span><i style={{ display: 'inline-block', width: 18, height: 3, background: '#b8860b', marginRight: 6, verticalAlign: 'middle' }} />签单数量</span>
+      </div>
+      <svg viewBox={`0 0 ${width} ${height}`} style={{ display: 'block', width: '100%', height: 260 }}>
+        <text x={left} y={14} fill="#64748b" fontSize="12">客户数量</text>
+        {yTicks.map((tick) => {
+          const y = yAt(tick)
+          return (
+            <g key={tick}>
+              <line x1={left} y1={y} x2={width - right} y2={y} stroke="#e5d48a" strokeWidth="1" opacity={tick === 0 ? 1 : 0.65} />
+              <text x={left - 10} y={y + 4} textAnchor="end" fill="#64748b" fontSize="12">{tick}</text>
+            </g>
+          )
+        })}
+        <line x1={left} y1={top} x2={left} y2={height - bottom} stroke="#d4bb63" strokeWidth="1" />
+        <line x1={left} y1={height - bottom} x2={width - right} y2={height - bottom} stroke="#d4bb63" strokeWidth="1" />
+        <path d={linePath('leads')} fill="none" stroke="#15803d" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+        <path d={linePath('signed')} fill="none" stroke="#b8860b" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+        {data.map((d, i) => (
+          <g key={d.date}>
+            <circle cx={xAt(i)} cy={yAt(d.leads || 0)} r="3" fill="#15803d" />
+            <circle cx={xAt(i)} cy={yAt(d.signed || 0)} r="3" fill="#b8860b" />
+            {(i % labelStep === 0 || i === data.length - 1) && (
+              <text x={xAt(i)} y={height - 18} textAnchor="middle" fill="#64748b" fontSize="11">{d.label}</text>
+            )}
+          </g>
+        ))}
+      </svg>
+    </div>
+  )
+}
+
 export default function Dashboard() {
   const [data, setData] = useState<Any | null>(null)
   const [loading, setLoading] = useState(true)
@@ -121,6 +178,10 @@ export default function Dashboard() {
             </div>
           ))}
         </div>
+        <SectionTitle eyebrow="TREND" title="线索与签单趋势（近30天）" />
+        <Card size="small">
+          <TrendChart rows={data.trend || []} />
+        </Card>
         <SectionTitle eyebrow="CHANNELS" title="按渠道统计客户线索" />
         <Card size="small">
           <LeadCountTable
