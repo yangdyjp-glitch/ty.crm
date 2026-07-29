@@ -4,7 +4,7 @@ import client from '../api/client'
 import { CURRENCY_LABEL, CUSTOMER_STATUS_LABEL, fmtMoney } from '../api/types'
 import { moneyIn, moneyOut } from '../api/money'
 import { COL, smallTableProps } from '../components/tableLayout'
-import { sortByChannelNameKeyword } from '../utils/channelSort'
+import { sortChannelLeadStats } from '../utils/channelSort'
 
 type Any = Record<string, any>
 type TrendPoint = { date: string; label: string; leads: number; signed: number }
@@ -251,7 +251,7 @@ export default function Dashboard() {
   if (data.role === 'ADMIN') {
     const c = data.counts
     const trendRows = (data.trend || []).slice(-trendDays)
-    const channelLeadStats = sortByChannelNameKeyword(data.leadStats?.channels)
+    const channelLeadStats = sortChannelLeadStats(data.leadStats?.channels)
     const cards: [string, number, string, string][] = [
       ['客户总数', c.custTotal, '位', '#166534'],
       ['今日新增', c.newToday, '', '#15803d'],
