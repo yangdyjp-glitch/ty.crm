@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Button,
   Form,
@@ -16,6 +16,7 @@ import client from '../api/client'
 import { ActionBtn, DeleteBtn } from '../components/Actions'
 import { COL, scrollTableProps, smallTableProps } from '../components/tableLayout'
 import { useAuth } from '../auth/AuthContext'
+import { sortByChannelNameKeyword } from '../utils/channelSort'
 import {
   CHANNEL_TYPE_LABEL,
   COMMISSION_METHOD_LABEL,
@@ -42,6 +43,7 @@ export default function Channels() {
   const [acqOpen, setAcqOpen] = useState(false)
   const [acqEditing, setAcqEditing] = useState<Any | null>(null)
   const [acqForm] = Form.useForm()
+  const sortedRows = useMemo(() => sortByChannelNameKeyword(rows), [rows])
   const openLedger = async (id: number) => {
     const { data } = await client.get(`/channels/${id}/ledger`)
     setLedger(data)
@@ -131,9 +133,8 @@ export default function Channels() {
         scroll={{ x: 'max-content', y: CHANNEL_TABLE_VISIBLE_ROWS * CHANNEL_TABLE_ROW_HEIGHT }}
         rowKey="id"
         loading={loading}
-        dataSource={rows}
+        dataSource={sortedRows}
         columns={[
-          { title: '编号', dataIndex: 'channelNo', width: COL.no },
           { title: '名称', dataIndex: 'name', width: COL.channel },
           { title: '类型', dataIndex: 'channelType', width: COL.type, render: (t) => <Tag>{CHANNEL_TYPE_LABEL[t]}</Tag> },
           { title: '默认比例', dataIndex: 'defaultCommissionRate', width: COL.percent, render: (r) => (r != null ? r + '%' : '—') },
