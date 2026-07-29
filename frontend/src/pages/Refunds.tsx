@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Button,
@@ -13,6 +13,7 @@ import {
   Tag,
   message,
 } from 'antd'
+import dayjs from 'dayjs'
 import client from '../api/client'
 import { ActionBtn, DeleteBtn } from '../components/Actions'
 import { COL, scrollTableProps } from '../components/tableLayout'
@@ -28,6 +29,22 @@ import {
 import { moneyOut } from '../api/money'
 
 type Any = Record<string, any>
+const EMPTY_FILTER = '__EMPTY__'
+
+function arrivalMonthValue(r: Any) {
+  return r.completedAt ? dayjs(r.completedAt).format('YYYY-MM') : EMPTY_FILTER
+}
+
+function monthFilters(rows: Any[]) {
+  const values = Array.from(new Set(rows.map(arrivalMonthValue)))
+  return values
+    .sort((a, b) => {
+      if (a === EMPTY_FILTER) return 1
+      if (b === EMPTY_FILTER) return -1
+      return b.localeCompare(a)
+    })
+    .map((value) => ({ value, text: value === EMPTY_FILTER ? '未到账' : value }))
+}
 
 export default function Refunds() {
   const { user } = useAuth()
@@ -92,6 +109,8 @@ export default function Refunds() {
     }
   }
 
+  const arrivalMonthFilters = useMemo(() => monthFilters(rows), [rows])
+
   return (
     <div>
       <Button type="primary" style={{ marginBottom: 16 }} onClick={openCreate}>发起退款</Button>
@@ -103,7 +122,14 @@ export default function Refunds() {
         columns={[
           { title: '退款号', dataIndex: 'refundNo', width: COL.no },
           { title: '登记时间', dataIndex: 'appliedAt', width: COL.date, render: (t: string, r: Any) => fmtDate(t ?? r.createdAt) },
-          { title: '到账时间', dataIndex: 'completedAt', width: COL.date, render: fmtDate },
+          {
+            title: '到账时间',
+            dataIndex: 'completedAt',
+            width: COL.date,
+            filters: arrivalMonthFilters,
+            onFilter: (value: any, r) => arrivalMonthValue(r) === value,
+            render: fmtDate,
+          },
           { title: '客户', width: COL.person, render: (_, r) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
           { title: '名义额', dataIndex: 'nominalAmount', width: COL.money, render: moneyOut, align: 'right' },
           { title: '实退现金', dataIndex: 'cashAmount', width: COL.money, render: moneyOut, align: 'right' },

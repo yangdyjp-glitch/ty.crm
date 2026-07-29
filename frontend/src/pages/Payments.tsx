@@ -12,6 +12,7 @@ import {
   Tag,
   message,
 } from 'antd'
+import dayjs from 'dayjs'
 import { ActionBtn, DeleteBtn } from '../components/Actions'
 import { COL, scrollTableProps } from '../components/tableLayout'
 import client from '../api/client'
@@ -43,6 +44,21 @@ function uniqueFilters(rows: Any[], getValue: (row: Any) => unknown, getText: (r
   return Array.from(seen.entries())
     .sort(([, a], [, b]) => a.localeCompare(b, 'zh-CN'))
     .map(([value, text]) => ({ value, text }))
+}
+
+function arrivalMonthValue(r: Any) {
+  return r.confirmStatus === 'CONFIRMED' && r.confirmedAt ? dayjs(r.confirmedAt).format('YYYY-MM') : EMPTY_FILTER
+}
+
+function monthFilters(rows: Any[], getValue: (row: Any) => string) {
+  const values = Array.from(new Set(rows.map(getValue)))
+  return values
+    .sort((a, b) => {
+      if (a === EMPTY_FILTER) return 1
+      if (b === EMPTY_FILTER) return -1
+      return b.localeCompare(a)
+    })
+    .map((value) => ({ value, text: value === EMPTY_FILTER ? '未到账' : value }))
 }
 
 export default function Payments() {
@@ -132,6 +148,10 @@ export default function Payments() {
     () => uniqueFilters(rows, paymentChannelName),
     [rows],
   )
+  const arrivalMonthFilters = useMemo(
+    () => monthFilters(rows, arrivalMonthValue),
+    [rows],
+  )
 
   return (
     <div>
@@ -144,7 +164,14 @@ export default function Payments() {
         columns={[
           { title: '收款号', dataIndex: 'paymentNo', width: COL.no },
           { title: '登记时间', dataIndex: 'createdAt', width: COL.date, render: fmtDate },
-          { title: '到账时间', dataIndex: 'confirmedAt', width: COL.date, render: (t: string, r: Any) => (r.confirmStatus === 'CONFIRMED' ? fmtDate(t) : '—') },
+          {
+            title: '到账时间',
+            dataIndex: 'confirmedAt',
+            width: COL.date,
+            filters: arrivalMonthFilters,
+            onFilter: (value: any, r) => arrivalMonthValue(r) === value,
+            render: (t: string, r: Any) => (r.confirmStatus === 'CONFIRMED' ? fmtDate(t) : '—'),
+          },
           { title: '客户', width: COL.person, render: (_, r) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
           {
             title: '渠道',
