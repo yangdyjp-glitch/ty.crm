@@ -218,6 +218,9 @@ export class CustomersService {
     await this.loadScoped(user, id);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data: any = { ...dto };
+    if (dto.discoveredAt !== undefined) {
+      data.discoveredAt = dto.discoveredAt ? new Date(dto.discoveredAt) : null;
+    }
     // 改了第三方渠道 → 重算渠道名称/分成比例快照
     if (dto.channelId !== undefined) {
       if (dto.channelId) {

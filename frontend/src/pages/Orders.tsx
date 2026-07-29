@@ -17,7 +17,7 @@ import { COL, scrollTableProps } from '../components/tableLayout'
 import client from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import { loadProducts } from '../api/options'
-import { CURRENCY_LABEL, ORDER_STATUS_LABEL, fmtMoney } from '../api/types'
+import { CURRENCY_LABEL, ORDER_STATUS_LABEL, fmtDate, fmtMoney, todayDate } from '../api/types'
 import { moneyIn } from '../api/money'
 
 type Any = Record<string, any>
@@ -49,6 +49,7 @@ export default function Orders() {
 
   const openCreate = async () => {
     form.resetFields()
+    form.setFieldsValue({ currency: 'JPY', signedAt: todayDate(), firstPaymentPaidAt: todayDate() })
     const cs = await client.get('/customers', { params: { all: 1 } })
     setCustomers(cs.data.items)
     setProducts(await loadProducts().catch(() => []))
@@ -102,6 +103,7 @@ export default function Orders() {
 
   const columns = [
     { title: '订单号', dataIndex: 'orderNo', width: COL.no, render: (n: string, r: Any) => <a onClick={() => nav(`/orders/${r.id}`)}>{n}</a> },
+    { title: '时间', dataIndex: 'signedAt', width: COL.date, render: fmtDate },
     { title: '客户', width: COL.person, render: (_: any, r: Any) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
     { title: '项目', width: COL.project, render: (_: any, r: Any) => r.product?.name },
     { title: '币种', dataIndex: 'currency', width: COL.currency, render: (c: string) => CURRENCY_LABEL[c] },
@@ -151,6 +153,9 @@ export default function Orders() {
           <Form.Item name="productId" label="项目" rules={[{ required: true }]}>
             <Select options={products.map((p) => ({ value: p.id, label: p.name }))} />
           </Form.Item>
+          <Form.Item name="signedAt" label="签单时间">
+            <Input type="date" />
+          </Form.Item>
           <Space>
             <Form.Item name="currency" label="币种" rules={[{ required: true }]}>
               <Select style={{ width: 100 }} options={[{ value: 'JPY', label: '日元' }, { value: 'CNY', label: '人民币' }]} />
@@ -164,6 +169,9 @@ export default function Orders() {
           </Space>
           <Form.Item name="firstPaymentAmount" label="首款金额（必填，待确认）" rules={[{ required: true }]}>
             <InputNumber min={0} controls={false} style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item name="firstPaymentPaidAt" label="首款时间">
+            <Input type="date" />
           </Form.Item>
           <Form.Item name="tailPaymentAmount" label="尾款金额（选填，待确认）">
             <InputNumber min={0} controls={false} style={{ width: '100%' }} />

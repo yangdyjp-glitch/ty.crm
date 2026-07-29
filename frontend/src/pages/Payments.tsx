@@ -16,7 +16,7 @@ import { ActionBtn, DeleteBtn } from '../components/Actions'
 import { COL, scrollTableProps } from '../components/tableLayout'
 import client from '../api/client'
 import { useAuth } from '../auth/AuthContext'
-import { CURRENCY_LABEL, PAYMENT_CONFIRM_LABEL, fmtMoney } from '../api/types'
+import { CURRENCY_LABEL, PAYMENT_CONFIRM_LABEL, fmtDate, fmtMoney, todayDate } from '../api/types'
 import { moneyIn } from '../api/money'
 
 type Any = Record<string, any>
@@ -42,6 +42,7 @@ export default function Payments() {
 
   const openCreate = async () => {
     form.resetFields()
+    form.setFieldsValue({ paidAt: todayDate() })
     const o = await client.get('/orders', { params: { all: 1 } })
     setOrders(o.data.items.filter((x: Any) => !['REFUNDED', 'CANCELLED'].includes(x.status)))
     setOpen(true)
@@ -70,7 +71,7 @@ export default function Payments() {
 
   const openEdit = (r: Any) => {
     setEditTarget(r)
-    editForm.setFieldsValue({ amount: Number(r.amount), method: r.method, remark: r.remark })
+    editForm.setFieldsValue({ amount: Number(r.amount), method: r.method, paidAt: fmtDate(r.paidAt), remark: r.remark })
   }
   const submitEdit = async () => {
     const v = await editForm.validateFields()
@@ -106,6 +107,7 @@ export default function Payments() {
         dataSource={rows}
         columns={[
           { title: '收款号', dataIndex: 'paymentNo', width: COL.no },
+          { title: '时间', dataIndex: 'paidAt', width: COL.date, render: fmtDate },
           { title: '客户', width: COL.person, render: (_, r) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
           { title: '金额', dataIndex: 'amount', width: COL.money, render: moneyIn, align: 'right' },
           { title: '币种', dataIndex: 'currency', width: COL.currency, render: (c) => CURRENCY_LABEL[c] },
@@ -145,6 +147,9 @@ export default function Payments() {
           <Form.Item name="amount" label="收款金额" rules={[{ required: true }]}>
             <InputNumber min={0} style={{ width: '100%' }} />
           </Form.Item>
+          <Form.Item name="paidAt" label="时间">
+            <Input type="date" />
+          </Form.Item>
         </Form>
       </Modal>
 
@@ -158,6 +163,9 @@ export default function Payments() {
               <InputNumber min={0} controls={false} style={{ width: '100%' }} />
             </Form.Item>
             <Form.Item name="method" label="收款方式"><Input /></Form.Item>
+            <Form.Item name="paidAt" label="时间">
+              <Input type="date" />
+            </Form.Item>
             <Form.Item
               name="remark"
               label="备注 / 差异说明"

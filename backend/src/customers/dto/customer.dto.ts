@@ -54,6 +54,7 @@ export class UpdateCustomerDto {
   @IsOptional() @IsInt() channelId?: number;
   @IsOptional() @IsInt() acquisitionChannelId?: number;
   @IsOptional() @IsString() remark?: string;
+  @IsOptional() @IsDateString() discoveredAt?: string;
 }
 
 export class AssignDto {

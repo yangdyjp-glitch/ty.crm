@@ -7,6 +7,7 @@ import {
   ORDER_STATUS_LABEL,
   PAYMENT_CONFIRM_LABEL,
   REFUND_STATUS_LABEL,
+  fmtDate,
   fmtMoney,
 } from '../api/types'
 import { moneyIn, moneyOut } from '../api/money'
@@ -28,6 +29,7 @@ export default function OrderDetail() {
         originalPrice: Number(r.data.originalPrice),
         discountAmount: Number(r.data.discountAmount),
         contractNo: r.data.contractNo,
+        signedAt: fmtDate(r.data.signedAt),
         remark: r.data.remark,
       })
     })
@@ -86,6 +88,9 @@ export default function OrderDetail() {
             <Form.Item name="contractNo" label="合同编号">
               <Input style={{ width: 180 }} />
             </Form.Item>
+            <Form.Item name="signedAt" label="签单时间">
+              <Input type="date" style={{ width: 160 }} />
+            </Form.Item>
           </Space>
           <Form.Item name="remark" label="备注">
             <Input.TextArea rows={2} />
@@ -107,6 +112,7 @@ export default function OrderDetail() {
           dataSource={o.payments || []}
           columns={[
             { title: '收款号', dataIndex: 'paymentNo', width: COL.no },
+            { title: '时间', dataIndex: 'paidAt', width: COL.date, render: fmtDate },
             { title: '金额', dataIndex: 'amount', width: COL.money, render: moneyIn, align: 'right' },
             { title: '状态', dataIndex: 'confirmStatus', width: COL.status, render: (s: string) => PAYMENT_CONFIRM_LABEL[s] },
             { title: '备注', dataIndex: 'remark', width: COL.note },

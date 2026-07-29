@@ -27,6 +27,7 @@ import {
   ORDER_STATUS_LABEL,
   SALES_STAGE_LABEL,
   SOURCE_LABEL,
+  fmtDate,
   fmtMoney,
 } from '../api/types'
 import { moneyIn } from '../api/money'
@@ -116,6 +117,7 @@ export default function CustomerDetail() {
       >
         <Descriptions size="small" column={3}>
           <Descriptions.Item label="编号">{c.customerNo}</Descriptions.Item>
+          <Descriptions.Item label="时间">{fmtDate(c.discoveredAt ?? c.createdAt)}</Descriptions.Item>
           <Descriptions.Item label="电话">{c.phone || '—'}</Descriptions.Item>
           <Descriptions.Item label="微信">{c.wechat || '—'}</Descriptions.Item>
           <Descriptions.Item label="邮箱">{c.email || '—'}</Descriptions.Item>
@@ -170,6 +172,7 @@ export default function CustomerDetail() {
                 pagination={false}
                 columns={[
                   { title: '订单号', dataIndex: 'orderNo', width: COL.no },
+                  { title: '时间', dataIndex: 'signedAt', width: COL.date, render: fmtDate },
                   { title: '币种', dataIndex: 'currency', width: COL.currency },
                   { title: '应收', dataIndex: 'receivableAmount', width: COL.money, render: fmtMoney, align: 'right' },
                   { title: '已收', dataIndex: 'paidAmount', width: COL.money, render: moneyIn, align: 'right' },

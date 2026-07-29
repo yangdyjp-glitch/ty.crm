@@ -27,6 +27,8 @@ import {
   CUSTOMER_STATUS_LABEL,
   INTENTION_LABEL,
   SOURCE_LABEL,
+  fmtDate,
+  todayDate,
 } from '../api/types'
 
 type Any = Record<string, any>
@@ -63,6 +65,7 @@ export default function Customers() {
 
   const openCreate = async () => {
     form.resetFields()
+    form.setFieldsValue({ sourceCategory: 'SELF', discoveredAt: todayDate() })
     setSourceCat('SELF')
     setChannels(await loadChannelOptions().catch(() => []))
     setAcq(await loadAcqChannels().catch(() => []))
@@ -122,6 +125,7 @@ export default function Customers() {
       sourceCategory: r.sourceCategory,
       channelId: r.channel?.id,
       acquisitionChannelId: r.acquisitionChannel?.id,
+      discoveredAt: fmtDate(r.discoveredAt ?? r.createdAt),
     })
     setEditCust(r)
   }
@@ -135,6 +139,7 @@ export default function Customers() {
         sourceCategory: v.sourceCategory,
         channelId: v.sourceCategory === 'SELF' ? null : (v.channelId ?? null),
         acquisitionChannelId: v.sourceCategory === 'SELF' ? (v.acquisitionChannelId ?? null) : null,
+        discoveredAt: v.discoveredAt,
       })
       message.success('已修改')
       setEditCust(null)
@@ -148,6 +153,7 @@ export default function Customers() {
 
   const columns = [
     { title: '编号', dataIndex: 'customerNo', width: COL.no },
+    { title: '时间', dataIndex: 'discoveredAt', width: COL.date, render: (t: string, r: Any) => fmtDate(t ?? r.createdAt) },
     { title: '姓名', dataIndex: 'name', width: COL.person, render: (n: string, r: Any) => <a onClick={() => nav(`/customers/${r.id}`)}>{n}</a> },
     {
       title: '联系方式',
@@ -242,6 +248,9 @@ export default function Customers() {
           <Form.Item name="name" label="姓名" rules={[{ required: true }]}>
             <Input />
           </Form.Item>
+          <Form.Item name="discoveredAt" label="时间">
+            <Input type="date" />
+          </Form.Item>
           <Space>
             <Form.Item name="phone" label="电话"><Input /></Form.Item>
             <Form.Item name="wechat" label="微信"><Input /></Form.Item>
@@ -285,6 +294,9 @@ export default function Customers() {
           </Form.Item>
           <Form.Item name="mainStatus" label="状态" rules={[{ required: true }]}>
             <Select options={Object.entries(CUSTOMER_STATUS_LABEL).map(([k, v]) => ({ value: k, label: v }))} />
+          </Form.Item>
+          <Form.Item name="discoveredAt" label="时间">
+            <Input type="date" />
           </Form.Item>
           <Form.Item name="sourceCategory" label="来源" rules={[{ required: true }]}>
             <Select onChange={(v) => { setEditSourceCat(v); editForm.setFieldValue('channelId', undefined); editForm.setFieldValue('acquisitionChannelId', undefined) }} options={Object.entries(SOURCE_LABEL).map(([k, v]) => ({ value: k, label: v }))} />

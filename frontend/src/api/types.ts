@@ -1,3 +1,5 @@
+import dayjs from 'dayjs';
+
 // 与后端枚举对应的中文标签
 
 export const ROLE_LABEL: Record<string, string> = {
@@ -158,3 +160,7 @@ export const SALES_STAGE_LABEL: Record<string, string> = {
 
 export const fmtMoney = (v: unknown) =>
   v == null ? '0' : Number(v).toLocaleString();
+
+export const fmtDate = (v: unknown) => (v ? dayjs(v as string).format('YYYY-MM-DD') : '—');
+
+export const todayDate = () => dayjs().format('YYYY-MM-DD');

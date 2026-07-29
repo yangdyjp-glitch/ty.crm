@@ -31,5 +31,6 @@ export class UpdateOrderDto {
   @IsOptional() @IsNumber() @Min(0) originalPrice?: number;
   @IsOptional() @IsNumber() @Min(0) discountAmount?: number;
   @IsOptional() @IsString() contractNo?: string;
+  @IsOptional() @IsDateString() signedAt?: string;
   @IsOptional() @IsString() remark?: string;
 }

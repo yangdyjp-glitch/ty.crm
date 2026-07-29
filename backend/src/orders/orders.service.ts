@@ -205,6 +205,7 @@ export class OrdersService {
         originalPrice: dto.originalPrice,
         discountAmount: dto.discountAmount,
         contractNo: dto.contractNo,
+        signedAt: dto.signedAt ? new Date(dto.signedAt) : undefined,
         remark: dto.remark,
         receivableAmount: receivable,
         unpaidAmount: unpaid,
