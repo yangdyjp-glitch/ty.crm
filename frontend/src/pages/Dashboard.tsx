@@ -1,5 +1,5 @@
-import { useEffect, useState, type ReactNode } from 'react'
-import { Card, Col, Row, Spin, Table, Tag } from 'antd'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Card, Col, Row, Segmented, Spin, Table, Tag } from 'antd'
 import client from '../api/client'
 import { CURRENCY_LABEL, CUSTOMER_STATUS_LABEL, fmtMoney } from '../api/types'
 import { moneyIn, moneyOut } from '../api/money'
@@ -7,6 +7,7 @@ import { COL, smallTableProps } from '../components/tableLayout'
 
 type Any = Record<string, any>
 type TrendPoint = { date: string; label: string; leads: number; signed: number }
+type TrendRange = 15 | 30
 
 function PageHead({ eyebrow, title }: { eyebrow: string; title: string }) {
   const today = new Date()
@@ -94,53 +95,132 @@ function LeadCountTable({
 }
 
 function TrendChart({ rows }: { rows: TrendPoint[] }) {
+  const wrapRef = useRef<HTMLDivElement | null>(null)
+  const [chartWidth, setChartWidth] = useState(960)
   const data = rows || []
+
+  useEffect(() => {
+    const node = wrapRef.current
+    if (!node) return
+
+    const syncWidth = () => {
+      const next = Math.round(node.clientWidth)
+      if (next > 0) setChartWidth(next)
+    }
+
+    syncWidth()
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', syncWidth)
+      return () => window.removeEventListener('resize', syncWidth)
+    }
+
+    const observer = new ResizeObserver(syncWidth)
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [])
+
   if (!data.length) return <div style={{ color: '#9ca3af', padding: 24 }}>暂无数据</div>
 
-  const width = 760
-  const height = 260
-  const left = 46
-  const right = 22
-  const top = 24
-  const bottom = 42
+  const width = chartWidth
+  const height = 300
+  const left = 56
+  const right = 28
+  const top = 30
+  const bottom = 46
   const plotW = width - left - right
   const plotH = height - top - bottom
   const maxRaw = Math.max(1, ...data.flatMap((d) => [d.leads || 0, d.signed || 0]))
-  const maxValue = Math.max(1, Math.ceil(maxRaw / 5) * 5)
+  const rawStep = maxRaw / 4
+  const stepPower = Math.pow(10, Math.floor(Math.log10(rawStep)))
+  const stepRatio = rawStep / stepPower
+  const stepUnit = stepRatio <= 1.5 ? 1 : stepRatio <= 2 ? 2 : stepRatio <= 2.5 ? 2.5 : stepRatio <= 5 ? 5 : 10
+  const tickStep = maxRaw <= 4 ? 1 : stepUnit * stepPower
+  const maxValue = maxRaw <= 4 ? 4 : tickStep * Math.ceil(maxRaw / tickStep)
   const xAt = (index: number) => left + (data.length === 1 ? 0 : (plotW * index) / (data.length - 1))
   const yAt = (value: number) => top + plotH - (plotH * value) / maxValue
-  const linePath = (field: 'leads' | 'signed') =>
-    data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${xAt(i)} ${yAt(d[field] || 0)}`).join(' ')
-  const labelStep = Math.max(1, Math.ceil(data.length / 6))
-  const yTicks = Array.from(new Set([maxValue, Math.round(maxValue / 2), 0]))
+  const pointsFor = (field: 'leads' | 'signed') =>
+    data.map((d, i) => ({ x: xAt(i), y: yAt(d[field] || 0), value: d[field] || 0 }))
+  const linePath = (field: 'leads' | 'signed') => {
+    const points = pointsFor(field)
+    return points.reduce((path, point, index) => {
+      if (index === 0) return `M ${point.x} ${point.y}`
+      const prev = points[index - 1]
+      const midX = (prev.x + point.x) / 2
+      return `${path} C ${midX} ${prev.y}, ${midX} ${point.y}, ${point.x} ${point.y}`
+    }, '')
+  }
+  const areaPath = (field: 'leads' | 'signed') => {
+    const points = pointsFor(field)
+    const first = points[0]
+    const last = points[points.length - 1]
+    return `${linePath(field)} L ${last.x} ${top + plotH} L ${first.x} ${top + plotH} Z`
+  }
+  const labelStep = data.length <= 15 ? 2 : 5
+  const yTicks = Array.from({ length: Math.floor(maxValue / tickStep) + 1 }, (_, i) => maxValue - i * tickStep)
+  const formatTick = (value: number) => Number(value.toFixed(2)).toLocaleString('zh-CN')
+  const canShowPoint = (value: number, index: number) => value > 0 || index === data.length - 1
 
   return (
-    <div style={{ width: '100%', minHeight: 282 }}>
-      <div style={{ display: 'flex', gap: 18, alignItems: 'center', justifyContent: 'flex-end', marginBottom: 8, color: '#374151', fontSize: 13 }}>
-        <span><i style={{ display: 'inline-block', width: 18, height: 3, background: '#15803d', marginRight: 6, verticalAlign: 'middle' }} />线索数量</span>
-        <span><i style={{ display: 'inline-block', width: 18, height: 3, background: '#b8860b', marginRight: 6, verticalAlign: 'middle' }} />签单数量</span>
-      </div>
-      <svg viewBox={`0 0 ${width} ${height}`} style={{ display: 'block', width: '100%', height: 260 }}>
-        <text x={left} y={14} fill="#64748b" fontSize="12">客户数量</text>
+    <div ref={wrapRef} style={{ width: '100%', minHeight: 314, padding: '8px 14px 16px' }}>
+      <svg viewBox={`0 0 ${width} ${height}`} style={{ display: 'block', width: '100%', height }}>
+        <defs>
+          <linearGradient id="trendLeadFill" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#15803d" stopOpacity="0.2" />
+            <stop offset="100%" stopColor="#15803d" stopOpacity="0" />
+          </linearGradient>
+          <linearGradient id="trendSignedFill" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#b8860b" stopOpacity="0.18" />
+            <stop offset="100%" stopColor="#b8860b" stopOpacity="0" />
+          </linearGradient>
+          <filter id="trendLineShadow" x="-4%" y="-8%" width="108%" height="116%">
+            <feDropShadow dx="0" dy="4" stdDeviation="4" floodColor="#0f172a" floodOpacity="0.08" />
+          </filter>
+        </defs>
+        <rect x={left} y={top} width={plotW} height={plotH} rx="10" fill="#fbfdf8" />
+        <text x={left} y={18} fill="#64748b" fontSize="12">客户数量</text>
         {yTicks.map((tick) => {
           const y = yAt(tick)
           return (
             <g key={tick}>
-              <line x1={left} y1={y} x2={width - right} y2={y} stroke="#e5d48a" strokeWidth="1" opacity={tick === 0 ? 1 : 0.65} />
-              <text x={left - 10} y={y + 4} textAnchor="end" fill="#64748b" fontSize="12">{tick}</text>
+              <line x1={left} y1={y} x2={width - right} y2={y} stroke={tick === 0 ? '#d4bb63' : '#e7ecd9'} strokeWidth="1" vectorEffect="non-scaling-stroke" />
+              <text x={left - 10} y={y + 4} textAnchor="end" fill="#7c8797" fontSize="12">{formatTick(tick)}</text>
             </g>
           )
         })}
-        <line x1={left} y1={top} x2={left} y2={height - bottom} stroke="#d4bb63" strokeWidth="1" />
-        <line x1={left} y1={height - bottom} x2={width - right} y2={height - bottom} stroke="#d4bb63" strokeWidth="1" />
-        <path d={linePath('leads')} fill="none" stroke="#15803d" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
-        <path d={linePath('signed')} fill="none" stroke="#b8860b" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+        {data.map((d, i) => (
+          (i % labelStep === 0 || i === data.length - 1) && (
+            <line
+              key={`grid-${d.date}`}
+              x1={xAt(i)}
+              y1={top}
+              x2={xAt(i)}
+              y2={height - bottom}
+              stroke="#edf3e9"
+              strokeWidth="1"
+              vectorEffect="non-scaling-stroke"
+            />
+          )
+        ))}
+        <path d={areaPath('leads')} fill="url(#trendLeadFill)" />
+        <path d={areaPath('signed')} fill="url(#trendSignedFill)" />
+        <path d={linePath('leads')} fill="none" stroke="#15803d" strokeWidth="3.2" strokeLinejoin="round" strokeLinecap="round" filter="url(#trendLineShadow)" vectorEffect="non-scaling-stroke" />
+        <path d={linePath('signed')} fill="none" stroke="#b8860b" strokeWidth="3.2" strokeLinejoin="round" strokeLinecap="round" filter="url(#trendLineShadow)" vectorEffect="non-scaling-stroke" />
         {data.map((d, i) => (
           <g key={d.date}>
-            <circle cx={xAt(i)} cy={yAt(d.leads || 0)} r="3" fill="#15803d" />
-            <circle cx={xAt(i)} cy={yAt(d.signed || 0)} r="3" fill="#b8860b" />
+            {canShowPoint(d.leads || 0, i) && (
+              <>
+                <circle cx={xAt(i)} cy={yAt(d.leads || 0)} r="5" fill="#ffffff" stroke="#15803d" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+                <circle cx={xAt(i)} cy={yAt(d.leads || 0)} r="2.2" fill="#15803d" />
+              </>
+            )}
+            {canShowPoint(d.signed || 0, i) && (
+              <>
+                <circle cx={xAt(i)} cy={yAt(d.signed || 0)} r="5" fill="#ffffff" stroke="#b8860b" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+                <circle cx={xAt(i)} cy={yAt(d.signed || 0)} r="2.2" fill="#b8860b" />
+              </>
+            )}
             {(i % labelStep === 0 || i === data.length - 1) && (
-              <text x={xAt(i)} y={height - 18} textAnchor="middle" fill="#64748b" fontSize="11">{d.label}</text>
+              <text x={xAt(i)} y={height - 18} textAnchor="middle" fill="#7c8797" fontSize="11">{d.label}</text>
             )}
           </g>
         ))}
@@ -152,6 +232,7 @@ function TrendChart({ rows }: { rows: TrendPoint[] }) {
 export default function Dashboard() {
   const [data, setData] = useState<Any | null>(null)
   const [loading, setLoading] = useState(true)
+  const [trendDays, setTrendDays] = useState<TrendRange>(30)
   useEffect(() => {
     client.get('/reports/dashboard').then((r) => setData(r.data)).finally(() => setLoading(false))
   }, [])
@@ -160,6 +241,7 @@ export default function Dashboard() {
 
   if (data.role === 'ADMIN') {
     const c = data.counts
+    const trendRows = (data.trend || []).slice(-trendDays)
     const cards: [string, number, string, string][] = [
       ['客户总数', c.custTotal, '位', '#166534'],
       ['今日新增', c.newToday, '', '#15803d'],
@@ -179,9 +261,24 @@ export default function Dashboard() {
             </div>
           ))}
         </div>
-        <SectionTitle eyebrow="TREND" title="线索与签单趋势（近30天）" />
-        <Card size="small">
-          <TrendChart rows={data.trend || []} />
+        <SectionTitle eyebrow="TREND" title={`线索与签单趋势（近${trendDays}天）`} />
+        <Card size="small" styles={{ body: { padding: 0, overflow: 'hidden' } }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', padding: '14px 16px 8px', borderBottom: '1px solid #edf2e6' }}>
+            <div style={{ display: 'flex', gap: 18, alignItems: 'center', color: '#334155', fontSize: 13 }}>
+              <span><i style={{ display: 'inline-block', width: 20, height: 3, borderRadius: 999, background: '#15803d', marginRight: 7, verticalAlign: 'middle' }} />线索数量</span>
+              <span><i style={{ display: 'inline-block', width: 20, height: 3, borderRadius: 999, background: '#b8860b', marginRight: 7, verticalAlign: 'middle' }} />签单数量</span>
+            </div>
+            <Segmented
+              size="small"
+              value={trendDays}
+              onChange={(value) => setTrendDays(value as TrendRange)}
+              options={[
+                { label: '近30天', value: 30 },
+                { label: '近15天', value: 15 },
+              ]}
+            />
+          </div>
+          <TrendChart rows={trendRows} />
         </Card>
         <SectionTitle eyebrow="CHANNELS" title="按渠道统计客户线索" />
         <Card size="small">
