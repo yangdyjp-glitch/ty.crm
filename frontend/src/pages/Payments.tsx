@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Button,
@@ -20,6 +20,30 @@ import { CURRENCY_LABEL, PAYMENT_CONFIRM_LABEL, fmtDate, fmtMoney } from '../api
 import { moneyIn } from '../api/money'
 
 type Any = Record<string, any>
+const EMPTY_FILTER = '__EMPTY__'
+
+function paymentChannelName(r: Any) {
+  return r.customer?.channelNameSnapshot || r.customer?.channel?.name || r.customer?.acquisitionChannel?.name || '—'
+}
+
+function filterValue(v: unknown) {
+  return v == null || v === '' ? EMPTY_FILTER : String(v)
+}
+
+function filterText(v: unknown) {
+  return v == null || v === '' ? '—' : String(v)
+}
+
+function uniqueFilters(rows: Any[], getValue: (row: Any) => unknown, getText: (row: Any) => unknown = getValue) {
+  const seen = new Map<string, string>()
+  rows.forEach((row) => {
+    const value = filterValue(getValue(row))
+    if (!seen.has(value)) seen.set(value, filterText(getText(row)))
+  })
+  return Array.from(seen.entries())
+    .sort(([, a], [, b]) => a.localeCompare(b, 'zh-CN'))
+    .map(([value, text]) => ({ value, text }))
+}
 
 export default function Payments() {
   const { user } = useAuth()
@@ -96,6 +120,19 @@ export default function Payments() {
     }
   }
 
+  const currencyFilters = useMemo(
+    () => uniqueFilters(rows, (r) => r.currency, (r) => CURRENCY_LABEL[r.currency] || r.currency),
+    [rows],
+  )
+  const confirmStatusFilters = useMemo(
+    () => uniqueFilters(rows, (r) => r.confirmStatus, (r) => PAYMENT_CONFIRM_LABEL[r.confirmStatus] || r.confirmStatus),
+    [rows],
+  )
+  const channelFilters = useMemo(
+    () => uniqueFilters(rows, paymentChannelName),
+    [rows],
+  )
+
   return (
     <div>
       <Button type="primary" style={{ marginBottom: 16 }} onClick={openCreate}>录入收款</Button>
@@ -109,12 +146,29 @@ export default function Payments() {
           { title: '登记时间', dataIndex: 'createdAt', width: COL.date, render: fmtDate },
           { title: '到账时间', dataIndex: 'confirmedAt', width: COL.date, render: (t: string, r: Any) => (r.confirmStatus === 'CONFIRMED' ? fmtDate(t) : '—') },
           { title: '客户', width: COL.person, render: (_, r) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
+          {
+            title: '渠道',
+            width: COL.channel,
+            filters: channelFilters,
+            filterSearch: true,
+            onFilter: (value: any, r) => filterValue(paymentChannelName(r)) === value,
+            render: (_, r) => paymentChannelName(r),
+          },
           { title: '金额', dataIndex: 'amount', width: COL.money, render: moneyIn, align: 'right' },
-          { title: '币种', dataIndex: 'currency', width: COL.currency, render: (c) => CURRENCY_LABEL[c] },
+          {
+            title: '币种',
+            dataIndex: 'currency',
+            width: COL.currency,
+            filters: currencyFilters,
+            onFilter: (value: any, r) => filterValue(r.currency) === value,
+            render: (c) => CURRENCY_LABEL[c],
+          },
           {
             title: '确认状态',
             dataIndex: 'confirmStatus',
             width: COL.status,
+            filters: confirmStatusFilters,
+            onFilter: (value: any, r) => filterValue(r.confirmStatus) === value,
             render: (s) => <Tag color={s === 'CONFIRMED' ? 'green' : s === 'PROBLEM' ? 'red' : 'orange'}>{PAYMENT_CONFIRM_LABEL[s]}</Tag>,
           },
           {

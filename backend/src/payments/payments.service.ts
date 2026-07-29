@@ -167,7 +167,15 @@ export class PaymentsService {
       orderBy: { id: 'desc' },
       include: {
         order: { select: { id: true, orderNo: true, receivableAmount: true, paidAmount: true, unpaidAmount: true } },
-        customer: { select: { id: true, name: true } },
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            channelNameSnapshot: true,
+            channel: { select: { id: true, name: true } },
+            acquisitionChannel: { select: { id: true, name: true } },
+          },
+        },
       },
     });
   }
@@ -178,7 +186,15 @@ export class PaymentsService {
       orderBy: { id: 'desc' },
       include: {
         order: { select: { id: true, orderNo: true, receivableAmount: true, paidAmount: true, unpaidAmount: true } },
-        customer: { select: { id: true, name: true } },
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            channelNameSnapshot: true,
+            channel: { select: { id: true, name: true } },
+            acquisitionChannel: { select: { id: true, name: true } },
+          },
+        },
       },
     });
   }
