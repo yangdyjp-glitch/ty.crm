@@ -112,7 +112,8 @@ export default function OrderDetail() {
           dataSource={o.payments || []}
           columns={[
             { title: '收款号', dataIndex: 'paymentNo', width: COL.no },
-            { title: '时间', dataIndex: 'paidAt', width: COL.date, render: fmtDate },
+            { title: '登记时间', dataIndex: 'createdAt', width: COL.date, render: fmtDate },
+            { title: '到账时间', dataIndex: 'paidAt', width: COL.date, render: fmtDate },
             { title: '金额', dataIndex: 'amount', width: COL.money, render: moneyIn, align: 'right' },
             { title: '状态', dataIndex: 'confirmStatus', width: COL.status, render: (s: string) => PAYMENT_CONFIRM_LABEL[s] },
             { title: '备注', dataIndex: 'remark', width: COL.note },
@@ -128,6 +129,8 @@ export default function OrderDetail() {
           dataSource={o.refunds || []}
           columns={[
             { title: '退款号', dataIndex: 'refundNo', width: COL.no },
+            { title: '登记时间', dataIndex: 'appliedAt', width: COL.date, render: (t: string, r: Any) => fmtDate(t ?? r.createdAt) },
+            { title: '到账时间', dataIndex: 'completedAt', width: COL.date, render: fmtDate },
             { title: '名义额', dataIndex: 'nominalAmount', width: COL.money, render: moneyOut, align: 'right' },
             { title: '状态', dataIndex: 'status', width: COL.status, render: (s: string) => REFUND_STATUS_LABEL[s] },
           ]}

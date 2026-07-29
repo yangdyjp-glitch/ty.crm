@@ -1,4 +1,5 @@
 import {
+  IsDateString,
   IsEnum,
   IsInt,
   IsNumber,
@@ -23,4 +24,6 @@ export class CreateRefundDto {
 
   /** 退款承担方：公司 / 第三方（第三方垫付时入往来台账） */
   @IsOptional() @IsEnum(RefundBearer) bearer?: RefundBearer;
+
+  @IsOptional() @IsDateString() appliedAt?: string;
 }

@@ -85,6 +85,7 @@ export class RefundsService {
         status: RefundStatus.PENDING,
         bearer: dto.bearer ?? RefundBearer.COMPANY,
         appliedById: user.id,
+        appliedAt: dto.appliedAt ? new Date(dto.appliedAt) : new Date(),
       },
     });
   }

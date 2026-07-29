@@ -107,7 +107,8 @@ export default function Payments() {
         dataSource={rows}
         columns={[
           { title: '收款号', dataIndex: 'paymentNo', width: COL.no },
-          { title: '时间', dataIndex: 'paidAt', width: COL.date, render: fmtDate },
+          { title: '登记时间', dataIndex: 'createdAt', width: COL.date, render: fmtDate },
+          { title: '到账时间', dataIndex: 'paidAt', width: COL.date, render: fmtDate },
           { title: '客户', width: COL.person, render: (_, r) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
           { title: '金额', dataIndex: 'amount', width: COL.money, render: moneyIn, align: 'right' },
           { title: '币种', dataIndex: 'currency', width: COL.currency, render: (c) => CURRENCY_LABEL[c] },
@@ -147,7 +148,7 @@ export default function Payments() {
           <Form.Item name="amount" label="收款金额" rules={[{ required: true }]}>
             <InputNumber min={0} style={{ width: '100%' }} />
           </Form.Item>
-          <Form.Item name="paidAt" label="时间">
+          <Form.Item name="paidAt" label="到账时间">
             <Input type="date" />
           </Form.Item>
         </Form>
@@ -163,7 +164,7 @@ export default function Payments() {
               <InputNumber min={0} controls={false} style={{ width: '100%' }} />
             </Form.Item>
             <Form.Item name="method" label="收款方式"><Input /></Form.Item>
-            <Form.Item name="paidAt" label="时间">
+            <Form.Item name="paidAt" label="到账时间">
               <Input type="date" />
             </Form.Item>
             <Form.Item

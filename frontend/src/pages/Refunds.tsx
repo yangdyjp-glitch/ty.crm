@@ -21,7 +21,9 @@ import {
   REFUND_BEARER_LABEL,
   REFUND_REASON_LABEL,
   REFUND_STATUS_LABEL,
+  fmtDate,
   fmtMoney,
+  todayDate,
 } from '../api/types'
 import { moneyOut } from '../api/money'
 
@@ -46,6 +48,7 @@ export default function Refunds() {
 
   const openCreate = async () => {
     form.resetFields()
+    form.setFieldsValue({ bearer: 'COMPANY', refundPercent: 100, appliedAt: todayDate() })
     const o = await client.get('/orders', { params: { all: 1 } })
     setOrders(o.data.items.filter((x: Any) => !['REFUNDED', 'CANCELLED'].includes(x.status)))
     setOpen(true)
@@ -61,6 +64,7 @@ export default function Refunds() {
         reason: v.reason,
         reasonNote: v.reasonNote,
         bearer: v.bearer,
+        appliedAt: v.appliedAt,
       })
       message.success('已提交退款申请（待管理员执行）')
       setOpen(false)
@@ -98,6 +102,8 @@ export default function Refunds() {
         dataSource={rows}
         columns={[
           { title: '退款号', dataIndex: 'refundNo', width: COL.no },
+          { title: '登记时间', dataIndex: 'appliedAt', width: COL.date, render: (t: string, r: Any) => fmtDate(t ?? r.createdAt) },
+          { title: '到账时间', dataIndex: 'completedAt', width: COL.date, render: fmtDate },
           { title: '客户', width: COL.person, render: (_, r) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
           { title: '名义额', dataIndex: 'nominalAmount', width: COL.money, render: moneyOut, align: 'right' },
           { title: '实退现金', dataIndex: 'cashAmount', width: COL.money, render: moneyOut, align: 'right' },
@@ -148,6 +154,9 @@ export default function Refunds() {
           </Form.Item>
           <Form.Item name="refundPercent" label="退款比例 %（基于合同）" rules={[{ required: true }]}>
             <InputNumber min={0} max={100} style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item name="appliedAt" label="登记时间">
+            <Input type="date" />
           </Form.Item>
           <Form.Item name="reason" label="退款原因" rules={[{ required: true }]}>
             <Select options={Object.entries(REFUND_REASON_LABEL).map(([k, v]) => ({ value: k, label: v }))} />
