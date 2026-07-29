@@ -25,6 +25,8 @@ import {
 } from '../api/types'
 
 type Any = Record<string, any>
+const CHANNEL_TABLE_VISIBLE_ROWS = 8
+const CHANNEL_TABLE_ROW_HEIGHT = 45
 
 export default function Channels() {
   const { user } = useAuth()
@@ -126,6 +128,7 @@ export default function Channels() {
       </Button>
       <Table
         {...scrollTableProps}
+        scroll={{ x: 'max-content', y: CHANNEL_TABLE_VISIBLE_ROWS * CHANNEL_TABLE_ROW_HEIGHT }}
         rowKey="id"
         loading={loading}
         dataSource={rows}
