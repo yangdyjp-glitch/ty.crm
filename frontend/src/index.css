@@ -170,28 +170,55 @@ td.ant-table-cell[align='right'] {
   font-weight: 700 !important;
 }
 
-/* 客户列表：固定表头时只保留一条表头底线，避免和表体边缘叠成粗线。 */
+/* 客户列表：固定表头时只保留一条表体顶线，避免和表头边缘叠成粗线。 */
 .customer-list-table .ant-table-header {
-  border-bottom: 1px solid var(--line);
+  border-bottom: none !important;
 }
 .customer-list-table .ant-table-thead > tr > th {
   border-bottom: none !important;
 }
-.customer-inline-select.ant-select-single.ant-select-sm {
-  height: 24px;
+.customer-list-table .ant-table-body {
+  border-top: 1px solid var(--line) !important;
 }
-.customer-inline-select.ant-select-single.ant-select-sm .ant-select-selector {
+.customer-list-table .ant-table-tbody > tr:first-child > td {
+  border-top: none !important;
+}
+.customer-list-table .customer-inline-select {
+  --ant-border-radius: 0px !important;
+  --ant-border-radius-sm: 0px !important;
+  --ant-control-outline-width: 0px;
+}
+.customer-list-table .customer-inline-select.ant-select-single.ant-select-sm {
   height: 24px !important;
-  border-radius: 0 !important;
-  border-color: #d8bd7a !important;
-  padding: 0 8px !important;
+  min-height: 24px !important;
 }
-.customer-inline-select.ant-select-single.ant-select-sm .ant-select-selection-item,
-.customer-inline-select.ant-select-single.ant-select-sm .ant-select-selection-placeholder {
+.customer-list-table .customer-inline-select.ant-select-single.ant-select-sm .ant-select-selector {
+  height: 24px !important;
+  min-height: 24px !important;
+  border: 1px solid #d8bd7a !important;
+  border-radius: 0 !important;
+  border-start-start-radius: 0 !important;
+  border-start-end-radius: 0 !important;
+  border-end-start-radius: 0 !important;
+  border-end-end-radius: 0 !important;
+  padding: 0 8px !important;
+  box-shadow: none !important;
+}
+.customer-list-table .customer-inline-select.ant-select-focused .ant-select-selector,
+.customer-list-table .customer-inline-select.ant-select-open .ant-select-selector {
+  border-color: #d8bd7a !important;
+  box-shadow: none !important;
+}
+.customer-list-table .customer-inline-select.ant-select-single.ant-select-sm .ant-select-selection-wrap,
+.customer-list-table .customer-inline-select.ant-select-single.ant-select-sm .ant-select-selection-search {
+  border-radius: 0 !important;
+}
+.customer-list-table .customer-inline-select.ant-select-single.ant-select-sm .ant-select-selection-item,
+.customer-list-table .customer-inline-select.ant-select-single.ant-select-sm .ant-select-selection-placeholder {
   line-height: 22px !important;
 }
-.customer-inline-select.ant-select .ant-select-arrow,
-.customer-inline-select.ant-select .ant-select-clear {
+.customer-list-table .customer-inline-select.ant-select .ant-select-arrow,
+.customer-list-table .customer-inline-select.ant-select .ant-select-clear {
   color: #9ca3af;
 }
 
