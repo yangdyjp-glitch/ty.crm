@@ -162,11 +162,6 @@ export default function Customers() {
     { title: '时间', dataIndex: 'discoveredAt', width: COL.date, render: (t: string, r: Any) => fmtDate(t ?? r.createdAt) },
     { title: '姓名', dataIndex: 'name', width: COL.person, render: (n: string, r: Any) => <a onClick={() => nav(`/customers/${r.id}`)}>{n}</a> },
     {
-      title: '联系方式',
-      width: COL.contact,
-      render: (_: any, r: Any) => [r.phone, r.wechat, r.email].filter(Boolean).join(' / ') || '—',
-    },
-    {
       title: '来源 / 渠道',
       width: COL.source,
       render: (_: any, r: Any) => (
