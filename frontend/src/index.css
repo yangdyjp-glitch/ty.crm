@@ -249,7 +249,7 @@ td.ant-table-cell[align='right'] {
   width: 100%;
 }
 .full-height-list-table .ant-table-body {
-  min-height: calc(100vh - 390px);
+  min-height: calc(100vh - 340px);
 }
 
 /* 滚动条 */
