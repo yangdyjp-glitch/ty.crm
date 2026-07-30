@@ -258,12 +258,8 @@ export class OrdersService {
 
   async completeService(user: AuthUser, id: number) {
     const o = await this.loadScoped(user, id);
-    if (
-      ([OrderStatus.REFUNDED, OrderStatus.CANCELLED] as OrderStatus[]).includes(
-        o.status,
-      )
-    ) {
-      throw new BadRequestException('该订单已终止，无法完成服务');
+    if (o.status !== OrderStatus.IN_SERVICE) {
+      throw new BadRequestException('仅服务中的订单可完成服务');
     }
     await this.prisma.order.update({
       where: { id },

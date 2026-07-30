@@ -229,7 +229,7 @@ export default function Orders() {
           {['FULLY_PAID', 'PARTIAL_PAID', 'PENDING_PAYMENT'].includes(r.status) && (
             <ActionBtn tone="confirm" onClick={() => act(r.id, 'start-service')}>开始服务</ActionBtn>
           )}
-          {['IN_SERVICE', 'FULLY_PAID', 'PARTIAL_PAID'].includes(r.status) && (
+          {r.status === 'IN_SERVICE' && (
             <ActionBtn tone="confirm" onClick={() => act(r.id, 'complete-service')}>完成服务</ActionBtn>
           )}
           {isAdmin && (
