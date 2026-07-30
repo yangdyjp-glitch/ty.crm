@@ -13,7 +13,9 @@ export class CreateOrderDto {
   @IsInt() customerId: number;
   @IsInt() productId: number;
   @IsEnum(Currency) currency: Currency;
-  @IsNumber() @Min(0) originalPrice: number;
+  @IsOptional() @IsNumber() @Min(0) unitPrice?: number;
+  @IsOptional() @IsInt() @Min(1) quantity?: number;
+  @IsOptional() @IsNumber() @Min(0) originalPrice?: number;
   @IsOptional() @IsNumber() @Min(0) discountAmount?: number;
   @IsOptional() @IsDateString() signedAt?: string;
   @IsOptional() @IsString() contractNo?: string;
@@ -28,6 +30,8 @@ export class CreateOrderDto {
 }
 
 export class UpdateOrderDto {
+  @IsOptional() @IsNumber() @Min(0) unitPrice?: number;
+  @IsOptional() @IsInt() @Min(1) quantity?: number;
   @IsOptional() @IsNumber() @Min(0) originalPrice?: number;
   @IsOptional() @IsNumber() @Min(0) discountAmount?: number;
   @IsOptional() @IsString() contractNo?: string;

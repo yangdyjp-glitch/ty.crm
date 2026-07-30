@@ -42,8 +42,13 @@ export class OrdersService {
       customer.channel?.fundSettlementMode ??
       FundSettlementMode.COMPANY_REBATE;
     const hasCommission = !!customer.channelId && product.participateCommission;
+    const quantity = dto.quantity ?? 1;
+    const unitPrice =
+      dto.unitPrice ??
+      (dto.originalPrice != null ? dto.originalPrice / quantity : Number(product.standardPrice));
+    const original = unitPrice * quantity;
     const discount = dto.discountAmount ?? 0;
-    const receivable = dto.originalPrice - discount;
+    const receivable = original - discount;
     // 首款+尾款 ≠ 应收 时必须填写差异说明（存入备注）
     const paySum = dto.firstPaymentAmount + (dto.tailPaymentAmount ?? 0);
     if (paySum !== receivable && !dto.remark) {
@@ -88,7 +93,9 @@ export class OrdersService {
           signedById: user.id,
           signedAt: dto.signedAt ? new Date(dto.signedAt) : new Date(),
           contractNo, // 自动合同号
-          originalPrice: dto.originalPrice,
+          unitPrice,
+          quantity,
+          originalPrice: original,
           discountAmount: discount,
           receivableAmount: receivable,
           paidAmount: 0,
@@ -195,14 +202,28 @@ export class OrdersService {
 
   async update(user: AuthUser, id: number, dto: UpdateOrderDto) {
     const o = await this.loadScoped(user, id);
-    const original = dto.originalPrice ?? Number(o.originalPrice);
+    const currentQuantity = o.quantity ?? 1;
+    const quantity = dto.quantity ?? currentQuantity;
+    const baseUnitPrice =
+      dto.unitPrice ??
+      (o.unitPrice != null ? Number(o.unitPrice) : Number(o.originalPrice) / currentQuantity);
+    const changedUnitOrQuantity = dto.unitPrice !== undefined || dto.quantity !== undefined;
+    const original = changedUnitOrQuantity
+      ? baseUnitPrice * quantity
+      : dto.originalPrice ?? Number(o.originalPrice);
+    const unitPrice =
+      changedUnitOrQuantity || dto.originalPrice === undefined
+        ? baseUnitPrice
+        : original / quantity;
     const discount = dto.discountAmount ?? Number(o.discountAmount);
     const receivable = original - discount;
     const unpaid = receivable - Number(o.paidAmount);
     await this.prisma.order.update({
       where: { id },
       data: {
-        originalPrice: dto.originalPrice,
+        unitPrice,
+        quantity,
+        originalPrice: original,
         discountAmount: dto.discountAmount,
         contractNo: dto.contractNo,
         signedAt: dto.signedAt ? new Date(dto.signedAt) : undefined,

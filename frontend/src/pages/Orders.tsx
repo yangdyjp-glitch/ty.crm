@@ -58,6 +58,18 @@ function monthFilters(rows: Any[]) {
     .map((value) => ({ value, text: value === EMPTY_FILTER ? '未填写' : value }))
 }
 
+function orderQuantity(r: Any) {
+  return Number(r.quantity) || 1
+}
+
+function orderUnitPrice(r: Any) {
+  return r.unitPrice != null ? Number(r.unitPrice) : Number(r.originalPrice || 0) / orderQuantity(r)
+}
+
+function calcOriginalPrice(unitPrice: unknown, quantity: unknown) {
+  return (Number(unitPrice) || 0) * (Number(quantity) || 1)
+}
+
 export default function Orders() {
   const { user } = useAuth()
   const isAdmin = user?.role === 'ADMIN'
@@ -71,11 +83,13 @@ export default function Orders() {
   const [products, setProducts] = useState<Any[]>([])
   const fp = Form.useWatch('firstPaymentAmount', form)
   const tp = Form.useWatch('tailPaymentAmount', form)
-  const op = Form.useWatch('originalPrice', form)
+  const up = Form.useWatch('unitPrice', form)
+  const qty = Form.useWatch('quantity', form)
   const dc = Form.useWatch('discountAmount', form)
-  const receivable = (Number(op) || 0) - (Number(dc) || 0)
+  const originalPrice = calcOriginalPrice(up, qty)
+  const receivable = originalPrice - (Number(dc) || 0)
   const paySum = (Number(fp) || 0) + (Number(tp) || 0)
-  const payMismatch = !!op && paySum !== receivable
+  const payMismatch = originalPrice > 0 && paySum !== receivable
 
   const load = () => {
     setLoading(true)
@@ -85,18 +99,31 @@ export default function Orders() {
 
   const openCreate = async () => {
     form.resetFields()
-    form.setFieldsValue({ currency: 'JPY', signedAt: todayDate(), firstPaymentPaidAt: todayDate() })
+    form.setFieldsValue({ currency: 'JPY', quantity: 1, signedAt: todayDate(), firstPaymentPaidAt: todayDate() })
     const cs = await client.get('/customers', { params: { all: 1 } })
     setCustomers(cs.data.items)
     setProducts(await loadProducts().catch(() => []))
     setOpen(true)
   }
 
+  const applyProductDefaults = (productId: number) => {
+    const product = products.find((p) => p.id === productId)
+    if (!product) return
+    form.setFieldsValue({
+      unitPrice: product.standardPrice != null ? Number(product.standardPrice) : undefined,
+      currency: product.currency || form.getFieldValue('currency'),
+    })
+  }
+
   const submit = async () => {
     const v = await form.validateFields()
     setSubmitting(true)
     try {
-      await client.post('/orders', v)
+      await client.post('/orders', {
+        ...v,
+        quantity: Number(v.quantity) || 1,
+        originalPrice: calcOriginalPrice(v.unitPrice, v.quantity),
+      })
       message.success('已创建订单')
       setOpen(false)
       load()
@@ -178,6 +205,10 @@ export default function Orders() {
       onFilter: (value: any, r: Any) => filterValue(r.currency) === value,
       render: (c: string) => CURRENCY_LABEL[c],
     },
+    { title: '单价', dataIndex: 'unitPrice', width: COL.money, render: (_: any, r: Any) => fmtMoney(orderUnitPrice(r)), align: 'right' as const },
+    { title: '数量', dataIndex: 'quantity', width: COL.count, render: (_: any, r: Any) => orderQuantity(r), align: 'right' as const },
+    { title: '应缴', dataIndex: 'originalPrice', width: COL.money, render: fmtMoney, align: 'right' as const },
+    { title: '优惠', dataIndex: 'discountAmount', width: COL.money, render: fmtMoney, align: 'right' as const },
     { title: '应收', dataIndex: 'receivableAmount', width: COL.money, render: fmtMoney, align: 'right' as const },
     { title: '已收', dataIndex: 'paidAmount', width: COL.money, render: moneyIn, align: 'right' as const },
     { title: '未收', dataIndex: 'unpaidAmount', width: COL.money, render: fmtMoney, align: 'right' as const },
@@ -229,17 +260,28 @@ export default function Orders() {
             />
           </Form.Item>
           <Form.Item name="productId" label="项目" rules={[{ required: true }]}>
-            <Select options={products.map((p) => ({ value: p.id, label: p.name }))} />
+            <Select
+              showSearch
+              optionFilterProp="label"
+              onChange={applyProductDefaults}
+              options={products.map((p) => ({ value: p.id, label: p.name }))}
+            />
           </Form.Item>
           <Form.Item name="signedAt" label="签单时间">
             <Input type="date" />
           </Form.Item>
-          <Space>
+          <Space wrap>
             <Form.Item name="currency" label="币种" rules={[{ required: true }]}>
               <Select style={{ width: 100 }} options={[{ value: 'JPY', label: '日元' }, { value: 'CNY', label: '人民币' }]} />
             </Form.Item>
-            <Form.Item name="originalPrice" label="应缴金额" rules={[{ required: true }]}>
+            <Form.Item name="unitPrice" label="单价" rules={[{ required: true }]}>
               <InputNumber min={0} controls={false} style={{ width: 140 }} />
+            </Form.Item>
+            <Form.Item name="quantity" label="数量" rules={[{ required: true }]}>
+              <InputNumber min={1} precision={0} controls={false} style={{ width: 90 }} />
+            </Form.Item>
+            <Form.Item label="应缴金额">
+              <InputNumber value={originalPrice} disabled controls={false} style={{ width: 140 }} />
             </Form.Item>
             <Form.Item name="discountAmount" label="优惠">
               <InputNumber min={0} controls={false} style={{ width: 100 }} />
@@ -256,7 +298,7 @@ export default function Orders() {
           </Form.Item>
           {payMismatch && (
             <div style={{ color: '#dc2626', marginBottom: 8 }}>
-              ⚠️ 首款+尾款（{paySum.toLocaleString()}）≠ 应收（{receivable.toLocaleString()}），请在下方填写差异说明。
+              提示：首款+尾款（{paySum.toLocaleString()}）≠ 应收（{receivable.toLocaleString()}），请在下方填写差异说明。
             </div>
           )}
           <Form.Item
@@ -265,7 +307,7 @@ export default function Orders() {
             rules={[
               {
                 validator: (_, value) => {
-                  const rcv = (Number(form.getFieldValue('originalPrice')) || 0) - (Number(form.getFieldValue('discountAmount')) || 0)
+                  const rcv = calcOriginalPrice(form.getFieldValue('unitPrice'), form.getFieldValue('quantity')) - (Number(form.getFieldValue('discountAmount')) || 0)
                   const sum = (Number(form.getFieldValue('firstPaymentAmount')) || 0) + (Number(form.getFieldValue('tailPaymentAmount')) || 0)
                   if (sum !== rcv && !value) return Promise.reject(new Error('首款+尾款与应收不一致，请填写差异说明'))
                   return Promise.resolve()

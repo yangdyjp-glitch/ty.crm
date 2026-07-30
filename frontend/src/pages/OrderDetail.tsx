@@ -15,18 +15,34 @@ import { COL, smallTableProps } from '../components/tableLayout'
 
 type Any = Record<string, any>
 
+function orderQuantity(order: Any) {
+  return Number(order.quantity) || 1
+}
+
+function orderUnitPrice(order: Any) {
+  return order.unitPrice != null ? Number(order.unitPrice) : Number(order.originalPrice || 0) / orderQuantity(order)
+}
+
+function calcOriginalPrice(unitPrice: unknown, quantity: unknown) {
+  return (Number(unitPrice) || 0) * (Number(quantity) || 1)
+}
+
 export default function OrderDetail() {
   const { id } = useParams()
   const nav = useNavigate()
   const [o, setO] = useState<Any | null>(null)
   const [saving, setSaving] = useState(false)
   const [form] = Form.useForm()
+  const unitPrice = Form.useWatch('unitPrice', form)
+  const quantity = Form.useWatch('quantity', form)
+  const currentOriginalPrice = calcOriginalPrice(unitPrice, quantity)
 
   const load = () => {
     client.get(`/orders/${id}`).then((r) => {
       setO(r.data)
       form.setFieldsValue({
-        originalPrice: Number(r.data.originalPrice),
+        unitPrice: orderUnitPrice(r.data),
+        quantity: orderQuantity(r.data),
         discountAmount: Number(r.data.discountAmount),
         contractNo: r.data.contractNo,
         signedAt: fmtDate(r.data.signedAt),
@@ -40,7 +56,11 @@ export default function OrderDetail() {
     const v = await form.validateFields()
     setSaving(true)
     try {
-      await client.patch(`/orders/${id}`, v)
+      await client.patch(`/orders/${id}`, {
+        ...v,
+        quantity: Number(v.quantity) || 1,
+        originalPrice: calcOriginalPrice(v.unitPrice, v.quantity),
+      })
       message.success('已保存')
       load()
     } catch (e: any) {
@@ -79,8 +99,14 @@ export default function OrderDetail() {
             </Form.Item>
           </Space>
           <Space wrap size="large">
-            <Form.Item name="originalPrice" label="应缴金额" rules={[{ required: true }]}>
+            <Form.Item name="unitPrice" label="单价" rules={[{ required: true }]}>
               <InputNumber min={0} controls={false} style={{ width: 160 }} />
+            </Form.Item>
+            <Form.Item name="quantity" label="数量" rules={[{ required: true }]}>
+              <InputNumber min={1} precision={0} controls={false} style={{ width: 100 }} />
+            </Form.Item>
+            <Form.Item label="应缴金额">
+              <InputNumber value={currentOriginalPrice} disabled controls={false} style={{ width: 160 }} />
             </Form.Item>
             <Form.Item name="discountAmount" label="优惠">
               <InputNumber min={0} controls={false} style={{ width: 120 }} />

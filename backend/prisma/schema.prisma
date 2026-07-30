@@ -335,7 +335,9 @@ model Order {
   signedById         Int? // 签约销售
   signedAt           DateTime
   contractNo         String?
-  originalPrice      Decimal            @db.Decimal(14, 2) // 应缴
+  unitPrice          Decimal?           @db.Decimal(14, 2) // 单价；历史订单为空时按 originalPrice 展示
+  quantity           Int                @default(1) // 数量
+  originalPrice      Decimal            @db.Decimal(14, 2) // 应缴 = 单价 × 数量
   discountAmount     Decimal            @default(0) @db.Decimal(14, 2)
   receivableAmount   Decimal            @db.Decimal(14, 2) // 实际应收 = 应缴 - 优惠
   paidAmount         Decimal            @default(0) @db.Decimal(14, 2)
