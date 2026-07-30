@@ -23,6 +23,17 @@ import { moneyIn } from '../api/money'
 
 type Any = Record<string, any>
 const EMPTY_FILTER = '__EMPTY__'
+const ORDER_COL = {
+  no: COL.no,
+  date: COL.date,
+  person: COL.person,
+  project: 170,
+  currency: COL.currency,
+  money: 112,
+  count: 72,
+  status: COL.status,
+  action: 180,
+} as const
 
 function filterValue(v: unknown) {
   return v == null || v === '' ? EMPTY_FILTER : String(v)
@@ -179,19 +190,19 @@ export default function Orders() {
   )
 
   const columns = [
-    { title: '订单号', dataIndex: 'orderNo', width: COL.no, render: (n: string, r: Any) => <a onClick={() => nav(`/orders/${r.id}`)}>{n}</a> },
+    { title: '订单号', dataIndex: 'orderNo', width: ORDER_COL.no, render: (n: string, r: Any) => <a onClick={() => nav(`/orders/${r.id}`)}>{n}</a> },
     {
       title: '时间',
       dataIndex: 'signedAt',
-      width: COL.date,
+      width: ORDER_COL.date,
       filters: signedMonthFilters,
       onFilter: (value: any, r: Any) => signedMonthValue(r) === value,
       render: fmtDate,
     },
-    { title: '客户', width: COL.person, render: (_: any, r: Any) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
+    { title: '客户', width: ORDER_COL.person, render: (_: any, r: Any) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
     {
       title: '项目',
-      width: COL.project,
+      width: ORDER_COL.project,
       filters: productFilters,
       filterSearch: true,
       onFilter: (value: any, r: Any) => filterValue(r.product?.id) === value,
@@ -200,29 +211,29 @@ export default function Orders() {
     {
       title: '币种',
       dataIndex: 'currency',
-      width: COL.currency,
+      width: ORDER_COL.currency,
       filters: currencyFilters,
       onFilter: (value: any, r: Any) => filterValue(r.currency) === value,
       render: (c: string) => CURRENCY_LABEL[c],
     },
-    { title: '单价', dataIndex: 'unitPrice', width: COL.money, render: (_: any, r: Any) => fmtMoney(orderUnitPrice(r)), align: 'right' as const },
-    { title: '数量', dataIndex: 'quantity', width: COL.count, render: (_: any, r: Any) => orderQuantity(r), align: 'right' as const },
-    { title: '应缴', dataIndex: 'originalPrice', width: COL.money, render: fmtMoney, align: 'right' as const },
-    { title: '优惠', dataIndex: 'discountAmount', width: COL.money, render: fmtMoney, align: 'right' as const },
-    { title: '应收', dataIndex: 'receivableAmount', width: COL.money, render: fmtMoney, align: 'right' as const },
-    { title: '已收', dataIndex: 'paidAmount', width: COL.money, render: moneyIn, align: 'right' as const },
-    { title: '未收', dataIndex: 'unpaidAmount', width: COL.money, render: fmtMoney, align: 'right' as const },
+    { title: '单价', dataIndex: 'unitPrice', width: ORDER_COL.money, render: (_: any, r: Any) => fmtMoney(orderUnitPrice(r)), align: 'right' as const },
+    { title: '数量', dataIndex: 'quantity', width: ORDER_COL.count, render: (_: any, r: Any) => orderQuantity(r), align: 'right' as const },
+    { title: '应缴', dataIndex: 'originalPrice', width: ORDER_COL.money, render: fmtMoney, align: 'right' as const },
+    { title: '优惠', dataIndex: 'discountAmount', width: ORDER_COL.money, render: fmtMoney, align: 'right' as const },
+    { title: '应收', dataIndex: 'receivableAmount', width: ORDER_COL.money, render: fmtMoney, align: 'right' as const },
+    { title: '已收', dataIndex: 'paidAmount', width: ORDER_COL.money, render: moneyIn, align: 'right' as const },
+    { title: '未收', dataIndex: 'unpaidAmount', width: ORDER_COL.money, render: fmtMoney, align: 'right' as const },
     {
       title: '确认状态',
       dataIndex: 'status',
-      width: COL.status,
+      width: ORDER_COL.status,
       filters: statusFilters,
       onFilter: (value: any, r: Any) => filterValue(r.status) === value,
       render: (s: string) => <Tag>{ORDER_STATUS_LABEL[s]}</Tag>,
     },
     {
       title: '操作',
-      width: COL.actionWide,
+      width: ORDER_COL.action,
       render: (_: any, r: Any) => (
         <Space wrap>
           <ActionBtn tone="view" onClick={() => nav(`/orders/${r.id}`)}>详情</ActionBtn>
@@ -245,6 +256,7 @@ export default function Orders() {
       <Button type="primary" style={{ marginBottom: 16 }} onClick={openCreate}>签约（新建订单）</Button>
       <Table
         {...scrollTableProps}
+        className="orders-list-table"
         rowKey="id"
         loading={loading}
         columns={columns}

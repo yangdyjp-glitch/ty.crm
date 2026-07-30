@@ -234,6 +234,18 @@ td.ant-table-cell[align='right'] {
   color: #9ca3af;
 }
 
+.orders-list-table .ant-table-body {
+  min-height: calc(100vh - 350px);
+}
+.orders-list-table .ant-table-cell {
+  padding-left: 10px !important;
+  padding-right: 10px !important;
+}
+.orders-list-table .act-btn {
+  padding-left: 7px;
+  padding-right: 7px;
+}
+
 /* 滚动条 */
 ::-webkit-scrollbar {
   width: 9px;
