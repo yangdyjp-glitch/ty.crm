@@ -251,6 +251,12 @@ td.ant-table-cell[align='right'] {
 .full-height-list-table .ant-table-body {
   min-height: calc(100vh - 340px);
 }
+.cash-accounts-table .ant-table-body {
+  min-height: calc(100vh - 292px);
+}
+.refunds-list-table .ant-table-body {
+  overflow-x: hidden !important;
+}
 
 /* 滚动条 */
 ::-webkit-scrollbar {
