@@ -158,6 +158,7 @@ export default function Payments() {
       <Button type="primary" style={{ marginBottom: 16 }} onClick={openCreate}>录入收款</Button>
       <Table
         {...scrollTableProps}
+        className="payments-list-table full-height-list-table"
         rowKey="id"
         loading={loading}
         dataSource={rows}

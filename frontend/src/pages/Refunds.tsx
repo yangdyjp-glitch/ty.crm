@@ -116,6 +116,7 @@ export default function Refunds() {
       <Button type="primary" style={{ marginBottom: 16 }} onClick={openCreate}>发起退款</Button>
       <Table
         {...scrollTableProps}
+        className="refunds-list-table full-height-list-table"
         rowKey="id"
         loading={loading}
         dataSource={rows}

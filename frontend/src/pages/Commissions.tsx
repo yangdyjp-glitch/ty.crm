@@ -137,6 +137,7 @@ export default function Commissions() {
       </Space>
       <Table
         {...scrollTableProps}
+        className="settlement-list-table full-height-list-table"
         rowKey="id"
         loading={loading}
         dataSource={data.items}
@@ -217,6 +218,7 @@ export default function Commissions() {
   const cashTable = (
     <Table
       {...scrollTableProps}
+      className="cash-accounts-table full-height-list-table"
       rowKey="orderId"
       loading={cashLoading}
       dataSource={cashData.items}

@@ -245,6 +245,12 @@ td.ant-table-cell[align='right'] {
   padding-left: 7px;
   padding-right: 7px;
 }
+.full-height-list-table {
+  width: 100%;
+}
+.full-height-list-table .ant-table-body {
+  min-height: calc(100vh - 390px);
+}
 
 /* 滚动条 */
 ::-webkit-scrollbar {
