@@ -148,6 +148,7 @@ export class PaymentsService {
     // 删除「已确认」收款 → 重算订单已收/未收
     if (p.confirmStatus === PaymentConfirmStatus.CONFIRMED) {
       await this.recomputeOrderPaid(p.orderId);
+      await this.commissions.onPaymentConfirmed(p.orderId);
     }
     return { ok: true };
   }

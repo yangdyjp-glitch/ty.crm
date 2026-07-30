@@ -4,12 +4,41 @@ import {
   FundSettlementMode,
   PaymentConfirmStatus,
   Prisma,
+  RefundBearer,
+  RefundStatus,
   UserRole,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthUser } from '../auth/current-user.decorator';
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
+
+function paidRatio(order: { paidAmount: unknown; receivableAmount: unknown }) {
+  const receivable = Number(order.receivableAmount);
+  if (receivable <= 0) return 0;
+  return Math.min(1, Math.max(0, Number(order.paidAmount) / receivable));
+}
+
+function realizedAgentNetCommission(
+  commission: { payableAmount: unknown },
+  order: { paidAmount: unknown; receivableAmount: unknown },
+) {
+  return r2(Number(commission.payableAmount) * paidRatio(order));
+}
+
+function companyCashRefunds(
+  refunds?: { status: RefundStatus; bearer: RefundBearer; cashAmount: unknown }[],
+) {
+  return r2(
+    (refunds ?? []).reduce(
+      (sum, refund) =>
+        refund.status === RefundStatus.REFUNDED && refund.bearer === RefundBearer.COMPANY
+          ? sum + Number(refund.cashAmount)
+          : sum,
+      0,
+    ),
+  );
+}
 
 @Injectable()
 export class ReportsService {
@@ -413,7 +442,13 @@ export class ReportsService {
     const orders = await this.prisma.order.findMany({
       where,
       orderBy: { id: 'desc' },
-      include: { commission: true },
+      include: {
+        commission: true,
+        refunds: {
+          where: { deletedAt: null, status: RefundStatus.REFUNDED },
+          select: { status: true, bearer: true, cashAmount: true },
+        },
+      },
     });
 
     const summary = new Map<string, any>();
@@ -443,36 +478,25 @@ export class ReportsService {
       const confirmedReceived = Number(order.paidAmount);
       const unpaidAmount = Number(order.unpaidAmount);
       const refundAmount = Number(order.refundAmount);
+      const cashRefund = companyCashRefunds(order.refunds);
       const channelPayable = Number(commission?.payableAmount ?? 0);
-      const hasArrived = confirmedReceived > 0;
       let channelSettled = 0;
       let pendingRebate = 0;
-      let companyActualReceived = 0;
-      let balance = 0;
+      const companyActualReceived = confirmedReceived;
+      let balance = confirmedReceived - cashRefund;
 
       if (commission) {
         if (fundSettlementMode === FundSettlementMode.AGENT_NET) {
-          channelSettled = channelPayable;
+          channelSettled = realizedAgentNetCommission(commission, order);
         } else if (commission.status === CommissionStatus.PAID) {
-          channelSettled = Number(commission.paidAmount || commission.payableAmount);
+          channelSettled = Number(commission.paidAmount || 0);
         } else if (commission.status !== CommissionStatus.CANCELLED) {
-          pendingRebate = Number(commission.unpaidAmount || commission.payableAmount);
+          pendingRebate = r2(
+            Math.max(0, channelPayable - Number(commission.paidAmount || 0)),
+          );
         }
-      }
-
-      if (hasArrived) {
-        if (!commission) {
-          companyActualReceived = contractAmount;
-          balance = contractAmount;
-        } else if (fundSettlementMode === FundSettlementMode.AGENT_NET) {
-          companyActualReceived = r2(contractAmount - channelPayable);
-          balance = companyActualReceived;
-        } else {
-          companyActualReceived = contractAmount;
-          balance =
-            commission.status === CommissionStatus.PAID
-              ? r2(contractAmount - channelPayable)
-              : contractAmount;
+        if (fundSettlementMode === FundSettlementMode.COMPANY_REBATE) {
+          balance = r2(balance - Number(commission.paidAmount || 0));
         }
       }
 
@@ -506,21 +530,41 @@ export class ReportsService {
   }
 
   async channels() {
-    const grouped = await this.prisma.commission.groupBy({
-      by: ['channelId', 'currency'],
+    const commissions = await this.prisma.commission.findMany({
       where: { deletedAt: null },
-      _sum: { payableAmount: true, paidAmount: true, unpaidAmount: true },
-      _count: true,
+      include: {
+        order: { select: { paidAmount: true, receivableAmount: true } },
+      },
     });
     const channels = await this.prisma.channel.findMany({
       where: { deletedAt: null },
       select: { id: true, name: true, channelType: true },
     });
     const nameMap = new Map(channels.map((c) => [c.id, c]));
-    return grouped.map((g) => ({
-      ...g,
-      channel: nameMap.get(g.channelId) ?? null,
-    }));
+    const grouped = new Map<string, any>();
+    for (const commission of commissions) {
+      const key = `${commission.channelId}:${commission.currency}`;
+      const row =
+        grouped.get(key) ??
+        {
+          channelId: commission.channelId,
+          currency: commission.currency,
+          _sum: { payableAmount: 0, paidAmount: 0, unpaidAmount: 0 },
+          _count: 0,
+          channel: nameMap.get(commission.channelId) ?? null,
+        };
+      const payable = Number(commission.payableAmount);
+      const paid =
+        commission.fundSettlementMode === FundSettlementMode.AGENT_NET
+          ? realizedAgentNetCommission(commission, commission.order)
+          : Number(commission.paidAmount || 0);
+      row._count += 1;
+      row._sum.payableAmount = r2(row._sum.payableAmount + payable);
+      row._sum.paidAmount = r2(row._sum.paidAmount + paid);
+      row._sum.unpaidAmount = r2(row._sum.unpaidAmount + Math.max(0, payable - paid));
+      grouped.set(key, row);
+    }
+    return [...grouped.values()];
   }
 
   async funnel() {
