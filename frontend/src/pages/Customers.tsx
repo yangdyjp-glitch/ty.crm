@@ -23,6 +23,7 @@ import {
   loadUserOptions,
 } from '../api/options'
 import {
+  CUSTOMER_STATUS_COLOR,
   CUSTOMER_STATUS_LABEL,
   INTENTION_LABEL,
   SOURCE_LABEL,
@@ -32,6 +33,10 @@ import {
 
 type Any = Record<string, any>
 const UNASSIGNED_FILTER = '__UNASSIGNED__'
+const customerStatusOptions = Object.entries(CUSTOMER_STATUS_LABEL).map(([value, label]) => ({
+  value,
+  label: <span className={`customer-status-option customer-status-${CUSTOMER_STATUS_COLOR[value]}`}>{label}</span>,
+}))
 
 function sourceChannelLabel(r: Any) {
   const channelName = r.channel?.name || r.acquisitionChannel?.name
@@ -222,13 +227,13 @@ export default function Customers() {
       onFilter: (value: any, r: Any) => r.mainStatus === value,
       render: (s: string, r: Any) => (
         <Select
-          className="customer-inline-select"
+          className={`customer-inline-select customer-status-select customer-status-${CUSTOMER_STATUS_COLOR[s]}`}
           size="small"
           value={s}
           disabled={inlineUpdatingId === r.id}
           popupMatchSelectWidth={false}
           style={{ width: '100%' }}
-          options={Object.entries(CUSTOMER_STATUS_LABEL).map(([value, label]) => ({ value, label }))}
+          options={customerStatusOptions}
           onChange={(value) => updateInline(r.id, { mainStatus: value })}
         />
       ),
@@ -372,7 +377,7 @@ export default function Customers() {
             <Select allowClear options={Object.entries(INTENTION_LABEL).map(([k, v]) => ({ value: k, label: v }))} />
           </Form.Item>
           <Form.Item name="mainStatus" label="状态" rules={[{ required: true }]}>
-            <Select options={Object.entries(CUSTOMER_STATUS_LABEL).map(([k, v]) => ({ value: k, label: v }))} />
+            <Select options={customerStatusOptions} />
           </Form.Item>
           <Form.Item name="discoveredAt" label="时间">
             <Input type="date" />

@@ -53,13 +53,13 @@ export const CUSTOMER_STATUS_LABEL: Record<string, string> = {
 };
 
 export const CUSTOMER_STATUS_COLOR: Record<string, string> = {
-  NEW_LEAD: 'default',
-  FOLLOWING: 'processing',
-  SIGNED: 'cyan',
-  IN_SERVICE: 'blue',
-  COMPLETED: 'success',
-  LOST: 'default',
-  REFUNDING: 'orange',
+  NEW_LEAD: 'gold',
+  FOLLOWING: 'gold',
+  SIGNED: 'green',
+  IN_SERVICE: 'green',
+  COMPLETED: 'green',
+  LOST: 'red',
+  REFUNDING: 'red',
   REFUNDED: 'red',
 };
 
