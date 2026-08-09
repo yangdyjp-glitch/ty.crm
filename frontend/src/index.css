@@ -236,23 +236,19 @@ td.ant-table-cell[align='right'] {
 
 /* 客户状态：金黄=推进中，绿色=履约中/完成，红色=流失/退款。 */
 .customer-status-option {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
   color: var(--customer-status-color);
   font-weight: 600;
 }
-.customer-status-option::before {
-  width: 9px;
-  height: 9px;
-  border: 1px solid var(--customer-status-border);
+.ant-select-dropdown .customer-status-option {
+  display: block;
+  margin: -5px -12px;
+  padding: 5px 12px;
   background: var(--customer-status-bg);
-  content: '';
 }
-.customer-list-table .customer-status-select .ant-select-selector,
-.customer-list-table .customer-status-select.ant-select-focused .ant-select-selector,
-.customer-list-table .customer-status-select.ant-select-open .ant-select-selector {
-  background: var(--customer-status-bg) !important;
+.customer-list-table .customer-inline-select.customer-status-select.ant-select-single.ant-select-sm .ant-select-selector,
+.customer-list-table .customer-inline-select.customer-status-select.ant-select-single.ant-select-sm.ant-select-focused .ant-select-selector,
+.customer-list-table .customer-inline-select.customer-status-select.ant-select-single.ant-select-sm.ant-select-open .ant-select-selector {
+  background-color: var(--customer-status-bg) !important;
   border-color: var(--customer-status-border) !important;
 }
 .customer-status-filter-option {
