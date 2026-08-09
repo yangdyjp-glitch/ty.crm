@@ -26,8 +26,6 @@ import {
 } from '../api/types'
 
 type Any = Record<string, any>
-const CHANNEL_TABLE_VISIBLE_ROWS = 8
-const CHANNEL_TABLE_ROW_HEIGHT = 45
 
 export default function Channels() {
   const { user } = useAuth()
@@ -124,37 +122,40 @@ export default function Channels() {
   }
 
   return (
-    <div>
-      <Button type="primary" style={{ marginBottom: 16 }} onClick={() => openForm()}>
-        {isAdmin ? '新增渠道' : '新增个人渠道'}
-      </Button>
-      <Table
-        {...scrollTableProps}
-        scroll={{ x: 'max-content', y: CHANNEL_TABLE_VISIBLE_ROWS * CHANNEL_TABLE_ROW_HEIGHT }}
-        rowKey="id"
-        loading={loading}
-        dataSource={sortedRows}
-        columns={[
-          { title: '名称', dataIndex: 'name', width: COL.channel },
-          { title: '类型', dataIndex: 'channelType', width: COL.type, render: (t) => <Tag>{CHANNEL_TYPE_LABEL[t]}</Tag> },
-          { title: '默认比例', dataIndex: 'defaultCommissionRate', width: COL.percent, render: (r) => (r != null ? r + '%' : '—') },
-          { title: '计算方式', dataIndex: 'commissionMethod', width: COL.method, render: (m) => COMMISSION_METHOD_LABEL[m] },
-          { title: '资金模式', dataIndex: 'fundSettlementMode', width: COL.mode, render: (m) => FUND_MODE_LABEL[m] },
-          { title: '结算条件', dataIndex: 'settlementCondition', width: COL.condition, render: (s) => SETTLEMENT_COND_LABEL[s] },
-          {
-            title: '操作',
-            width: COL.action,
-            render: (_, r) =>
-              isAdmin ? (
-                <Space wrap>
-                  <ActionBtn tone="edit" onClick={() => openForm(r)}>编辑</ActionBtn>
-                  <ActionBtn tone="view" onClick={() => openLedger(r.id)}>台账</ActionBtn>
-                  <DeleteBtn onConfirm={() => doRemove(r.id)} />
-                </Space>
-              ) : null,
-          },
-        ]}
-      />
+    <div className="channels-page">
+      <div className="channels-primary-section">
+        <Button type="primary" style={{ marginBottom: 16, alignSelf: 'flex-start' }} onClick={() => openForm()}>
+          {isAdmin ? '新增渠道' : '新增个人渠道'}
+        </Button>
+        <Table
+          {...scrollTableProps}
+          className="channels-primary-table"
+          scroll={{ x: 'max-content', y: '100%' }}
+          rowKey="id"
+          loading={loading}
+          dataSource={sortedRows}
+          columns={[
+            { title: '名称', dataIndex: 'name', width: COL.channel },
+            { title: '类型', dataIndex: 'channelType', width: COL.type, render: (t) => <Tag>{CHANNEL_TYPE_LABEL[t]}</Tag> },
+            { title: '默认比例', dataIndex: 'defaultCommissionRate', width: COL.percent, render: (r) => (r != null ? r + '%' : '—') },
+            { title: '计算方式', dataIndex: 'commissionMethod', width: COL.method, render: (m) => COMMISSION_METHOD_LABEL[m] },
+            { title: '资金模式', dataIndex: 'fundSettlementMode', width: COL.mode, render: (m) => FUND_MODE_LABEL[m] },
+            { title: '结算条件', dataIndex: 'settlementCondition', width: COL.condition, render: (s) => SETTLEMENT_COND_LABEL[s] },
+            {
+              title: '操作',
+              width: COL.action,
+              render: (_, r) =>
+                isAdmin ? (
+                  <Space wrap>
+                    <ActionBtn tone="edit" onClick={() => openForm(r)}>编辑</ActionBtn>
+                    <ActionBtn tone="view" onClick={() => openLedger(r.id)}>台账</ActionBtn>
+                    <DeleteBtn onConfirm={() => doRemove(r.id)} />
+                  </Space>
+                ) : null,
+            },
+          ]}
+        />
+      </div>
 
       <Modal title="往来 / 抵扣台账（按币种）" open={!!ledger} onCancel={() => setLedger(null)} footer={null} width={760}>
         {ledger && (
@@ -206,7 +207,7 @@ export default function Channels() {
         </Form>
       </Modal>
 
-      <div style={{ marginTop: 28 }}>
+      <div className="channels-dictionary-section">
         <Space style={{ marginBottom: 12 }} wrap>
           <b style={{ fontSize: 15 }}>获取渠道字典（自获取来源用）</b>
           <Button type="primary" onClick={() => openAcq()}>新增获取渠道</Button>
