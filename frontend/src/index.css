@@ -245,10 +245,11 @@ td.ant-table-cell[align='right'] {
   padding: 5px 12px;
   background: var(--customer-status-bg);
 }
-.customer-list-table .customer-inline-select.customer-status-select.ant-select-single.ant-select-sm .ant-select-selector,
-.customer-list-table .customer-inline-select.customer-status-select.ant-select-single.ant-select-sm.ant-select-focused .ant-select-selector,
-.customer-list-table .customer-inline-select.customer-status-select.ant-select-single.ant-select-sm.ant-select-open .ant-select-selector {
-  background-color: var(--customer-status-bg) !important;
+.customer-list-table .customer-inline-select.customer-status-select.ant-select,
+.customer-list-table .customer-inline-select.customer-status-select.ant-select:hover,
+.customer-list-table .customer-inline-select.customer-status-select.ant-select-focused,
+.customer-list-table .customer-inline-select.customer-status-select.ant-select-open {
+  background: var(--customer-status-bg) !important;
   border-color: var(--customer-status-border) !important;
 }
 .customer-status-filter-option {

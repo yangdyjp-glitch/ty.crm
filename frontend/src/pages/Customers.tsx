@@ -39,6 +39,8 @@ const customerStatusCssVars = (status: string) => {
     '--customer-status-color': style.color,
     '--customer-status-bg': style.backgroundColor,
     '--customer-status-border': style.borderColor,
+    '--ant-select-background-color': style.backgroundColor,
+    '--ant-select-border-color': style.borderColor,
   } as CSSProperties
 }
 const customerStatusOptions = Object.entries(CUSTOMER_STATUS_LABEL).map(([value, label]) => ({
