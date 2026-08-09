@@ -20,8 +20,8 @@ import dayjs from 'dayjs'
 import client, { downloadFile } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import {
-  CUSTOMER_STATUS_COLOR,
   CUSTOMER_STATUS_LABEL,
+  CUSTOMER_STATUS_STYLE,
   FOLLOW_METHOD_LABEL,
   INTENTION_LABEL,
   ORDER_STATUS_LABEL,
@@ -92,7 +92,7 @@ export default function CustomerDetail() {
         title={
           <Space wrap>
             {c.name}
-            <Tag color={CUSTOMER_STATUS_COLOR[c.mainStatus]}>{CUSTOMER_STATUS_LABEL[c.mainStatus]}</Tag>
+            <Tag style={CUSTOMER_STATUS_STYLE[c.mainStatus]}>{CUSTOMER_STATUS_LABEL[c.mainStatus]}</Tag>
             {c.intentionLevel && <Tag color="purple">{INTENTION_LABEL[c.intentionLevel]}</Tag>}
             {c.salesStage && <Tag color="geekblue">{SALES_STAGE_LABEL[c.salesStage]}</Tag>}
             {c.hasProblem && <Tag color="red">有问题</Tag>}

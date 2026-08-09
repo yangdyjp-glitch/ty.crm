@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Button,
@@ -23,8 +23,8 @@ import {
   loadUserOptions,
 } from '../api/options'
 import {
-  CUSTOMER_STATUS_COLOR,
   CUSTOMER_STATUS_LABEL,
+  CUSTOMER_STATUS_STYLE,
   INTENTION_LABEL,
   SOURCE_LABEL,
   fmtDate,
@@ -33,9 +33,17 @@ import {
 
 type Any = Record<string, any>
 const UNASSIGNED_FILTER = '__UNASSIGNED__'
+const customerStatusCssVars = (status: string) => {
+  const style = CUSTOMER_STATUS_STYLE[status]
+  return {
+    '--customer-status-color': style.color,
+    '--customer-status-bg': style.backgroundColor,
+    '--customer-status-border': style.borderColor,
+  } as CSSProperties
+}
 const customerStatusOptions = Object.entries(CUSTOMER_STATUS_LABEL).map(([value, label]) => ({
   value,
-  label: <span className={`customer-status-option customer-status-${CUSTOMER_STATUS_COLOR[value]}`}>{label}</span>,
+  label: <span className="customer-status-option" style={customerStatusCssVars(value)}>{label}</span>,
 }))
 
 function sourceChannelLabel(r: Any) {
@@ -202,6 +210,25 @@ export default function Customers() {
       ),
     [data.items],
   )
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = Object.fromEntries(Object.keys(CUSTOMER_STATUS_LABEL).map((status) => [status, 0]))
+    data.items.forEach((row) => {
+      if (row.mainStatus in counts) counts[row.mainStatus] += 1
+    })
+    return counts
+  }, [data.items])
+  const statusFilters = useMemo(
+    () => Object.entries(CUSTOMER_STATUS_LABEL).map(([value, label]) => ({
+      value,
+      text: (
+        <span className="customer-status-filter-option" style={customerStatusCssVars(value)}>
+          <span>{label}</span>
+          <span className="customer-status-filter-count">{statusCounts[value]}</span>
+        </span>
+      ),
+    })),
+    [statusCounts],
+  )
 
   const columns = [
     { title: '编号', dataIndex: 'customerNo', width: COL.no },
@@ -223,16 +250,16 @@ export default function Customers() {
       title: '状态',
       dataIndex: 'mainStatus',
       width: COL.status,
-      filters: Object.entries(CUSTOMER_STATUS_LABEL).map(([value, label]) => ({ text: label, value })),
+      filters: statusFilters,
       onFilter: (value: any, r: Any) => r.mainStatus === value,
       render: (s: string, r: Any) => (
         <Select
-          className={`customer-inline-select customer-status-select customer-status-${CUSTOMER_STATUS_COLOR[s]}`}
+          className="customer-inline-select customer-status-select"
           size="small"
           value={s}
           disabled={inlineUpdatingId === r.id}
           popupMatchSelectWidth={false}
-          style={{ width: '100%' }}
+          style={{ width: '100%', ...customerStatusCssVars(s) }}
           options={customerStatusOptions}
           onChange={(value) => updateInline(r.id, { mainStatus: value })}
         />

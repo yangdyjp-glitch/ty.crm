@@ -52,15 +52,15 @@ export const CUSTOMER_STATUS_LABEL: Record<string, string> = {
   REFUNDED: '已退款',
 };
 
-export const CUSTOMER_STATUS_COLOR: Record<string, string> = {
-  NEW_LEAD: 'gold',
-  FOLLOWING: 'gold',
-  SIGNED: 'green',
-  IN_SERVICE: 'green',
-  COMPLETED: 'green',
-  LOST: 'red',
-  REFUNDING: 'red',
-  REFUNDED: 'red',
+export const CUSTOMER_STATUS_STYLE: Record<string, { color: string; backgroundColor: string; borderColor: string }> = {
+  NEW_LEAD: { color: '#9a7400', backgroundColor: '#fff8dc', borderColor: '#e7c862' },
+  FOLLOWING: { color: '#755400', backgroundColor: '#f5e8b5', borderColor: '#caa641' },
+  SIGNED: { color: '#2f7a3f', backgroundColor: '#eef8e9', borderColor: '#abd09e' },
+  IN_SERVICE: { color: '#166534', backgroundColor: '#e2f2e6', borderColor: '#7eb58f' },
+  COMPLETED: { color: '#0f5132', backgroundColor: '#d4eadb', borderColor: '#559b6c' },
+  LOST: { color: '#a54840', backgroundColor: '#fff1ef', borderColor: '#e4aea8' },
+  REFUNDING: { color: '#b42318', backgroundColor: '#f9dfdc', borderColor: '#da8b83' },
+  REFUNDED: { color: '#881b16', backgroundColor: '#f1cbc7', borderColor: '#c9655d' },
 };
 
 export const ORDER_STATUS_LABEL: Record<string, string> = {

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Card, Col, Row, Segmented, Spin, Table, Tag } from 'antd'
 import client from '../api/client'
-import { CURRENCY_LABEL, CUSTOMER_STATUS_COLOR, CUSTOMER_STATUS_LABEL, fmtMoney } from '../api/types'
+import { CURRENCY_LABEL, CUSTOMER_STATUS_LABEL, CUSTOMER_STATUS_STYLE, fmtMoney } from '../api/types'
 import { moneyIn, moneyOut } from '../api/money'
 import { COL, smallTableProps } from '../components/tableLayout'
 import { sortChannelLeadStats } from '../utils/channelSort'
@@ -364,7 +364,7 @@ export default function Dashboard() {
         <SectionTitle eyebrow="STATUS" title="登记线索按状态分布" />
         <Card size="small">
           {(data.byStatus || []).map((s: Any) => (
-            <Tag key={s.mainStatus} color={CUSTOMER_STATUS_COLOR[s.mainStatus]} style={{ marginBottom: 8, fontSize: 14, padding: '2px 10px' }}>
+            <Tag key={s.mainStatus} style={{ ...CUSTOMER_STATUS_STYLE[s.mainStatus], marginBottom: 8, fontSize: 14, padding: '2px 10px' }}>
               {CUSTOMER_STATUS_LABEL[s.mainStatus]}：{s._count}
             </Tag>
           ))}
@@ -406,7 +406,7 @@ export default function Dashboard() {
       <SectionTitle eyebrow="STATUS" title="按状态分布" />
       <Card size="small">
         {(data.byStatus || []).map((s: Any) => (
-          <Tag key={s.mainStatus} color={CUSTOMER_STATUS_COLOR[s.mainStatus]} style={{ marginBottom: 8, fontSize: 14, padding: '2px 10px' }}>
+          <Tag key={s.mainStatus} style={{ ...CUSTOMER_STATUS_STYLE[s.mainStatus], marginBottom: 8, fontSize: 14, padding: '2px 10px' }}>
             {CUSTOMER_STATUS_LABEL[s.mainStatus]}：{s._count}
           </Tag>
         ))}
