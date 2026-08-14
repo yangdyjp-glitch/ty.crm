@@ -73,11 +73,13 @@ function LeadCountTable({
   rowKey,
   nameTitle,
   extraColumns = [],
+  showCustomerCount = true,
 }: {
   rows: Any[]
   rowKey: (r: Any) => string | number
   nameTitle: string
   extraColumns?: Any[]
+  showCustomerCount?: boolean
 }) {
   return (
     <Table
@@ -88,7 +90,9 @@ function LeadCountTable({
       columns={[
         ...extraColumns,
         { title: nameTitle, dataIndex: 'name', width: COL.name },
-        { title: '客户线索数', dataIndex: 'customerCount', width: COL.count, align: 'right' },
+        ...(showCustomerCount
+          ? [{ title: '客户线索数', dataIndex: 'customerCount', width: COL.count, align: 'right' as const }]
+          : []),
         { title: '签约数', dataIndex: 'signedCount', width: COL.count, align: 'right' },
       ]}
     />
@@ -306,6 +310,7 @@ export default function Dashboard() {
             rowKey={(r) => r.productId}
             nameTitle="产品"
             extraColumns={[{ title: '类别', dataIndex: 'category', width: COL.type, render: (v: string) => v || '—' }]}
+            showCustomerCount={false}
           />
         </Card>
         <SectionTitle eyebrow="SALES" title="按销售统计客户线索" />
