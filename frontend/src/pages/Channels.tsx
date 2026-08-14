@@ -41,6 +41,7 @@ export default function Channels() {
   const [acqOpen, setAcqOpen] = useState(false)
   const [acqEditing, setAcqEditing] = useState<Any | null>(null)
   const [acqForm] = Form.useForm()
+  const commissionMethod = Form.useWatch('commissionMethod', form)
   const sortedRows = useMemo(() => sortByChannelNameKeyword(rows), [rows])
   const openLedger = async (id: number) => {
     const { data } = await client.get(`/channels/${id}/ledger`)
@@ -59,7 +60,11 @@ export default function Channels() {
   const openForm = (rec?: Any) => {
     setEditing(rec || null)
     form.resetFields()
-    if (rec) form.setFieldsValue({ ...rec, defaultCommissionRate: rec.defaultCommissionRate != null ? Number(rec.defaultCommissionRate) : undefined })
+    if (rec) form.setFieldsValue({
+      ...rec,
+      defaultCommissionRate: rec.defaultCommissionRate != null ? Number(rec.defaultCommissionRate) : undefined,
+      defaultCommissionAmount: rec.defaultCommissionAmount != null ? Number(rec.defaultCommissionAmount) : undefined,
+    })
     else form.setFieldsValue({ channelType: isAdmin ? 'ENTERPRISE' : 'INDIVIDUAL', commissionMethod: 'NET_RECEIVED_RATIO', fundSettlementMode: 'COMPANY_REBATE', settlementCondition: 'ON_SERVICE_COMPLETE' })
     setOpen(true)
   }
@@ -137,7 +142,14 @@ export default function Channels() {
           columns={[
             { title: '名称', dataIndex: 'name', width: COL.channel },
             { title: '类型', dataIndex: 'channelType', width: COL.type, render: (t) => <Tag>{CHANNEL_TYPE_LABEL[t]}</Tag> },
-            { title: '默认比例', dataIndex: 'defaultCommissionRate', width: COL.percent, render: (r) => (r != null ? r + '%' : '—') },
+            {
+              title: '默认返佣',
+              width: COL.money,
+              render: (_, r) =>
+                r.commissionMethod === 'FIXED_AMOUNT'
+                  ? (r.defaultCommissionAmount != null ? Number(r.defaultCommissionAmount).toLocaleString() : '—')
+                  : (r.defaultCommissionRate != null ? `${r.defaultCommissionRate}%` : '—'),
+            },
             { title: '计算方式', dataIndex: 'commissionMethod', width: COL.method, render: (m) => COMMISSION_METHOD_LABEL[m] },
             { title: '资金模式', dataIndex: 'fundSettlementMode', width: COL.mode, render: (m) => FUND_MODE_LABEL[m] },
             { title: '结算条件', dataIndex: 'settlementCondition', width: COL.condition, render: (s) => SETTLEMENT_COND_LABEL[s] },
@@ -187,12 +199,18 @@ export default function Channels() {
             <Select disabled={!isAdmin} options={Object.entries(CHANNEL_TYPE_LABEL).map(([k, v]) => ({ value: k, label: v }))} />
           </Form.Item>
           <Space>
-            <Form.Item name="defaultCommissionRate" label="默认分成比例 %">
-              <InputNumber min={0} max={100} />
-            </Form.Item>
             <Form.Item name="commissionMethod" label="计算方式">
               <Select style={{ width: 140 }} options={Object.entries(COMMISSION_METHOD_LABEL).map(([k, v]) => ({ value: k, label: v }))} />
             </Form.Item>
+            {commissionMethod === 'FIXED_AMOUNT' ? (
+              <Form.Item name="defaultCommissionAmount" label="默认固定金额" rules={[{ required: true, message: '请填写固定返佣金额' }]}>
+                <InputNumber min={0} controls={false} />
+              </Form.Item>
+            ) : (
+              <Form.Item name="defaultCommissionRate" label="默认分成比例 %" rules={[{ required: true, message: '请填写返佣比例' }]}>
+                <InputNumber min={0} max={100} />
+              </Form.Item>
+            )}
           </Space>
           <Form.Item name="fundSettlementMode" label="资金结算模式">
             <Select options={Object.entries(FUND_MODE_LABEL).map(([k, v]) => ({ value: k, label: v }))} />

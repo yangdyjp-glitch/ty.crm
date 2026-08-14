@@ -4,41 +4,17 @@ import {
   FundSettlementMode,
   PaymentConfirmStatus,
   Prisma,
-  RefundBearer,
   RefundStatus,
   UserRole,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthUser } from '../auth/current-user.decorator';
-
-const r2 = (n: number) => Math.round(n * 100) / 100;
-
-function paidRatio(order: { paidAmount: unknown; receivableAmount: unknown }) {
-  const receivable = Number(order.receivableAmount);
-  if (receivable <= 0) return 0;
-  return Math.min(1, Math.max(0, Number(order.paidAmount) / receivable));
-}
-
-function realizedAgentNetCommission(
-  commission: { payableAmount: unknown },
-  order: { paidAmount: unknown; receivableAmount: unknown },
-) {
-  return r2(Number(commission.payableAmount) * paidRatio(order));
-}
-
-function companyCashRefunds(
-  refunds?: { status: RefundStatus; bearer: RefundBearer; cashAmount: unknown }[],
-) {
-  return r2(
-    (refunds ?? []).reduce(
-      (sum, refund) =>
-        refund.status === RefundStatus.REFUNDED && refund.bearer === RefundBearer.COMPANY
-          ? sum + Number(refund.cashAmount)
-          : sum,
-      0,
-    ),
-  );
-}
+import {
+  companyCashRefunds,
+  orderCashPosition,
+  realizedAgentNetCommission,
+  roundMoney,
+} from '../common/finance';
 
 @Injectable()
 export class ReportsService {
@@ -480,25 +456,24 @@ export class ReportsService {
       const refundAmount = Number(order.refundAmount);
       const cashRefund = companyCashRefunds(order.refunds);
       const channelPayable = Number(commission?.payableAmount ?? 0);
-      let channelSettled = 0;
       let pendingRebate = 0;
-      let companyActualReceived = confirmedReceived;
-      let balance = confirmedReceived - cashRefund;
+      const cash = orderCashPosition({
+        confirmedReceived,
+        receivableAmount: contractAmount,
+        companyCashRefund: cashRefund,
+        fundSettlementMode,
+        commission,
+      });
 
       if (commission) {
-        if (fundSettlementMode === FundSettlementMode.AGENT_NET) {
-          channelSettled = realizedAgentNetCommission(commission, order);
-          companyActualReceived = r2(confirmedReceived - channelSettled);
-          balance = r2(companyActualReceived - cashRefund);
-        } else if (commission.status === CommissionStatus.PAID) {
-          channelSettled = Number(commission.paidAmount || 0);
-        } else if (commission.status !== CommissionStatus.CANCELLED) {
-          pendingRebate = r2(
+        if (
+          fundSettlementMode === FundSettlementMode.COMPANY_REBATE &&
+          commission.status !== CommissionStatus.PAID &&
+          commission.status !== CommissionStatus.CANCELLED
+        ) {
+          pendingRebate = roundMoney(
             Math.max(0, channelPayable - Number(commission.paidAmount || 0)),
           );
-        }
-        if (fundSettlementMode === FundSettlementMode.COMPANY_REBATE) {
-          balance = r2(balance - Number(commission.paidAmount || 0));
         }
       }
 
@@ -509,17 +484,19 @@ export class ReportsService {
       ];
       for (const row of rows) {
         row.orderCount += 1;
-        row.receivableAmount = r2(row.receivableAmount + contractAmount);
-        row.confirmedReceived = r2(row.confirmedReceived + confirmedReceived);
-        row.unpaidAmount = r2(row.unpaidAmount + unpaidAmount);
-        row.refundAmount = r2(row.refundAmount + refundAmount);
-        row.channelPayable = r2(row.channelPayable + channelPayable);
-        row.channelSettled = r2(row.channelSettled + channelSettled);
-        row.pendingRebate = r2(row.pendingRebate + pendingRebate);
-        row.companyActualReceived = r2(
-          row.companyActualReceived + companyActualReceived,
+        row.receivableAmount = roundMoney(row.receivableAmount + contractAmount);
+        row.confirmedReceived = roundMoney(row.confirmedReceived + confirmedReceived);
+        row.unpaidAmount = roundMoney(row.unpaidAmount + unpaidAmount);
+        row.refundAmount = roundMoney(row.refundAmount + refundAmount);
+        row.channelPayable = roundMoney(row.channelPayable + channelPayable);
+        row.channelSettled = roundMoney(
+          row.channelSettled + cash.channelSettled,
         );
-        row.balance = r2(row.balance + balance);
+        row.pendingRebate = roundMoney(row.pendingRebate + pendingRebate);
+        row.companyActualReceived = roundMoney(
+          row.companyActualReceived + cash.actualReceived,
+        );
+        row.balance = roundMoney(row.balance + cash.balance);
       }
       summary.set(currency, rows[0]);
       byMode.set(`${currency}:${fundSettlementMode}`, rows[1]);
@@ -561,9 +538,9 @@ export class ReportsService {
           ? realizedAgentNetCommission(commission, commission.order)
           : Number(commission.paidAmount || 0);
       row._count += 1;
-      row._sum.payableAmount = r2(row._sum.payableAmount + payable);
-      row._sum.paidAmount = r2(row._sum.paidAmount + paid);
-      row._sum.unpaidAmount = r2(row._sum.unpaidAmount + Math.max(0, payable - paid));
+      row._sum.payableAmount = roundMoney(row._sum.payableAmount + payable);
+      row._sum.paidAmount = roundMoney(row._sum.paidAmount + paid);
+      row._sum.unpaidAmount = roundMoney(row._sum.unpaidAmount + Math.max(0, payable - paid));
       grouped.set(key, row);
     }
     return [...grouped.values()];

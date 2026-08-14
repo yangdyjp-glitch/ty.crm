@@ -8,9 +8,7 @@ import {
   CommissionStatus,
   FundSettlementMode,
   LedgerEntryType,
-  OrderStatus,
   Prisma,
-  RefundBearer,
   RefundStatus,
   SettlementCondition,
 } from '@prisma/client';
@@ -19,45 +17,13 @@ import { LedgerService } from '../ledger/ledger.service';
 import { AuditService } from '../audit/audit.service';
 import { AuthUser } from '../auth/current-user.decorator';
 import { nextPairedNo } from '../common/util';
-
-const r2 = (n: number) => Math.round(n * 100) / 100;
-
-function computePayable(
-  method: CommissionMethod,
-  rateOrAmount: number,
-  base: number,
-): number {
-  return method === CommissionMethod.FIXED_AMOUNT
-    ? r2(rateOrAmount)
-    : r2((base * rateOrAmount) / 100); // 实收比例 / 签约比例 同公式，基数不同
-}
-
-function paidRatio(order: { paidAmount: unknown; receivableAmount: unknown }) {
-  const receivable = Number(order.receivableAmount);
-  if (receivable <= 0) return 0;
-  return Math.min(1, Math.max(0, Number(order.paidAmount) / receivable));
-}
-
-function realizedAgentNetCommission(
-  commission: { payableAmount: unknown },
-  order: { paidAmount: unknown; receivableAmount: unknown },
-) {
-  return r2(Number(commission.payableAmount) * paidRatio(order));
-}
-
-function companyCashRefunds(
-  refunds?: { status: RefundStatus; bearer: RefundBearer; cashAmount: unknown }[],
-) {
-  return r2(
-    (refunds ?? []).reduce(
-      (sum, refund) =>
-        refund.status === RefundStatus.REFUNDED && refund.bearer === RefundBearer.COMPANY
-          ? sum + Number(refund.cashAmount)
-          : sum,
-      0,
-    ),
-  );
-}
+import {
+  commissionQuote,
+  companyCashRefunds,
+  orderCashPosition,
+  realizedAgentNetCommission,
+  roundMoney,
+} from '../common/finance';
 
 @Injectable()
 export class CommissionsService {
@@ -83,15 +49,21 @@ export class CommissionsService {
 
     const ch = order.customer.channel;
     const method = ch.commissionMethod;
-    const rateOrAmount = ch.defaultCommissionRate
-      ? Number(ch.defaultCommissionRate)
-      : 0;
+    const configuredValue =
+      method === CommissionMethod.FIXED_AMOUNT
+        ? Number(ch.defaultCommissionAmount ?? 0)
+        : Number(ch.defaultCommissionRate ?? 0);
     const mode = order.fundSettlementMode;
+    const quote = commissionQuote({
+      method,
+      configuredValue,
+      fundSettlementMode: mode,
+      receivableAmount: Number(order.receivableAmount),
+      confirmedReceived: Number(order.paidAmount),
+    });
 
     if (mode === FundSettlementMode.AGENT_NET) {
       // 模式一：第三方代收自扣 → 只记录供报表，终态“已自扣”
-      const base = Number(order.receivableAmount);
-      const payable = computePayable(method, rateOrAmount, base);
       await this.prisma.commission.create({
         data: {
           commissionNo: await nextPairedNo(
@@ -106,25 +78,22 @@ export class CommissionsService {
           currency: order.currency,
           channelNameSnapshot: ch.name,
           commissionMethodSnapshot: method,
-          commissionRateSnapshot: rateOrAmount,
+          commissionRateSnapshot:
+            method === CommissionMethod.FIXED_AMOUNT ? null : configuredValue,
+          commissionFixedAmountSnapshot:
+            method === CommissionMethod.FIXED_AMOUNT ? configuredValue : null,
           fundSettlementMode: mode,
-          calcBaseType:
-            method === CommissionMethod.NET_RECEIVED_RATIO ? '应收(代收)' : '固定',
-          calcBaseAmount: base,
-          payableAmount: payable,
+          calcBaseType: quote.calcBaseType,
+          calcBaseAmount: quote.calcBaseAmount,
+          payableAmount: quote.payableAmount,
           paidAmount: 0,
-          unpaidAmount: payable,
+          unpaidAmount: quote.payableAmount,
           status: CommissionStatus.SELF_DEDUCTED,
           settlementCondition: ch.settlementCondition,
         },
       });
     } else {
       // 模式二：公司代收返佣 → 走结算流程；按签约比例以应收为基数，否则以实收为基数
-      const base =
-        method === CommissionMethod.SIGNED_RATIO
-          ? Number(order.receivableAmount)
-          : Number(order.paidAmount);
-      const payable = computePayable(method, rateOrAmount, base);
       const dueNow = ch.settlementCondition === SettlementCondition.ON_SIGN;
       await this.prisma.commission.create({
         data: {
@@ -140,18 +109,16 @@ export class CommissionsService {
           currency: order.currency,
           channelNameSnapshot: ch.name,
           commissionMethodSnapshot: method,
-          commissionRateSnapshot: rateOrAmount,
+          commissionRateSnapshot:
+            method === CommissionMethod.FIXED_AMOUNT ? null : configuredValue,
+          commissionFixedAmountSnapshot:
+            method === CommissionMethod.FIXED_AMOUNT ? configuredValue : null,
           fundSettlementMode: mode,
-          calcBaseType:
-            method === CommissionMethod.FIXED_AMOUNT
-              ? '固定'
-              : method === CommissionMethod.SIGNED_RATIO
-                ? '签约'
-                : '实收',
-          calcBaseAmount: base,
-          payableAmount: payable,
+          calcBaseType: quote.calcBaseType,
+          calcBaseAmount: quote.calcBaseAmount,
+          payableAmount: quote.payableAmount,
           paidAmount: 0,
-          unpaidAmount: payable,
+          unpaidAmount: quote.payableAmount,
           status: dueNow
             ? CommissionStatus.PENDING_REVIEW
             : CommissionStatus.NOT_DUE,
@@ -169,13 +136,36 @@ export class CommissionsService {
       include: { order: true },
     });
     if (!c) return;
+    const configuredValue =
+      c.commissionMethodSnapshot === CommissionMethod.FIXED_AMOUNT
+        ? Number(
+            c.commissionFixedAmountSnapshot ??
+              Number(c.payableAmount) + Number(c.clawbackAmount),
+          )
+        : Number(c.commissionRateSnapshot ?? 0);
+    const quote = commissionQuote({
+      method: c.commissionMethodSnapshot,
+      configuredValue,
+      fundSettlementMode: c.fundSettlementMode,
+      receivableAmount: Number(c.order.receivableAmount),
+      confirmedReceived: Number(c.order.paidAmount),
+    });
+    const payable = roundMoney(
+      Math.max(0, quote.payableAmount - Number(c.clawbackAmount)),
+    );
     if (c.fundSettlementMode === FundSettlementMode.AGENT_NET) {
-      const paidAmount = realizedAgentNetCommission(c, c.order);
+      const paidAmount = realizedAgentNetCommission(
+        { payableAmount: payable },
+        c.order,
+      );
       await this.prisma.commission.update({
         where: { id: c.id },
         data: {
+          calcBaseType: quote.calcBaseType,
+          calcBaseAmount: quote.calcBaseAmount,
+          payableAmount: payable,
           paidAmount,
-          unpaidAmount: r2(Math.max(0, Number(c.payableAmount) - paidAmount)),
+          unpaidAmount: roundMoney(Math.max(0, payable - paidAmount)),
         },
       });
       return;
@@ -187,17 +177,11 @@ export class CommissionsService {
     )
       return;
 
-    let payable = Number(c.payableAmount);
-    let base = Number(c.calcBaseAmount);
-    if (c.commissionMethodSnapshot === CommissionMethod.NET_RECEIVED_RATIO) {
-      base = Number(c.order.paidAmount);
-      payable = r2((base * Number(c.commissionRateSnapshot)) / 100);
-    }
     let status = c.status;
     let expected = c.expectedSettlementAt;
     if (
       c.settlementCondition === SettlementCondition.ON_FULL_PAYMENT &&
-      c.order.status === OrderStatus.FULLY_PAID &&
+      Number(c.order.unpaidAmount) <= 0 &&
       c.status === CommissionStatus.NOT_DUE
     ) {
       status = CommissionStatus.PENDING_REVIEW;
@@ -206,9 +190,12 @@ export class CommissionsService {
     await this.prisma.commission.update({
       where: { id: c.id },
       data: {
-        calcBaseAmount: base,
+        calcBaseType: quote.calcBaseType,
+        calcBaseAmount: quote.calcBaseAmount,
         payableAmount: payable,
-        unpaidAmount: r2(payable - Number(c.paidAmount)),
+        unpaidAmount: roundMoney(
+          Math.max(0, payable - Number(c.paidAmount)),
+        ),
         status,
         expectedSettlementAt: expected,
       },
@@ -217,9 +204,9 @@ export class CommissionsService {
 
   /** 服务完成后：满足“服务完成后”条件则进入待审核并定稿应付 */
   async onServiceCompleted(orderId: number) {
+    await this.onPaymentConfirmed(orderId);
     const c = await this.prisma.commission.findUnique({
       where: { orderId },
-      include: { order: true },
     });
     if (!c || c.fundSettlementMode === FundSettlementMode.AGENT_NET) return;
     if (
@@ -232,22 +219,18 @@ export class CommissionsService {
       c.settlementCondition === SettlementCondition.ON_SERVICE_COMPLETE &&
       c.status === CommissionStatus.NOT_DUE
     ) {
-      let payable = Number(c.payableAmount);
-      if (c.commissionMethodSnapshot === CommissionMethod.NET_RECEIVED_RATIO) {
-        payable = r2(
-          (Number(c.order.paidAmount) * Number(c.commissionRateSnapshot)) / 100,
-        );
-      }
       await this.prisma.commission.update({
         where: { id: c.id },
         data: {
           status: CommissionStatus.PENDING_REVIEW,
           expectedSettlementAt: new Date(),
-          payableAmount: payable,
-          unpaidAmount: r2(payable - Number(c.paidAmount)),
         },
       });
     }
+  }
+
+  async onOrderAmountChanged(orderId: number) {
+    await this.onPaymentConfirmed(orderId);
   }
 
   // ============ 结算工作流（管理员，仅模式二） ============
@@ -283,7 +266,9 @@ export class CommissionsService {
       return {
         ...item,
         paidAmount,
-        unpaidAmount: r2(Math.max(0, Number(item.payableAmount) - paidAmount)),
+        unpaidAmount: roundMoney(
+          Math.max(0, Number(item.payableAmount) - paidAmount),
+        ),
       };
     });
     return { items: normalizedItems, total, page, pageSize };
@@ -326,17 +311,20 @@ export class CommissionsService {
       const cashRefund = companyCashRefunds(order.refunds);
       const fundSettlementMode =
         commission?.fundSettlementMode ?? order.fundSettlementMode;
-      let actualReceived = confirmedReceived;
-      let balance = confirmedReceived - cashRefund;
+      const cash = orderCashPosition({
+        confirmedReceived,
+        receivableAmount: contractAmount,
+        companyCashRefund: cashRefund,
+        fundSettlementMode,
+        commission,
+      });
       let rebateStatus = '未到账';
 
       if (confirmedReceived > 0) {
         if (!commission) {
           rebateStatus = '无返佣';
         } else if (fundSettlementMode === FundSettlementMode.AGENT_NET) {
-          const deducted = realizedAgentNetCommission(commission, order);
-          actualReceived = r2(confirmedReceived - deducted);
-          balance = r2(actualReceived - cashRefund);
+          const deducted = cash.channelSettled;
           rebateStatus =
             deducted <= 0
               ? '未到账'
@@ -345,10 +333,8 @@ export class CommissionsService {
                 : '部分自扣';
         } else {
           if (commission.status === CommissionStatus.PAID) {
-            balance = r2(balance - Number(commission.paidAmount));
             rebateStatus = '已返佣';
           } else if (Number(commission.paidAmount) > 0) {
-            balance = r2(balance - Number(commission.paidAmount));
             rebateStatus = '部分返佣';
           } else {
             rebateStatus = '未返佣';
@@ -367,9 +353,9 @@ export class CommissionsService {
         rebateStatus,
         fundSettlementMode,
         currency: order.currency,
-        contractAmount: r2(contractAmount),
-        actualReceived: r2(actualReceived),
-        balance: r2(balance),
+        contractAmount: roundMoney(contractAmount),
+        actualReceived: cash.actualReceived,
+        balance: cash.balance,
       };
     });
 
@@ -408,8 +394,14 @@ export class CommissionsService {
     }
     const payable = Number(c.payableAmount);
     const balance = await this.ledger.getBalance(c.channelId, c.currency);
-    const offset = balance > 0 ? Math.min(payable, balance) : 0;
-    const cashOut = r2(payable - offset);
+    const outstanding = roundMoney(
+      Math.max(0, payable - Number(c.paidAmount)),
+    );
+    if (outstanding <= 0) {
+      throw new BadRequestException('该分成没有待支付金额');
+    }
+    const offset = balance > 0 ? Math.min(outstanding, balance) : 0;
+    const cashOut = roundMoney(outstanding - offset);
     if (offset > 0) {
       await this.ledger.addEntry({
         channelId: c.channelId,
@@ -514,13 +506,16 @@ export class CommissionsService {
     ratio: number,
     opts: { refundId?: number; operatorId?: number },
   ) {
-    const c = await this.prisma.commission.findUnique({ where: { orderId } });
+    const c = await this.prisma.commission.findUnique({
+      where: { orderId },
+      include: { order: true },
+    });
     if (!c) return null;
     const origPayable = Number(c.payableAmount);
-    const clawAmount = r2(origPayable * ratio);
+    const clawAmount = roundMoney(origPayable * ratio);
     if (clawAmount <= 0) return null;
 
-    const newClawback = r2(Number(c.clawbackAmount) + clawAmount);
+    const newClawback = roundMoney(Number(c.clawbackAmount) + clawAmount);
 
     if (
       c.fundSettlementMode === FundSettlementMode.COMPANY_REBATE &&
@@ -543,12 +538,17 @@ export class CommissionsService {
       });
     } else {
       // 未付 或 模式一：直接减少应付/报表佣金
-      const newPayable = r2(Math.max(0, origPayable - clawAmount));
+      const newPayable = roundMoney(Math.max(0, origPayable - clawAmount));
+      const paidAmount =
+        c.fundSettlementMode === FundSettlementMode.AGENT_NET
+          ? realizedAgentNetCommission({ payableAmount: newPayable }, c.order)
+          : Number(c.paidAmount);
       await this.prisma.commission.update({
         where: { id: c.id },
         data: {
           payableAmount: newPayable,
-          unpaidAmount: r2(Math.max(0, newPayable - Number(c.paidAmount))),
+          paidAmount,
+          unpaidAmount: roundMoney(Math.max(0, newPayable - paidAmount)),
           clawbackAmount: newClawback,
         },
       });

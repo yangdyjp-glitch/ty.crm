@@ -27,6 +27,7 @@ export class ChannelsService {
         name: true,
         channelType: true,
         defaultCommissionRate: true,
+        defaultCommissionAmount: true,
         commissionMethod: true,
         fundSettlementMode: true,
         settlementCondition: true,

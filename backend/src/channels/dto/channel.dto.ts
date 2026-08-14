@@ -4,6 +4,8 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Max,
+  Min,
 } from 'class-validator';
 import {
   ChannelType,
@@ -22,7 +24,8 @@ export class CreateChannelDto {
 
   @IsOptional() @IsString() contactName?: string;
   @IsOptional() @IsString() contactInfo?: string;
-  @IsOptional() @IsNumber() defaultCommissionRate?: number;
+  @IsOptional() @IsNumber() @Min(0) @Max(100) defaultCommissionRate?: number;
+  @IsOptional() @IsNumber() @Min(0) defaultCommissionAmount?: number;
   @IsOptional() @IsEnum(CommissionMethod) commissionMethod?: CommissionMethod;
   @IsOptional() @IsEnum(FundSettlementMode) fundSettlementMode?: FundSettlementMode;
   @IsOptional() @IsEnum(SettlementCondition) settlementCondition?: SettlementCondition;
@@ -35,7 +38,8 @@ export class UpdateChannelDto {
   @IsOptional() @IsEnum(ChannelType) channelType?: ChannelType;
   @IsOptional() @IsString() contactName?: string;
   @IsOptional() @IsString() contactInfo?: string;
-  @IsOptional() @IsNumber() defaultCommissionRate?: number;
+  @IsOptional() @IsNumber() @Min(0) @Max(100) defaultCommissionRate?: number;
+  @IsOptional() @IsNumber() @Min(0) defaultCommissionAmount?: number;
   @IsOptional() @IsEnum(CommissionMethod) commissionMethod?: CommissionMethod;
   @IsOptional() @IsEnum(FundSettlementMode) fundSettlementMode?: FundSettlementMode;
   @IsOptional() @IsEnum(SettlementCondition) settlementCondition?: SettlementCondition;

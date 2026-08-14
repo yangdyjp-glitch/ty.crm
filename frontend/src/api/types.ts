@@ -30,6 +30,7 @@ export const FUND_MODE_LABEL: Record<string, string> = {
 
 export const COMMISSION_METHOD_LABEL: Record<string, string> = {
   NET_RECEIVED_RATIO: '按实收比例',
+  SIGNED_RATIO: '按签约金额比例',
   FIXED_AMOUNT: '固定金额',
 };
 

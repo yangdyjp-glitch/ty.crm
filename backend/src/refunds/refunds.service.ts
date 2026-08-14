@@ -6,7 +6,6 @@ import {
 import {
   LedgerEntryType,
   OrderStatus,
-  PaymentConfirmStatus,
   Prisma,
   RefundBearer,
   RefundStatus,
@@ -20,8 +19,7 @@ import { AuthUser } from '../auth/current-user.decorator';
 import { customerScopeWhere } from '../common/scope';
 import { nextPairedNo } from '../common/util';
 import { CreateRefundDto } from './dto/refund.dto';
-
-const r2 = (n: number) => Math.round(n * 100) / 100;
+import { refundBreakdown, roundMoney } from '../common/finance';
 
 @Injectable()
 export class RefundsService {
@@ -36,7 +34,7 @@ export class RefundsService {
   async create(user: AuthUser, dto: CreateRefundDto) {
     const order = await this.prisma.order.findFirst({
       where: { id: dto.orderId, deletedAt: null, customer: customerScopeWhere(user) },
-      include: { customer: { select: { customerNo: true } } },
+      include: { customer: { select: { customerNo: true, channelId: true } } },
     });
     if (!order) throw new NotFoundException('订单不存在或无权访问');
     if (
@@ -46,6 +44,25 @@ export class RefundsService {
     ) {
       throw new BadRequestException('订单已终止，无法退款');
     }
+    const activeRefund = await this.prisma.refund.findFirst({
+      where: {
+        orderId: order.id,
+        deletedAt: null,
+        status: { in: [RefundStatus.PENDING, RefundStatus.APPROVED, RefundStatus.REFUNDED] },
+      },
+      select: { refundNo: true },
+    });
+    if (activeRefund) {
+      throw new BadRequestException(
+        `该订单已有退款记录 ${activeRefund.refundNo}，不能重复申请`,
+      );
+    }
+    if (
+      dto.bearer === RefundBearer.THIRD_PARTY &&
+      !order.customer.channelId
+    ) {
+      throw new BadRequestException('该订单没有第三方渠道，不能选择第三方承担退款');
+    }
 
     const receivable = Number(order.receivableAmount);
     const paid = Number(order.paidAmount);
@@ -53,17 +70,25 @@ export class RefundsService {
     let ratio: number;
     if (dto.refundRatio != null) {
       ratio = dto.refundRatio;
-      nominal = r2(receivable * ratio);
+      nominal = roundMoney(receivable * ratio);
     } else if (dto.nominalAmount != null) {
       nominal = dto.nominalAmount;
       ratio = receivable > 0 ? nominal / receivable : 0;
     } else {
       throw new BadRequestException('需提供退款比例或退款金额');
     }
+    if (nominal <= 0) {
+      throw new BadRequestException('退款金额必须大于 0');
+    }
+    if (nominal > receivable) {
+      throw new BadRequestException('退款金额不能大于订单应收金额');
+    }
     // 三额：名义 / 实际现金 / 抵减
-    const finalObligation = r2(receivable - nominal); // 客户最终实付目标
-    const cash = r2(Math.max(0, paid - finalObligation));
-    const offset = r2(nominal - cash);
+    const { cashAmount: cash, offsetAmount: offset } = refundBreakdown({
+      receivableAmount: receivable,
+      confirmedReceived: paid,
+      nominalAmount: nominal,
+    });
 
     return this.prisma.refund.create({
       data: {
@@ -118,6 +143,13 @@ export class RefundsService {
       where: { id: refund.orderId },
     });
     if (!order) throw new NotFoundException('订单不存在');
+    if (
+      ([OrderStatus.REFUNDED, OrderStatus.CANCELLED] as OrderStatus[]).includes(
+        order.status,
+      )
+    ) {
+      throw new BadRequestException('订单已终止，无法重复执行退款');
+    }
 
     await this.prisma.$transaction([
       this.prisma.refund.update({
@@ -129,7 +161,7 @@ export class RefundsService {
         where: { id: refund.orderId },
         data: {
           status: OrderStatus.REFUNDED,
-          refundAmount: r2(
+          refundAmount: roundMoney(
             Number(order.refundAmount) + Number(refund.nominalAmount),
           ),
         },
@@ -137,12 +169,22 @@ export class RefundsService {
     ]);
 
     // 佣金等比例追回（含已付→往来挂账）
-    const ratio = Number(refund.refundRatio ?? 0);
+    const receivable = Number(order.receivableAmount);
+    const ratio =
+      receivable > 0 ? Number(refund.nominalAmount) / receivable : 0;
+    let commissionClawbackAmount = 0;
     if (ratio > 0) {
-      await this.commissions.clawbackByRatio(refund.orderId, ratio, {
+      const clawback = await this.commissions.clawbackByRatio(refund.orderId, ratio, {
         refundId: id,
         operatorId: user.id,
       });
+      commissionClawbackAmount = clawback?.clawAmount ?? 0;
+      if (commissionClawbackAmount > 0) {
+        await this.prisma.refund.update({
+          where: { id },
+          data: { commissionClawbackAmount },
+        });
+      }
     }
 
     // 第三方垫付退款 → 公司欠第三方（往来台账，负）
@@ -189,50 +231,20 @@ export class RefundsService {
     });
   }
 
-  /** 删除退款：待处理/已拒绝直接删；已退款删除会回退订单退款额与状态（佣金/台账不自动回滚，请人工复核） */
+  /** 删除退款：仅未执行记录可删除，已退款记录保留财务审计链 */
   async remove(user: AuthUser, id: number) {
     const refund = await this.prisma.refund.findFirst({
       where: { id, deletedAt: null, customer: customerScopeWhere(user) },
     });
     if (!refund) throw new NotFoundException('退款记录不存在或无权访问');
     const wasExecuted = refund.status === RefundStatus.REFUNDED;
+    if (wasExecuted) {
+      throw new BadRequestException('已退款记录不允许删除');
+    }
     await this.prisma.refund.update({
       where: { id },
       data: { deletedAt: new Date() },
     });
-    if (wasExecuted) {
-      const order = await this.prisma.order.findUnique({
-        where: { id: refund.orderId },
-      });
-      if (order) {
-        const agg = await this.prisma.payment.aggregate({
-          where: {
-            orderId: refund.orderId,
-            deletedAt: null,
-            confirmStatus: PaymentConfirmStatus.CONFIRMED,
-          },
-          _sum: { amount: true },
-        });
-        const paid = Number(agg._sum.amount ?? 0);
-        const unpaid = Number(order.receivableAmount) - paid;
-        const status =
-          unpaid <= 0
-            ? OrderStatus.FULLY_PAID
-            : paid > 0
-              ? OrderStatus.PARTIAL_PAID
-              : OrderStatus.PENDING_PAYMENT;
-        await this.prisma.order.update({
-          where: { id: refund.orderId },
-          data: {
-            refundAmount: r2(
-              Math.max(0, Number(order.refundAmount) - Number(refund.nominalAmount)),
-            ),
-            status,
-          },
-        });
-      }
-      await this.customers.recomputeMainStatus(refund.customerId);
-    }
     return { ok: true };
   }
 

@@ -13,6 +13,7 @@ import { CommissionsService } from '../commissions/commissions.service';
 import { AuthUser } from '../auth/current-user.decorator';
 import { customerScopeWhere } from '../common/scope';
 import { nextPairedNo } from '../common/util';
+import { roundMoney } from '../common/finance';
 import { CreatePaymentDto, UpdatePaymentDto } from './dto/payment.dto';
 
 @Injectable()
@@ -59,9 +60,31 @@ export class PaymentsService {
   async confirm(user: AuthUser, id: number) {
     const p = await this.prisma.payment.findFirst({
       where: { id, deletedAt: null },
+      include: { order: true },
     });
     if (!p) throw new NotFoundException('收款记录不存在');
     if (p.confirmStatus === PaymentConfirmStatus.CONFIRMED) return p;
+    if (
+      ([OrderStatus.REFUNDED, OrderStatus.CANCELLED] as OrderStatus[]).includes(
+        p.order.status,
+      )
+    ) {
+      throw new BadRequestException('订单已终止，无法确认收款');
+    }
+    const confirmed = await this.prisma.payment.aggregate({
+      where: {
+        orderId: p.orderId,
+        deletedAt: null,
+        confirmStatus: PaymentConfirmStatus.CONFIRMED,
+      },
+      _sum: { amount: true },
+    });
+    const totalAfterConfirm = roundMoney(
+      Number(confirmed._sum.amount ?? 0) + Number(p.amount),
+    );
+    if (totalAfterConfirm > Number(p.order.receivableAmount)) {
+      throw new BadRequestException('确认后累计收款将超过订单应收金额');
+    }
     await this.prisma.payment.update({
       where: { id },
       data: {
@@ -88,9 +111,9 @@ export class PaymentsService {
       },
       _sum: { amount: true },
     });
-    const paid = Number(agg._sum.amount ?? 0);
+    const paid = roundMoney(Number(agg._sum.amount ?? 0));
     const receivable = Number(order.receivableAmount);
-    const unpaid = receivable - paid;
+    const unpaid = roundMoney(Math.max(0, receivable - paid));
     let status = order.status;
     if (
       !(
@@ -141,15 +164,13 @@ export class PaymentsService {
       where: { id, deletedAt: null, customer: customerScopeWhere(user) },
     });
     if (!p) throw new NotFoundException('收款记录不存在或无权访问');
+    if (p.confirmStatus === PaymentConfirmStatus.CONFIRMED) {
+      throw new BadRequestException('已确认的收款不允许删除');
+    }
     await this.prisma.payment.update({
       where: { id },
       data: { deletedAt: new Date() },
     });
-    // 删除「已确认」收款 → 重算订单已收/未收
-    if (p.confirmStatus === PaymentConfirmStatus.CONFIRMED) {
-      await this.recomputeOrderPaid(p.orderId);
-      await this.commissions.onPaymentConfirmed(p.orderId);
-    }
     return { ok: true };
   }
 

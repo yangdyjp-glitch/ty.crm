@@ -167,16 +167,16 @@ enum FollowMethod {
 // ============ 模型 ============
 
 model User {
-  id           Int      @id @default(autoincrement())
-  username     String   @unique
+  id           Int       @id @default(autoincrement())
+  username     String    @unique
   name         String
-  phone        String?  @unique
-  email        String?  @unique
+  phone        String?   @unique
+  email        String?   @unique
   passwordHash String
   role         UserRole
-  status       String   @default("active") // active / disabled
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  status       String    @default("active") // active / disabled
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
   deletedAt    DateTime?
 
   @@index([role])
@@ -259,21 +259,22 @@ model Customer {
 
 // 第三方渠道
 model Channel {
-  id                    Int                 @id @default(autoincrement())
-  channelNo             String              @unique
-  name                  String
-  channelType           ChannelType
-  contactName           String?
-  contactInfo           String?
-  defaultCommissionRate Decimal?            @db.Decimal(6, 3)
-  commissionMethod      CommissionMethod    @default(NET_RECEIVED_RATIO)
-  fundSettlementMode    FundSettlementMode  @default(COMPANY_REBATE)
-  settlementCondition   SettlementCondition @default(ON_SERVICE_COMPLETE)
-  cooperationStatus     CooperationStatus   @default(ACTIVE)
-  remark                String?
-  createdAt             DateTime            @default(now())
-  updatedAt             DateTime            @updatedAt
-  deletedAt             DateTime?
+  id                      Int                 @id @default(autoincrement())
+  channelNo               String              @unique
+  name                    String
+  channelType             ChannelType
+  contactName             String?
+  contactInfo             String?
+  defaultCommissionRate   Decimal?            @db.Decimal(6, 3)
+  defaultCommissionAmount Decimal?            @db.Decimal(14, 2)
+  commissionMethod        CommissionMethod    @default(NET_RECEIVED_RATIO)
+  fundSettlementMode      FundSettlementMode  @default(COMPANY_REBATE)
+  settlementCondition     SettlementCondition @default(ON_SERVICE_COMPLETE)
+  cooperationStatus       CooperationStatus   @default(ACTIVE)
+  remark                  String?
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+  deletedAt               DateTime?
 
   customers       Customer[]
   commissions     Commission[]
@@ -423,35 +424,36 @@ model Refund {
 
 // 上游渠道分成
 model Commission {
-  id                         Int                 @id @default(autoincrement())
-  commissionNo               String              @unique
-  customerId                 Int
-  orderId                    Int                 @unique
-  channelId                  Int
-  currency                   Currency
-  channelNameSnapshot        String
-  commissionMethodSnapshot   CommissionMethod
-  commissionRateSnapshot     Decimal?            @db.Decimal(6, 3)
-  fundSettlementMode         FundSettlementMode
-  calcBaseType               String // 实收 / 签约 …
-  calcBaseAmount             Decimal             @db.Decimal(14, 2)
-  payableAmount              Decimal             @db.Decimal(14, 2)
-  paidAmount                 Decimal             @default(0) @db.Decimal(14, 2)
-  unpaidAmount               Decimal             @db.Decimal(14, 2)
-  clawbackAmount             Decimal             @default(0) @db.Decimal(14, 2) // 已追回累计
-  status                     CommissionStatus    @default(NOT_DUE)
-  suspended                  Boolean             @default(false) // 挂起(有问题)
-  settlementCondition        SettlementCondition
-  expectedSettlementAt       DateTime?
-  actualSettlementAt         DateTime?
-  reviewedById               Int?
-  paidById                   Int?
-  paymentVoucherAttachmentId Int?
-  problemNote                String?
-  remark                     String?
-  createdAt                  DateTime            @default(now())
-  updatedAt                  DateTime            @updatedAt
-  deletedAt                  DateTime?
+  id                            Int                 @id @default(autoincrement())
+  commissionNo                  String              @unique
+  customerId                    Int
+  orderId                       Int                 @unique
+  channelId                     Int
+  currency                      Currency
+  channelNameSnapshot           String
+  commissionMethodSnapshot      CommissionMethod
+  commissionRateSnapshot        Decimal?            @db.Decimal(6, 3)
+  commissionFixedAmountSnapshot Decimal?            @db.Decimal(14, 2)
+  fundSettlementMode            FundSettlementMode
+  calcBaseType                  String // 实收 / 签约 …
+  calcBaseAmount                Decimal             @db.Decimal(14, 2)
+  payableAmount                 Decimal             @db.Decimal(14, 2)
+  paidAmount                    Decimal             @default(0) @db.Decimal(14, 2)
+  unpaidAmount                  Decimal             @db.Decimal(14, 2)
+  clawbackAmount                Decimal             @default(0) @db.Decimal(14, 2) // 已追回累计
+  status                        CommissionStatus    @default(NOT_DUE)
+  suspended                     Boolean             @default(false) // 挂起(有问题)
+  settlementCondition           SettlementCondition
+  expectedSettlementAt          DateTime?
+  actualSettlementAt            DateTime?
+  reviewedById                  Int?
+  paidById                      Int?
+  paymentVoucherAttachmentId    Int?
+  problemNote                   String?
+  remark                        String?
+  createdAt                     DateTime            @default(now())
+  updatedAt                     DateTime            @updatedAt
+  deletedAt                     DateTime?
 
   order    Order    @relation(fields: [orderId], references: [id])
   customer Customer @relation(fields: [customerId], references: [id])

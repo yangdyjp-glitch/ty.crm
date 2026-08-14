@@ -4,6 +4,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  CommissionMethod,
+  CommissionStatus,
   FundSettlementMode,
   OrderStatus,
   PaymentConfirmStatus,
@@ -16,6 +18,7 @@ import { CommissionsService } from '../commissions/commissions.service';
 import { AuthUser } from '../auth/current-user.decorator';
 import { customerScopeWhere } from '../common/scope';
 import { nextPairedNo } from '../common/util';
+import { roundMoney } from '../common/finance';
 import { CreateOrderDto, UpdateOrderDto } from './dto/order.dto';
 
 @Injectable()
@@ -42,16 +45,43 @@ export class OrdersService {
       customer.channel?.fundSettlementMode ??
       FundSettlementMode.COMPANY_REBATE;
     const hasCommission = !!customer.channelId && product.participateCommission;
+    if (hasCommission && customer.channel) {
+      const configuredValue =
+        customer.channel.commissionMethod === CommissionMethod.FIXED_AMOUNT
+          ? customer.channel.defaultCommissionAmount
+          : customer.channel.defaultCommissionRate;
+      if (configuredValue == null) {
+        throw new BadRequestException(
+          `渠道“${customer.channel.name}”尚未配置返佣${
+            customer.channel.commissionMethod === CommissionMethod.FIXED_AMOUNT
+              ? '金额'
+              : '比例'
+          }，请先完善渠道设置`,
+        );
+      }
+    }
     const quantity = dto.quantity ?? 1;
     const unitPrice =
       dto.unitPrice ??
       (dto.originalPrice != null ? dto.originalPrice / quantity : Number(product.standardPrice));
-    const original = unitPrice * quantity;
-    const discount = dto.discountAmount ?? 0;
-    const receivable = original - discount;
+    const original = roundMoney(unitPrice * quantity);
+    const discount = roundMoney(dto.discountAmount ?? 0);
+    if (discount > original) {
+      throw new BadRequestException('优惠金额不能大于应缴金额');
+    }
+    const receivable = roundMoney(original - discount);
+    if (
+      hasCommission &&
+      customer.channel?.commissionMethod === CommissionMethod.FIXED_AMOUNT &&
+      Number(customer.channel.defaultCommissionAmount) > receivable
+    ) {
+      throw new BadRequestException('固定返佣金额不能大于订单应收金额');
+    }
     // 首款+尾款 ≠ 应收 时必须填写差异说明（存入备注）
-    const paySum = dto.firstPaymentAmount + (dto.tailPaymentAmount ?? 0);
-    if (paySum !== receivable && !dto.remark) {
+    const paySum = roundMoney(
+      dto.firstPaymentAmount + (dto.tailPaymentAmount ?? 0),
+    );
+    if (Math.abs(paySum - receivable) >= 0.01 && !dto.remark) {
       throw new BadRequestException('首款+尾款与应收不一致，请填写差异说明');
     }
 
@@ -208,23 +238,60 @@ export class OrdersService {
       dto.unitPrice ??
       (o.unitPrice != null ? Number(o.unitPrice) : Number(o.originalPrice) / currentQuantity);
     const changedUnitOrQuantity = dto.unitPrice !== undefined || dto.quantity !== undefined;
-    const original = changedUnitOrQuantity
+    const original = roundMoney(changedUnitOrQuantity
       ? baseUnitPrice * quantity
-      : dto.originalPrice ?? Number(o.originalPrice);
+      : dto.originalPrice ?? Number(o.originalPrice));
     const unitPrice =
       changedUnitOrQuantity || dto.originalPrice === undefined
         ? baseUnitPrice
         : original / quantity;
-    const discount = dto.discountAmount ?? Number(o.discountAmount);
-    const receivable = original - discount;
-    const unpaid = receivable - Number(o.paidAmount);
+    const discount = roundMoney(
+      dto.discountAmount ?? Number(o.discountAmount),
+    );
+    if (discount > original) {
+      throw new BadRequestException('优惠金额不能大于应缴金额');
+    }
+    const receivable = roundMoney(original - discount);
+    if (receivable < Number(o.paidAmount)) {
+      throw new BadRequestException('调整后的应收金额不能小于已确认收款');
+    }
+    const commission = await this.prisma.commission.findFirst({
+      where: { orderId: id, deletedAt: null },
+      select: {
+        status: true,
+        fundSettlementMode: true,
+        commissionMethodSnapshot: true,
+        commissionFixedAmountSnapshot: true,
+        payableAmount: true,
+        clawbackAmount: true,
+      },
+    });
+    const amountChanged = receivable !== Number(o.receivableAmount);
+    if (
+      amountChanged &&
+      commission?.fundSettlementMode === FundSettlementMode.COMPANY_REBATE &&
+      commission.status === CommissionStatus.PAID
+    ) {
+      throw new BadRequestException('该订单返佣已支付，不能再修改订单金额');
+    }
+    if (
+      amountChanged &&
+      commission?.commissionMethodSnapshot === CommissionMethod.FIXED_AMOUNT &&
+      Number(
+        commission.commissionFixedAmountSnapshot ??
+          Number(commission.payableAmount) + Number(commission.clawbackAmount),
+      ) > receivable
+    ) {
+      throw new BadRequestException('调整后的应收金额不能小于固定返佣金额');
+    }
+    const unpaid = roundMoney(receivable - Number(o.paidAmount));
     await this.prisma.order.update({
       where: { id },
       data: {
         unitPrice,
         quantity,
         originalPrice: original,
-        discountAmount: dto.discountAmount,
+        discountAmount: discount,
         contractNo: dto.contractNo,
         signedAt: dto.signedAt ? new Date(dto.signedAt) : undefined,
         remark: dto.remark,
@@ -232,6 +299,9 @@ export class OrdersService {
         unpaidAmount: unpaid,
       },
     });
+    if (amountChanged && commission) {
+      await this.commissions.onOrderAmountChanged(id);
+    }
     return this.get(user, id);
   }
 
