@@ -1,5 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { ChannelType } from '@prisma/client';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { ChannelType, FundSettlementMode } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { nextNo } from '../common/util';
 import {
@@ -45,12 +45,18 @@ export class ChannelsService {
   }
 
   async create(dto: CreateChannelDto) {
+    if (dto.fundSettlementMode === FundSettlementMode.COMPANY_DIRECT) {
+      throw new BadRequestException('第三方渠道不能使用公司直收模式');
+    }
     return this.prisma.channel.create({
       data: { channelNo: await nextNo(this.prisma.channel, 'channelNo', 'QD'), ...dto },
     });
   }
 
   update(id: number, dto: UpdateChannelDto) {
+    if (dto.fundSettlementMode === FundSettlementMode.COMPANY_DIRECT) {
+      throw new BadRequestException('第三方渠道不能使用公司直收模式');
+    }
     return this.prisma.channel.update({ where: { id }, data: dto });
   }
 

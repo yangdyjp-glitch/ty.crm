@@ -213,7 +213,7 @@ export default function Channels() {
             )}
           </Space>
           <Form.Item name="fundSettlementMode" label="资金结算模式">
-            <Select options={Object.entries(FUND_MODE_LABEL).map(([k, v]) => ({ value: k, label: v }))} />
+            <Select options={Object.entries(FUND_MODE_LABEL).filter(([k]) => k !== 'COMPANY_DIRECT').map(([k, v]) => ({ value: k, label: v }))} />
           </Form.Item>
           <Form.Item name="settlementCondition" label="结算条件">
             <Select options={Object.entries(SETTLEMENT_COND_LABEL).map(([k, v]) => ({ value: k, label: v }))} />

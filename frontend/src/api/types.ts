@@ -24,6 +24,7 @@ export const CHANNEL_TYPE_LABEL: Record<string, string> = {
 };
 
 export const FUND_MODE_LABEL: Record<string, string> = {
+  COMPANY_DIRECT: '公司直收',
   AGENT_NET: '第三方代收·净额',
   COMPANY_REBATE: '公司代收·返佣',
 };

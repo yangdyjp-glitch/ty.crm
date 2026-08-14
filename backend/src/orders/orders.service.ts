@@ -40,10 +40,15 @@ export class OrdersService {
     });
     if (!product) throw new BadRequestException('项目不存在');
 
-    const fundMode =
-      dto.fundSettlementMode ??
-      customer.channel?.fundSettlementMode ??
-      FundSettlementMode.COMPANY_REBATE;
+    if (
+      customer.channel &&
+      dto.fundSettlementMode === FundSettlementMode.COMPANY_DIRECT
+    ) {
+      throw new BadRequestException('第三方渠道订单不能使用公司直收模式');
+    }
+    const fundMode = customer.channel
+      ? (dto.fundSettlementMode ?? customer.channel.fundSettlementMode)
+      : FundSettlementMode.COMPANY_DIRECT;
     const hasCommission = !!customer.channelId && product.participateCommission;
     if (hasCommission && customer.channel) {
       const configuredValue =

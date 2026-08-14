@@ -149,7 +149,7 @@ test('direct customers keep confirmed cash with no commission deduction', () => 
     confirmedReceived: 11000,
     receivableAmount: 11000,
     companyCashRefund: 1000,
-    fundSettlementMode: FundSettlementMode.COMPANY_REBATE,
+    fundSettlementMode: FundSettlementMode.COMPANY_DIRECT,
     commission: null,
   });
   assert.deepEqual(cash, {

@@ -38,6 +38,7 @@ enum ChannelType {
 }
 
 enum FundSettlementMode {
+  COMPANY_DIRECT // 公司直接签约·直收，无第三方返佣
   AGENT_NET // 第三方代收·净额结算
   COMPANY_REBATE // 公司代收·返佣结算
 }
