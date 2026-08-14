@@ -482,12 +482,14 @@ export class ReportsService {
       const channelPayable = Number(commission?.payableAmount ?? 0);
       let channelSettled = 0;
       let pendingRebate = 0;
-      const companyActualReceived = confirmedReceived;
+      let companyActualReceived = confirmedReceived;
       let balance = confirmedReceived - cashRefund;
 
       if (commission) {
         if (fundSettlementMode === FundSettlementMode.AGENT_NET) {
           channelSettled = realizedAgentNetCommission(commission, order);
+          companyActualReceived = r2(confirmedReceived - channelSettled);
+          balance = r2(companyActualReceived - cashRefund);
         } else if (commission.status === CommissionStatus.PAID) {
           channelSettled = Number(commission.paidAmount || 0);
         } else if (commission.status !== CommissionStatus.CANCELLED) {

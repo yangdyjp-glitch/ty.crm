@@ -326,7 +326,7 @@ export class CommissionsService {
       const cashRefund = companyCashRefunds(order.refunds);
       const fundSettlementMode =
         commission?.fundSettlementMode ?? order.fundSettlementMode;
-      const actualReceived = confirmedReceived;
+      let actualReceived = confirmedReceived;
       let balance = confirmedReceived - cashRefund;
       let rebateStatus = '未到账';
 
@@ -335,6 +335,8 @@ export class CommissionsService {
           rebateStatus = '无返佣';
         } else if (fundSettlementMode === FundSettlementMode.AGENT_NET) {
           const deducted = realizedAgentNetCommission(commission, order);
+          actualReceived = r2(confirmedReceived - deducted);
+          balance = r2(actualReceived - cashRefund);
           rebateStatus =
             deducted <= 0
               ? '未到账'
