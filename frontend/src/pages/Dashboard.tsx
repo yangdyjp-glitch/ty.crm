@@ -141,46 +141,29 @@ function TrendChart({ rows }: { rows: TrendPoint[] }) {
   const stepUnit = stepRatio <= 1.5 ? 1 : stepRatio <= 2 ? 2 : stepRatio <= 2.5 ? 2.5 : stepRatio <= 5 ? 5 : 10
   const tickStep = maxRaw <= 4 ? 1 : stepUnit * stepPower
   const maxValue = maxRaw <= 4 ? 4 : tickStep * Math.ceil(maxRaw / tickStep)
-  const xAt = (index: number) => left + (data.length === 1 ? 0 : (plotW * index) / (data.length - 1))
+  const slotWidth = plotW / data.length
+  const groupWidth = Math.min(38, slotWidth * 0.72)
+  const barGap = Math.min(4, groupWidth * 0.14)
+  const barWidth = Math.max(1.5, (groupWidth - barGap) / 2)
+  const xAt = (index: number) => left + slotWidth * (index + 0.5)
   const yAt = (value: number) => top + plotH - (plotH * value) / maxValue
-  const pointsFor = (field: 'leads' | 'signed') =>
-    data.map((d, i) => ({ x: xAt(i), y: yAt(d[field] || 0), value: d[field] || 0 }))
-  const linePath = (field: 'leads' | 'signed') => {
-    const points = pointsFor(field)
-    return points.reduce((path, point, index) => {
-      if (index === 0) return `M ${point.x} ${point.y}`
-      const prev = points[index - 1]
-      const midX = (prev.x + point.x) / 2
-      return `${path} C ${midX} ${prev.y}, ${midX} ${point.y}, ${point.x} ${point.y}`
-    }, '')
-  }
-  const areaPath = (field: 'leads' | 'signed') => {
-    const points = pointsFor(field)
-    const first = points[0]
-    const last = points[points.length - 1]
-    return `${linePath(field)} L ${last.x} ${top + plotH} L ${first.x} ${top + plotH} Z`
-  }
   const gridStep = data.length <= 15 ? 1 : 5
   const yTicks = Array.from({ length: Math.floor(maxValue / tickStep) + 1 }, (_, i) => maxValue - i * tickStep)
   const formatTick = (value: number) => Number(value.toFixed(2)).toLocaleString('zh-CN')
-  const canShowPoint = (value: number, index: number) => value > 0 || index === data.length - 1
   const tiltXLabels = data.length > 18
 
   return (
     <div ref={wrapRef} style={{ width: '100%', minHeight: 314, padding: '8px 14px 16px' }}>
       <svg viewBox={`0 0 ${width} ${height}`} style={{ display: 'block', width: '100%', height }}>
         <defs>
-          <linearGradient id="trendLeadFill" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#15803d" stopOpacity="0.2" />
-            <stop offset="100%" stopColor="#15803d" stopOpacity="0" />
+          <linearGradient id="trendLeadBar" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#22a447" />
+            <stop offset="100%" stopColor="#15803d" />
           </linearGradient>
-          <linearGradient id="trendSignedFill" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#b8860b" stopOpacity="0.18" />
-            <stop offset="100%" stopColor="#b8860b" stopOpacity="0" />
+          <linearGradient id="trendSignedBar" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#d4a52c" />
+            <stop offset="100%" stopColor="#b8860b" />
           </linearGradient>
-          <filter id="trendLineShadow" x="-4%" y="-8%" width="108%" height="116%">
-            <feDropShadow dx="0" dy="4" stdDeviation="4" floodColor="#0f172a" floodOpacity="0.08" />
-          </filter>
         </defs>
         <rect x={left} y={top} width={plotW} height={plotH} rx="10" fill="#fbfdf8" />
         <text x={left} y={18} fill="#64748b" fontSize="12">客户数量</text>
@@ -207,24 +190,26 @@ function TrendChart({ rows }: { rows: TrendPoint[] }) {
             />
           )
         ))}
-        <path d={areaPath('leads')} fill="url(#trendLeadFill)" />
-        <path d={areaPath('signed')} fill="url(#trendSignedFill)" />
-        <path d={linePath('leads')} fill="none" stroke="#15803d" strokeWidth="3.2" strokeLinejoin="round" strokeLinecap="round" filter="url(#trendLineShadow)" vectorEffect="non-scaling-stroke" />
-        <path d={linePath('signed')} fill="none" stroke="#b8860b" strokeWidth="3.2" strokeLinejoin="round" strokeLinecap="round" filter="url(#trendLineShadow)" vectorEffect="non-scaling-stroke" />
         {data.map((d, i) => (
           <g key={d.date}>
-            {canShowPoint(d.leads || 0, i) && (
-              <>
-                <circle cx={xAt(i)} cy={yAt(d.leads || 0)} r="5" fill="#ffffff" stroke="#15803d" strokeWidth="2" vectorEffect="non-scaling-stroke" />
-                <circle cx={xAt(i)} cy={yAt(d.leads || 0)} r="2.2" fill="#15803d" />
-              </>
-            )}
-            {canShowPoint(d.signed || 0, i) && (
-              <>
-                <circle cx={xAt(i)} cy={yAt(d.signed || 0)} r="5" fill="#ffffff" stroke="#b8860b" strokeWidth="2" vectorEffect="non-scaling-stroke" />
-                <circle cx={xAt(i)} cy={yAt(d.signed || 0)} r="2.2" fill="#b8860b" />
-              </>
-            )}
+            <rect
+              x={xAt(i) - barGap / 2 - barWidth}
+              y={yAt(d.leads || 0)}
+              width={barWidth}
+              height={top + plotH - yAt(d.leads || 0)}
+              fill="url(#trendLeadBar)"
+            >
+              <title>{`${d.label} 线索数量：${d.leads || 0}`}</title>
+            </rect>
+            <rect
+              x={xAt(i) + barGap / 2}
+              y={yAt(d.signed || 0)}
+              width={barWidth}
+              height={top + plotH - yAt(d.signed || 0)}
+              fill="url(#trendSignedBar)"
+            >
+              <title>{`${d.label} 签单数量：${d.signed || 0}`}</title>
+            </rect>
             <text
               x={xAt(i)}
               y={height - (tiltXLabels ? 28 : 18)}
@@ -279,8 +264,8 @@ export default function Dashboard() {
         <Card size="small" styles={{ body: { padding: 0, overflow: 'hidden' } }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', padding: '14px 16px 8px', borderBottom: '1px solid #edf2e6' }}>
             <div style={{ display: 'flex', gap: 18, alignItems: 'center', color: '#334155', fontSize: 13 }}>
-              <span><i style={{ display: 'inline-block', width: 20, height: 3, borderRadius: 999, background: '#15803d', marginRight: 7, verticalAlign: 'middle' }} />线索数量</span>
-              <span><i style={{ display: 'inline-block', width: 20, height: 3, borderRadius: 999, background: '#b8860b', marginRight: 7, verticalAlign: 'middle' }} />签单数量</span>
+              <span><i style={{ display: 'inline-block', width: 12, height: 12, background: '#15803d', marginRight: 7, verticalAlign: 'middle' }} />线索数量</span>
+              <span><i style={{ display: 'inline-block', width: 12, height: 12, background: '#b8860b', marginRight: 7, verticalAlign: 'middle' }} />签单数量</span>
             </div>
             <Segmented
               size="small"
@@ -419,3 +404,4 @@ export default function Dashboard() {
     </div>
   )
 }
+
