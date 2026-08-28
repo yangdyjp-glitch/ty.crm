@@ -10,6 +10,7 @@ const {
   commissionQuote,
   companyCashRefunds,
   orderCashPosition,
+  pendingAgentDeduction,
   refundBreakdown,
 } = require('../dist/common/finance');
 
@@ -99,6 +100,34 @@ test('agent net deduction never exceeds confirmed collection', () => {
     actualReceived: 0,
     balance: 0,
   });
+});
+
+test('only unrealized agent-net commission is reported as pending deduction', () => {
+  assert.equal(
+    pendingAgentDeduction({
+      fundSettlementMode: FundSettlementMode.AGENT_NET,
+      channelPayable: 1712000,
+      channelSettled: 1332000,
+    }),
+    380000,
+  );
+  assert.equal(
+    pendingAgentDeduction({
+      fundSettlementMode: FundSettlementMode.COMPANY_REBATE,
+      channelPayable: 380000,
+      channelSettled: 0,
+    }),
+    0,
+  );
+  assert.equal(
+    pendingAgentDeduction({
+      fundSettlementMode: FundSettlementMode.AGENT_NET,
+      channelPayable: 380000,
+      channelSettled: 0,
+      cancelled: true,
+    }),
+    0,
+  );
 });
 
 test('blue yidun full agent-net collection produces 22800 cash', () => {

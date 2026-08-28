@@ -131,6 +131,23 @@ export function orderCashPosition(input: {
   };
 }
 
+export function pendingAgentDeduction(input: {
+  fundSettlementMode: FundSettlementMode;
+  channelPayable: number;
+  channelSettled: number;
+  cancelled?: boolean;
+}) {
+  if (
+    input.fundSettlementMode !== FundSettlementMode.AGENT_NET ||
+    input.cancelled
+  ) {
+    return 0;
+  }
+  return roundMoney(
+    Math.max(0, input.channelPayable - input.channelSettled),
+  );
+}
+
 export function refundBreakdown(input: {
   receivableAmount: number;
   confirmedReceived: number;

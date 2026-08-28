@@ -12,6 +12,7 @@ import { AuthUser } from '../auth/current-user.decorator';
 import {
   companyCashRefunds,
   orderCashPosition,
+  pendingAgentDeduction,
   realizedAgentNetCommission,
   roundMoney,
 } from '../common/finance';
@@ -439,6 +440,7 @@ export class ReportsService {
       refundAmount: 0,
       channelPayable: 0,
       channelSettled: 0,
+      pendingAgentDeduction: 0,
       pendingRebate: 0,
       companyActualReceived: 0,
       balance: 0,
@@ -464,6 +466,14 @@ export class ReportsService {
         fundSettlementMode,
         commission,
       });
+      const unrealizedAgentDeduction = commission
+        ? pendingAgentDeduction({
+            fundSettlementMode,
+            channelPayable,
+            channelSettled: cash.channelSettled,
+            cancelled: commission.status === CommissionStatus.CANCELLED,
+          })
+        : 0;
 
       if (commission) {
         if (
@@ -491,6 +501,9 @@ export class ReportsService {
         row.channelPayable = roundMoney(row.channelPayable + channelPayable);
         row.channelSettled = roundMoney(
           row.channelSettled + cash.channelSettled,
+        );
+        row.pendingAgentDeduction = roundMoney(
+          row.pendingAgentDeduction + unrealizedAgentDeduction,
         );
         row.pendingRebate = roundMoney(row.pendingRebate + pendingRebate);
         row.companyActualReceived = roundMoney(
