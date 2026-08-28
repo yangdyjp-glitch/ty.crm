@@ -69,44 +69,48 @@ export default function Reports() {
               <Card title="公司现金总览（按币种）" size="small" style={{ marginBottom: 16 }}>
                 <Table
                   {...smallTableProps}
+                  className="finance-report-table"
+                  scroll={undefined}
                   pagination={false}
                   rowKey={(r: Any) => r.currency}
                   loading={financeLoading}
                   dataSource={finance?.summary || []}
                   columns={[
-                    { title: '币种', dataIndex: 'currency', width: COL.currency, render: (c: string) => CURRENCY_LABEL[c] },
-                    { title: '订单数', dataIndex: 'orderCount', width: COL.count, align: 'right' },
-                    { title: '应收金额', dataIndex: 'receivableAmount', width: COL.money, render: fmtMoney, align: 'right' },
-                    { title: '确认到账', dataIndex: 'confirmedReceived', width: COL.money, render: fmtMoney, align: 'right' },
-                    { title: '未收金额', dataIndex: 'unpaidAmount', width: COL.money, render: fmtMoney, align: 'right' },
-                    { title: '退款金额', dataIndex: 'refundAmount', width: COL.money, render: fmtMoney, align: 'right' },
-                    { title: '渠道分成应付', dataIndex: 'channelPayable', width: COL.money, render: fmtMoney, align: 'right' },
-                    { title: '渠道已扣/已付', dataIndex: 'channelSettled', width: COL.money, render: fmtMoney, align: 'right' },
-                    { title: '待扣/未实现分成', dataIndex: 'pendingAgentDeduction', width: COL.money, render: fmtMoney, align: 'right' },
-                    { title: '待返佣', dataIndex: 'pendingRebate', width: COL.money, render: fmtMoney, align: 'right' },
-                    { title: '公司实际入账', dataIndex: 'companyActualReceived', width: COL.money, render: fmtMoney, align: 'right' },
-                    { title: '当前结余', dataIndex: 'balance', width: COL.money, render: fmtMoney, align: 'right' },
+                    { title: '币种', dataIndex: 'currency', width: '5%', render: (c: string) => CURRENCY_LABEL[c] },
+                    { title: '订单', dataIndex: 'orderCount', width: '5%', align: 'right' },
+                    { title: '应收', dataIndex: 'receivableAmount', width: '9%', render: fmtMoney, align: 'right' },
+                    { title: '到账', dataIndex: 'confirmedReceived', width: '9%', render: fmtMoney, align: 'right' },
+                    { title: '未收', dataIndex: 'unpaidAmount', width: '9%', render: fmtMoney, align: 'right' },
+                    { title: '退款', dataIndex: 'refundAmount', width: '9%', render: fmtMoney, align: 'right' },
+                    { title: '分成应付', dataIndex: 'channelPayable', width: '9%', render: fmtMoney, align: 'right' },
+                    { title: '已扣/已付', dataIndex: 'channelSettled', width: '9%', render: fmtMoney, align: 'right' },
+                    { title: '待扣/未实现', dataIndex: 'pendingAgentDeduction', width: '9%', render: fmtMoney, align: 'right' },
+                    { title: '待返佣', dataIndex: 'pendingRebate', width: '9%', render: fmtMoney, align: 'right' },
+                    { title: '公司入账', dataIndex: 'companyActualReceived', width: '9%', render: fmtMoney, align: 'right' },
+                    { title: '结余', dataIndex: 'balance', width: '9%', render: fmtMoney, align: 'right' },
                   ]}
                 />
               </Card>
               <Card title="资金模式拆分（按币种 × 模式）" size="small">
                 <Table
                   {...smallTableProps}
+                  className="finance-report-table"
+                  scroll={undefined}
                   pagination={false}
                   rowKey={(r: Any) => r.currency + r.fundSettlementMode}
                   loading={financeLoading}
                   dataSource={finance?.byMode || []}
                   columns={[
-                    { title: '币种', dataIndex: 'currency', width: COL.currency, render: (c: string) => CURRENCY_LABEL[c] },
-                    { title: '资金模式', dataIndex: 'fundSettlementMode', width: COL.mode, render: (m: string) => FUND_MODE_LABEL[m] },
-                    { title: '订单数', dataIndex: 'orderCount', width: COL.count, align: 'right' },
-                    { title: '应收金额', dataIndex: 'receivableAmount', width: COL.money, render: fmtMoney, align: 'right' },
-                    { title: '渠道分成应付', dataIndex: 'channelPayable', width: COL.money, render: fmtMoney, align: 'right' },
-                    { title: '渠道已扣/已付', dataIndex: 'channelSettled', width: COL.money, render: fmtMoney, align: 'right' },
-                    { title: '待扣/未实现分成', dataIndex: 'pendingAgentDeduction', width: COL.money, render: fmtMoney, align: 'right' },
-                    { title: '待返佣', dataIndex: 'pendingRebate', width: COL.money, render: fmtMoney, align: 'right' },
-                    { title: '公司实际入账', dataIndex: 'companyActualReceived', width: COL.money, render: fmtMoney, align: 'right' },
-                    { title: '当前结余', dataIndex: 'balance', width: COL.money, render: fmtMoney, align: 'right' },
+                    { title: '币种', dataIndex: 'currency', width: '6%', render: (c: string) => CURRENCY_LABEL[c] },
+                    { title: '资金模式', dataIndex: 'fundSettlementMode', width: '14%', render: (m: string) => FUND_MODE_LABEL[m] },
+                    { title: '订单', dataIndex: 'orderCount', width: '6%', align: 'right' },
+                    { title: '应收', dataIndex: 'receivableAmount', width: '10.5%', render: fmtMoney, align: 'right' },
+                    { title: '分成应付', dataIndex: 'channelPayable', width: '10.5%', render: fmtMoney, align: 'right' },
+                    { title: '已扣/已付', dataIndex: 'channelSettled', width: '10.5%', render: fmtMoney, align: 'right' },
+                    { title: '待扣/未实现', dataIndex: 'pendingAgentDeduction', width: '10.5%', render: fmtMoney, align: 'right' },
+                    { title: '待返佣', dataIndex: 'pendingRebate', width: '10.5%', render: fmtMoney, align: 'right' },
+                    { title: '公司入账', dataIndex: 'companyActualReceived', width: '10.5%', render: fmtMoney, align: 'right' },
+                    { title: '结余', dataIndex: 'balance', width: '10.5%', render: fmtMoney, align: 'right' },
                   ]}
                 />
               </Card>

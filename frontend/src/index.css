@@ -108,6 +108,19 @@ td.ant-table-cell[align='right'] {
 .ant-table-tbody > tr > td {
   word-break: break-word;
 }
+/* 财务报表列较多：按容器宽度收缩，避免出现横向滚动条。 */
+.finance-report-table .ant-table-content {
+  overflow-x: hidden !important;
+}
+.finance-report-table .ant-table-cell {
+  padding-inline: 6px !important;
+  font-size: 12px;
+}
+.finance-report-table .ant-table-thead > tr > th {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
 /* 去掉表头单元格之间 AntD 默认的竖条分隔（它会和边框叠成奇怪的粗痕） */
 .ant-table-thead > tr > th::before {
   display: none !important;
