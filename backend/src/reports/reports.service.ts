@@ -421,15 +421,33 @@ export class ReportsService {
       orderBy: { id: 'desc' },
       include: {
         commission: true,
+        customer: { select: { ownerUserId: true } },
+        product: { select: { id: true, name: true } },
         refunds: {
           where: { deletedAt: null, status: RefundStatus.REFUNDED },
           select: { status: true, bearer: true, cashAmount: true },
         },
       },
     });
+    const salesUserIds = Array.from(
+      new Set(
+        orders
+          .map((order) => order.customer.ownerUserId)
+          .filter((id): id is number => id != null),
+      ),
+    );
+    const salesUsers = salesUserIds.length
+      ? await this.prisma.user.findMany({
+          where: { id: { in: salesUserIds } },
+          select: { id: true, name: true },
+        })
+      : [];
+    const salesNameMap = new Map(salesUsers.map((user) => [user.id, user.name]));
 
     const summary = new Map<string, any>();
     const byMode = new Map<string, any>();
+    const bySales = new Map<string, any>();
+    const byProduct = new Map<string, any>();
     const empty = (currency: string, fundSettlementMode?: FundSettlementMode) => ({
       currency,
       fundSettlementMode,
@@ -452,6 +470,9 @@ export class ReportsService {
       const currency = order.currency;
       const fundSettlementMode =
         commission?.fundSettlementMode ?? order.fundSettlementMode;
+      const salesUserId = order.customer.ownerUserId;
+      const salesKey = `${currency}:${salesUserId ?? 'unassigned'}`;
+      const productKey = `${currency}:${order.product.id}`;
       const contractAmount = Number(order.receivableAmount);
       const confirmedReceived = Number(order.paidAmount);
       const unpaidAmount = Number(order.unpaidAmount);
@@ -491,6 +512,18 @@ export class ReportsService {
         summary.get(currency) ?? empty(currency),
         byMode.get(`${currency}:${fundSettlementMode}`) ??
           empty(currency, fundSettlementMode),
+        bySales.get(salesKey) ?? {
+          ...empty(currency),
+          salesUserId,
+          salesName: salesUserId
+            ? (salesNameMap.get(salesUserId) ?? '未知销售')
+            : '未分配',
+        },
+        byProduct.get(productKey) ?? {
+          ...empty(currency),
+          productId: order.product.id,
+          productName: order.product.name,
+        },
       ];
       for (const row of rows) {
         row.orderCount += 1;
@@ -513,11 +546,23 @@ export class ReportsService {
       }
       summary.set(currency, rows[0]);
       byMode.set(`${currency}:${fundSettlementMode}`, rows[1]);
+      bySales.set(salesKey, rows[2]);
+      byProduct.set(productKey, rows[3]);
     }
 
     return {
       summary: [...summary.values()],
       byMode: [...byMode.values()],
+      bySales: [...bySales.values()].sort(
+        (a, b) =>
+          a.currency.localeCompare(b.currency) ||
+          a.salesName.localeCompare(b.salesName, 'zh-CN'),
+      ),
+      byProduct: [...byProduct.values()].sort(
+        (a, b) =>
+          a.currency.localeCompare(b.currency) ||
+          a.productName.localeCompare(b.productName, 'zh-CN'),
+      ),
     };
   }
 

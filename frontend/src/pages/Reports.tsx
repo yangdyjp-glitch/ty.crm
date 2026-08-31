@@ -88,7 +88,7 @@ export default function Reports() {
                   ]}
                 />
               </Card>
-              <Card title="资金模式拆分（按币种 × 模式）" size="small">
+              <Card title="资金模式拆分（按币种 × 模式）" size="small" style={{ marginBottom: 16 }}>
                 <Table
                   {...smallTableProps}
                   className="finance-report-table"
@@ -145,6 +145,52 @@ export default function Reports() {
                     { title: '销售', dataIndex: 'name', width: COL.person },
                     { title: '负责客户数', dataIndex: 'customerCount', width: COL.count },
                     { title: '签约数', dataIndex: 'signedCount', width: COL.count },
+                  ]}
+                />
+              </Card>
+              <Card title="销售拆分（按币种 × 销售）" size="small" style={{ marginBottom: 16 }}>
+                <Table
+                  {...smallTableProps}
+                  className="finance-report-table"
+                  scroll={undefined}
+                  pagination={false}
+                  rowKey={(r: Any) => `${r.currency}:${r.salesUserId ?? 'unassigned'}`}
+                  loading={financeLoading}
+                  dataSource={finance?.bySales || []}
+                  columns={[
+                    { title: '币种', dataIndex: 'currency', width: '6%', render: (c: string) => CURRENCY_LABEL[c] },
+                    { title: '销售', dataIndex: 'salesName', width: '14%' },
+                    { title: '订单', dataIndex: 'orderCount', width: '6%', align: 'right' },
+                    { title: '应收', dataIndex: 'receivableAmount', width: '10.5%', render: fmtMoney, align: 'right' },
+                    { title: '分成应付', dataIndex: 'channelPayable', width: '10.5%', render: fmtMoney, align: 'right' },
+                    { title: '已扣/已付', dataIndex: 'channelSettled', width: '10.5%', render: fmtMoney, align: 'right' },
+                    { title: '待扣/未实现', dataIndex: 'pendingAgentDeduction', width: '10.5%', render: fmtMoney, align: 'right' },
+                    { title: '待返佣', dataIndex: 'pendingRebate', width: '10.5%', render: fmtMoney, align: 'right' },
+                    { title: '公司入账', dataIndex: 'companyActualReceived', width: '10.5%', render: fmtMoney, align: 'right' },
+                    { title: '结余', dataIndex: 'balance', width: '10.5%', render: fmtMoney, align: 'right' },
+                  ]}
+                />
+              </Card>
+              <Card title="产品拆分（按币种 × 产品）" size="small">
+                <Table
+                  {...smallTableProps}
+                  className="finance-report-table"
+                  scroll={undefined}
+                  pagination={false}
+                  rowKey={(r: Any) => `${r.currency}:${r.productId}`}
+                  loading={financeLoading}
+                  dataSource={finance?.byProduct || []}
+                  columns={[
+                    { title: '币种', dataIndex: 'currency', width: '6%', render: (c: string) => CURRENCY_LABEL[c] },
+                    { title: '产品', dataIndex: 'productName', width: '14%' },
+                    { title: '订单', dataIndex: 'orderCount', width: '6%', align: 'right' },
+                    { title: '应收', dataIndex: 'receivableAmount', width: '10.5%', render: fmtMoney, align: 'right' },
+                    { title: '分成应付', dataIndex: 'channelPayable', width: '10.5%', render: fmtMoney, align: 'right' },
+                    { title: '已扣/已付', dataIndex: 'channelSettled', width: '10.5%', render: fmtMoney, align: 'right' },
+                    { title: '待扣/未实现', dataIndex: 'pendingAgentDeduction', width: '10.5%', render: fmtMoney, align: 'right' },
+                    { title: '待返佣', dataIndex: 'pendingRebate', width: '10.5%', render: fmtMoney, align: 'right' },
+                    { title: '公司入账', dataIndex: 'companyActualReceived', width: '10.5%', render: fmtMoney, align: 'right' },
+                    { title: '结余', dataIndex: 'balance', width: '10.5%', render: fmtMoney, align: 'right' },
                   ]}
                 />
               </Card>
