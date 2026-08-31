@@ -72,15 +72,25 @@ export default function Commissions() {
   useEffect(load, [status])
   useEffect(loadCash, [])
 
-  const act = async (id: number, action: string) => {
-    const { data: res } = await client.post(`/commissions/${id}/${action}`)
-    if (action === 'pay') {
-      message.success(`已确认支付：应付 ${fmtMoney(res.payable)}，往来抵扣 ${fmtMoney(res.offset)}，实付现金 ${fmtMoney(res.cashOut)}`)
-      loadCash()
-    } else {
-      message.success('已更新')
+  const act = async (row: Any, action: string) => {
+    try {
+      const endpoint =
+        action === 'pay' && row.paymentId
+          ? `/commissions/${row.id}/pay-installment/${row.paymentId}`
+          : `/commissions/${row.id}/${action}`
+      const { data: res } = await client.post(endpoint)
+      if (action === 'pay') {
+        const paymentText = res.paymentNo ? `（${res.paymentNo}）` : ''
+        message.success(`已确认支付${paymentText}：应付 ${fmtMoney(res.payable)}，往来抵扣 ${fmtMoney(res.offset)}，实付现金 ${fmtMoney(res.cashOut)}`)
+        loadCash()
+      } else {
+        message.success('已更新')
+      }
+      load()
+    } catch (e: unknown) {
+      const error = e as { response?: { data?: { message?: string } } }
+      message.error(error.response?.data?.message || '操作失败')
     }
-    load()
   }
 
   const doRemove = async (id: number) => {
@@ -138,12 +148,25 @@ export default function Commissions() {
       <Table
         {...scrollTableProps}
         className="settlement-list-table full-height-list-table"
-        rowKey="id"
+        rowKey="recordKey"
         loading={loading}
         dataSource={data.items}
         columns={[
           { title: '客户', width: COL.person, render: (_, r) => r.customer?.name },
-          { title: '订单', width: COL.no, render: (_, r) => r.order?.orderNo },
+          {
+            title: '订单 / 收款',
+            width: COL.no,
+            render: (_, r) => (
+              <div>
+                <div>{r.order?.orderNo}</div>
+                {r.paymentId && (
+                  <div style={{ color: '#6b7280', fontSize: 12 }}>
+                    {r.paymentRemark || '分笔收款'} · {r.paymentNo}
+                  </div>
+                )}
+              </div>
+            ),
+          },
           {
             title: '渠道(快照)',
             dataIndex: 'channelNameSnapshot',
@@ -186,20 +209,49 @@ export default function Commissions() {
             render: (_, r) => {
               if (isSelfDeducted(r)) return <Tag color="default">已自扣(报表)</Tag>
 
+              if (r.isPaymentInstallment) {
+                const parentIsFinal = FINAL_STATUS.includes(r.parentStatus)
+                const showParentActions = r.installmentIndex === 0 && !parentIsFinal
+                return (
+                  <Space wrap>
+                    {canConfirmPayment(r) && <ActionBtn tone="confirm" onClick={() => act(r, 'pay')}>确认支付</ActionBtn>}
+                    {r.status === 'NOT_DUE' && <Tag>待对应收款到账</Tag>}
+                    {r.status === 'PAID' && <Tag color="success">该笔已支付</Tag>}
+                    {showParentActions &&
+                      (r.suspended ? (
+                        <ActionBtn tone="confirm" onClick={() => act(r, 'resume')}>解除挂起</ActionBtn>
+                      ) : (
+                        <ActionBtn tone="reject" onClick={() => act(r, 'suspend')}>挂起</ActionBtn>
+                      ))}
+                    {showParentActions && (
+                      <ActionBtn
+                        tone="reject"
+                        onClick={() =>
+                          Modal.confirm({ title: '确认取消该订单的全部分笔返佣？', onOk: () => act(r, 'cancel') })
+                        }
+                      >
+                        取消
+                      </ActionBtn>
+                    )}
+                    {showParentActions && <DeleteBtn onConfirm={() => doRemove(r.id)} />}
+                  </Space>
+                )
+              }
+
               return (
                 <Space wrap>
-                  {canConfirmPayment(r) && <ActionBtn tone="confirm" onClick={() => act(r.id, 'pay')}>确认支付</ActionBtn>}
+                  {canConfirmPayment(r) && <ActionBtn tone="confirm" onClick={() => act(r, 'pay')}>确认支付</ActionBtn>}
                   {!FINAL_STATUS.includes(r.status) &&
                     (r.suspended ? (
-                      <ActionBtn tone="confirm" onClick={() => act(r.id, 'resume')}>解除挂起</ActionBtn>
+                      <ActionBtn tone="confirm" onClick={() => act(r, 'resume')}>解除挂起</ActionBtn>
                     ) : (
-                      <ActionBtn tone="reject" onClick={() => act(r.id, 'suspend')}>挂起</ActionBtn>
+                      <ActionBtn tone="reject" onClick={() => act(r, 'suspend')}>挂起</ActionBtn>
                     ))}
                   {!FINAL_STATUS.includes(r.status) && (
                     <ActionBtn
                       tone="reject"
                       onClick={() =>
-                        Modal.confirm({ title: '确认取消该分成？', onOk: () => act(r.id, 'cancel') })
+                        Modal.confirm({ title: '确认取消该分成？', onOk: () => act(r, 'cancel') })
                       }
                     >
                       取消

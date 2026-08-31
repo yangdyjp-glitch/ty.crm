@@ -1,5 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { ChannelType, FundSettlementMode } from '@prisma/client';
+import {
+  ChannelType,
+  CommissionMethod,
+  FundSettlementMode,
+  SettlementCondition,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { nextNo } from '../common/util';
 import {
@@ -10,6 +15,30 @@ import {
 @Injectable()
 export class ChannelsService {
   constructor(private prisma: PrismaService) {}
+
+  private validateSettlementConfig(config: {
+    commissionMethod?: CommissionMethod;
+    fundSettlementMode?: FundSettlementMode;
+    settlementCondition?: SettlementCondition;
+  }) {
+    if (config.fundSettlementMode === FundSettlementMode.COMPANY_DIRECT) {
+      throw new BadRequestException('第三方渠道不能使用公司直收模式');
+    }
+    if (
+      config.settlementCondition === SettlementCondition.ON_EACH_PAYMENT &&
+      (config.fundSettlementMode ?? FundSettlementMode.COMPANY_REBATE) !==
+        FundSettlementMode.COMPANY_REBATE
+    ) {
+      throw new BadRequestException('每笔到账后结算仅适用于公司代收·返佣');
+    }
+    if (
+      config.settlementCondition === SettlementCondition.ON_EACH_PAYMENT &&
+      (config.commissionMethod ?? CommissionMethod.NET_RECEIVED_RATIO) !==
+        CommissionMethod.NET_RECEIVED_RATIO
+    ) {
+      throw new BadRequestException('每笔到账后结算仅支持按实收比例返佣');
+    }
+  }
 
   list(channelType?: ChannelType) {
     return this.prisma.channel.findMany({
@@ -45,18 +74,20 @@ export class ChannelsService {
   }
 
   async create(dto: CreateChannelDto) {
-    if (dto.fundSettlementMode === FundSettlementMode.COMPANY_DIRECT) {
-      throw new BadRequestException('第三方渠道不能使用公司直收模式');
-    }
+    this.validateSettlementConfig(dto);
     return this.prisma.channel.create({
       data: { channelNo: await nextNo(this.prisma.channel, 'channelNo', 'QD'), ...dto },
     });
   }
 
-  update(id: number, dto: UpdateChannelDto) {
-    if (dto.fundSettlementMode === FundSettlementMode.COMPANY_DIRECT) {
-      throw new BadRequestException('第三方渠道不能使用公司直收模式');
-    }
+  async update(id: number, dto: UpdateChannelDto) {
+    const current = await this.get(id);
+    this.validateSettlementConfig({
+      commissionMethod: dto.commissionMethod ?? current.commissionMethod,
+      fundSettlementMode: dto.fundSettlementMode ?? current.fundSettlementMode,
+      settlementCondition:
+        dto.settlementCondition ?? current.settlementCondition,
+    });
     return this.prisma.channel.update({ where: { id }, data: dto });
   }
 

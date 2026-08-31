@@ -36,7 +36,7 @@ export class PaymentsService {
     ) {
       throw new BadRequestException('订单已终止，无法收款');
     }
-    return this.prisma.payment.create({
+    const payment = await this.prisma.payment.create({
       data: {
         paymentNo: await nextPairedNo(
           this.prisma.payment,
@@ -55,6 +55,8 @@ export class PaymentsService {
         remark: dto.remark,
       },
     });
+    await this.commissions.onPaymentPlanChanged(order.id);
+    return payment;
   }
 
   async confirm(user: AuthUser, id: number) {
@@ -147,7 +149,7 @@ export class PaymentsService {
     if (p.confirmStatus === PaymentConfirmStatus.CONFIRMED) {
       throw new BadRequestException('已确认的收款不允许修改');
     }
-    return this.prisma.payment.update({
+    const payment = await this.prisma.payment.update({
       where: { id },
       data: {
         amount: dto.amount,
@@ -156,6 +158,8 @@ export class PaymentsService {
         remark: dto.remark,
       },
     });
+    await this.commissions.onPaymentPlanChanged(p.orderId);
+    return payment;
   }
 
   /** 删除待确认收款（已确认的不允许直接删） */
@@ -171,6 +175,7 @@ export class PaymentsService {
       where: { id },
       data: { deletedAt: new Date() },
     });
+    await this.commissions.onPaymentPlanChanged(p.orderId);
     return { ok: true };
   }
 

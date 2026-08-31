@@ -61,6 +61,21 @@ export class CommissionsController {
     return this.commissions.pay(user, id, body?.voucherAttachmentId);
   }
 
+  @Post(':id/pay-installment/:paymentId')
+  payInstallment(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('paymentId', ParseIntPipe) paymentId: number,
+    @Body() body: { voucherAttachmentId?: number },
+  ) {
+    return this.commissions.payInstallment(
+      user,
+      id,
+      paymentId,
+      body?.voucherAttachmentId,
+    );
+  }
+
   @Post(':id/suspend')
   suspend(
     @Param('id', ParseIntPipe) id: number,

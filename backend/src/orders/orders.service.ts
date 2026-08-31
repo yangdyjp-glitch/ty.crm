@@ -11,6 +11,7 @@ import {
   PaymentConfirmStatus,
   Prisma,
   RefundStatus,
+  SettlementCondition,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CustomersService } from '../customers/customers.service';
@@ -49,6 +50,13 @@ export class OrdersService {
     const fundMode = customer.channel
       ? (dto.fundSettlementMode ?? customer.channel.fundSettlementMode)
       : FundSettlementMode.COMPANY_DIRECT;
+    if (
+      customer.channel?.settlementCondition ===
+        SettlementCondition.ON_EACH_PAYMENT &&
+      fundMode !== FundSettlementMode.COMPANY_REBATE
+    ) {
+      throw new BadRequestException('每笔到账后结算仅适用于公司代收·返佣');
+    }
     const hasCommission = !!customer.channelId && product.participateCommission;
     if (hasCommission && customer.channel) {
       const configuredValue =

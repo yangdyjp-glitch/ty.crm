@@ -10,9 +10,43 @@ const {
   commissionQuote,
   companyCashRefunds,
   orderCashPosition,
+  paymentCommissionInstallments,
   pendingAgentDeduction,
   refundBreakdown,
 } = require('../dist/common/finance');
+
+test('each confirmed collection keeps an independent commission installment', () => {
+  const unpaid = paymentCommissionInstallments({
+    rate: 15,
+    paidAmount: 0,
+    payments: [
+      { id: 50, amount: 12000 },
+      { id: 51, amount: 12000 },
+    ],
+  });
+  assert.deepEqual(unpaid, {
+    totalPayable: 3600,
+    paidAmount: 0,
+    unpaidAmount: 3600,
+    installments: [
+      { paymentId: 50, payableAmount: 1800, paidAmount: 0, unpaidAmount: 1800 },
+      { paymentId: 51, payableAmount: 1800, paidAmount: 0, unpaidAmount: 1800 },
+    ],
+  });
+
+  const firstPaid = paymentCommissionInstallments({
+    rate: 15,
+    paidAmount: 1800,
+    payments: [
+      { id: 50, amount: 12000 },
+      { id: 51, amount: 12000 },
+    ],
+  });
+  assert.deepEqual(firstPaid.installments, [
+    { paymentId: 50, payableAmount: 1800, paidAmount: 1800, unpaidAmount: 0 },
+    { paymentId: 51, payableAmount: 1800, paidAmount: 0, unpaidAmount: 1800 },
+  ]);
+});
 
 test('three commission methods use the correct base or fixed value', () => {
   const common = {

@@ -7,6 +7,52 @@ import {
 
 export const roundMoney = (value: number) => Math.round(value * 100) / 100;
 
+export function paymentCommissionInstallments(input: {
+  rate: number;
+  paidAmount: number;
+  clawbackAmount?: number;
+  payments: { id: number; amount: unknown }[];
+}) {
+  const raw = input.payments.map((payment) => ({
+    paymentId: payment.id,
+    payableAmount: roundMoney((Number(payment.amount) * input.rate) / 100),
+  }));
+  const grossPayable = roundMoney(
+    raw.reduce((sum, installment) => sum + installment.payableAmount, 0),
+  );
+  const totalPayable = roundMoney(
+    Math.max(0, grossPayable - Number(input.clawbackAmount ?? 0)),
+  );
+  const reductionRatio = grossPayable > 0 ? totalPayable / grossPayable : 0;
+  let assignedPayable = 0;
+  let remainingPaid = Math.max(0, input.paidAmount);
+
+  const installments = raw.map((installment, index) => {
+    const isLast = index === raw.length - 1;
+    const payableAmount = isLast
+      ? roundMoney(Math.max(0, totalPayable - assignedPayable))
+      : roundMoney(installment.payableAmount * reductionRatio);
+    assignedPayable = roundMoney(assignedPayable + payableAmount);
+    const paidAmount = roundMoney(Math.min(payableAmount, remainingPaid));
+    remainingPaid = roundMoney(Math.max(0, remainingPaid - paidAmount));
+    return {
+      paymentId: installment.paymentId,
+      payableAmount,
+      paidAmount,
+      unpaidAmount: roundMoney(Math.max(0, payableAmount - paidAmount)),
+    };
+  });
+
+  return {
+    totalPayable,
+    paidAmount: roundMoney(Math.max(0, input.paidAmount)),
+    unpaidAmount: roundMoney(
+      Math.max(0, totalPayable - Math.max(0, input.paidAmount)),
+    ),
+    installments,
+  };
+}
+
 export function paidRatio(order: {
   paidAmount: unknown;
   receivableAmount: unknown;

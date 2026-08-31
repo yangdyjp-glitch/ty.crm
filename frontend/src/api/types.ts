@@ -37,6 +37,7 @@ export const COMMISSION_METHOD_LABEL: Record<string, string> = {
 
 export const SETTLEMENT_COND_LABEL: Record<string, string> = {
   ON_SIGN: '签约后',
+  ON_EACH_PAYMENT: '每笔到账后',
   ON_FULL_PAYMENT: '缴清后',
   ON_SERVICE_COMPLETE: '服务完成后',
   AFTER_REFUND_WINDOW: '过退款期后',
