@@ -25,14 +25,20 @@ export class ReportsController {
 
   @Get('channels')
   @Roles(UserRole.ADMIN)
-  channels() {
-    return this.reports.channels();
+  channels(
+    @Query()
+    q: { period?: 'all' | 'year' | 'month'; year?: string; month?: string },
+  ) {
+    return this.reports.channels(q);
   }
 
   @Get('sales')
   @Roles(UserRole.ADMIN)
-  sales() {
-    return this.reports.sales();
+  sales(
+    @Query()
+    q: { period?: 'all' | 'year' | 'month'; year?: string; month?: string },
+  ) {
+    return this.reports.sales(q);
   }
 
   @Get('funnel')
