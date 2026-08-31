@@ -23,6 +23,15 @@ import { moneyIn } from '../api/money'
 
 type Any = Record<string, any>
 const EMPTY_FILTER = '__EMPTY__'
+const ORDER_STATUS_COLOR: Record<string, string> = {
+  PENDING_PAYMENT: 'orange',
+  PARTIAL_PAID: 'gold',
+  FULLY_PAID: 'green',
+  IN_SERVICE: 'green',
+  COMPLETED: 'green',
+  REFUNDED: 'red',
+  CANCELLED: 'red',
+}
 const ORDER_COL = {
   no: COL.no,
   date: COL.date,
@@ -31,7 +40,8 @@ const ORDER_COL = {
   project: 170,
   currency: 64,
   money: 112,
-  status: COL.status,
+  quantity: 72,
+  status: 96,
   action: 180,
 } as const
 
@@ -229,6 +239,7 @@ export default function Orders() {
       render: (c: string) => CURRENCY_LABEL[c],
     },
     { title: '单价', dataIndex: 'unitPrice', width: ORDER_COL.money, render: (_: any, r: Any) => fmtMoney(orderUnitPrice(r)), align: 'right' as const },
+    { title: '数量', dataIndex: 'quantity', width: ORDER_COL.quantity, render: (_: any, r: Any) => orderQuantity(r), align: 'right' as const },
     { title: '优惠', dataIndex: 'discountAmount', width: ORDER_COL.money, render: fmtMoney, align: 'right' as const },
     { title: '应收', dataIndex: 'receivableAmount', width: ORDER_COL.money, render: fmtMoney, align: 'right' as const },
     { title: '已收', dataIndex: 'paidAmount', width: ORDER_COL.money, render: moneyIn, align: 'right' as const },
@@ -239,7 +250,7 @@ export default function Orders() {
       width: ORDER_COL.status,
       filters: statusFilters,
       onFilter: (value: any, r: Any) => filterValue(r.status) === value,
-      render: (s: string) => <Tag>{ORDER_STATUS_LABEL[s]}</Tag>,
+      render: (s: string) => <Tag color={ORDER_STATUS_COLOR[s]}>{ORDER_STATUS_LABEL[s]}</Tag>,
     },
     {
       title: '操作',
