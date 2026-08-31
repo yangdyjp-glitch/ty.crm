@@ -407,6 +407,15 @@ export class ReportsService {
     throw new BadRequestException('统计范围无效');
   }
 
+  private createdAtRange(q: {
+    period?: 'all' | 'year' | 'month';
+    year?: string;
+    month?: string;
+  }): Prisma.CustomerWhereInput {
+    const signedAt = this.signedAtRange(q).signedAt;
+    return signedAt ? { createdAt: signedAt } : {};
+  }
+
   async finance(q: {
     period?: 'all' | 'year' | 'month';
     year?: string;
@@ -566,9 +575,15 @@ export class ReportsService {
     };
   }
 
-  async channels() {
+  async channels(
+    q: {
+      period?: 'all' | 'year' | 'month';
+      year?: string;
+      month?: string;
+    } = {},
+  ) {
     const commissions = await this.prisma.commission.findMany({
-      where: { deletedAt: null },
+      where: { deletedAt: null, order: this.signedAtRange(q) },
       include: {
         order: { select: { paidAmount: true, receivableAmount: true } },
       },
@@ -612,14 +627,28 @@ export class ReportsService {
     });
   }
 
-  async sales() {
+  async sales(
+    q: {
+      period?: 'all' | 'year' | 'month';
+      year?: string;
+      month?: string;
+    } = {},
+  ) {
     const byOwner = await this.prisma.customer.groupBy({
       by: ['ownerUserId'],
-      where: { deletedAt: null, ownerUserId: { not: null } },
+      where: {
+        deletedAt: null,
+        ownerUserId: { not: null },
+        ...this.createdAtRange(q),
+      },
       _count: true,
     });
     const signedByOwner = await this.prisma.order.findMany({
-      where: { deletedAt: null, customer: { deletedAt: null, ownerUserId: { not: null } } },
+      where: {
+        deletedAt: null,
+        customer: { deletedAt: null, ownerUserId: { not: null } },
+        ...this.signedAtRange(q),
+      },
       select: { customer: { select: { ownerUserId: true } } },
     });
     const users = await this.prisma.user.findMany({
