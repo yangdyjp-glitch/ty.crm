@@ -217,7 +217,29 @@ export class OrdersService {
       }),
       this.prisma.order.count({ where }),
     ]);
-    return { items, total, page, pageSize };
+    const signedByIds = Array.from(
+      new Set(
+        items
+          .map((item) => item.signedById)
+          .filter((id): id is number => id != null),
+      ),
+    );
+    const signedByUsers = signedByIds.length
+      ? await this.prisma.user.findMany({
+          where: { id: { in: signedByIds } },
+          select: { id: true, name: true },
+        })
+      : [];
+    const signedByMap = new Map(signedByUsers.map((signedBy) => [signedBy.id, signedBy]));
+    return {
+      items: items.map((item) => ({
+        ...item,
+        signedBy: item.signedById ? (signedByMap.get(item.signedById) ?? null) : null,
+      })),
+      total,
+      page,
+      pageSize,
+    };
   }
 
   async get(user: AuthUser, id: number) {

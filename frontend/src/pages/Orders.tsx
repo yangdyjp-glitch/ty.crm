@@ -27,6 +27,7 @@ const ORDER_COL = {
   no: COL.no,
   date: COL.date,
   person: COL.person,
+  sales: COL.person,
   project: 170,
   currency: COL.currency,
   money: 112,
@@ -180,6 +181,10 @@ export default function Orders() {
     () => uniqueFilters(data.items, (r) => r.product?.id, (r) => r.product?.name),
     [data.items],
   )
+  const salesFilters = useMemo(
+    () => uniqueFilters(data.items, (r) => r.signedById, (r) => r.signedBy?.name),
+    [data.items],
+  )
   const currencyFilters = useMemo(
     () => uniqueFilters(data.items, (r) => r.currency, (r) => CURRENCY_LABEL[r.currency] || r.currency),
     [data.items],
@@ -200,6 +205,14 @@ export default function Orders() {
       render: fmtDate,
     },
     { title: '客户', width: ORDER_COL.person, render: (_: any, r: Any) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
+    {
+      title: '销售人员',
+      width: ORDER_COL.sales,
+      filters: salesFilters,
+      filterSearch: true,
+      onFilter: (value: any, r: Any) => filterValue(r.signedById) === value,
+      render: (_: any, r: Any) => r.signedBy?.name || '—',
+    },
     {
       title: '项目',
       width: ORDER_COL.project,
