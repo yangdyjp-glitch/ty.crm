@@ -182,7 +182,7 @@ export default function Orders() {
     [data.items],
   )
   const salesFilters = useMemo(
-    () => uniqueFilters(data.items, (r) => r.signedById, (r) => r.signedBy?.name),
+    () => uniqueFilters(data.items, (r) => r.customer?.ownerUserId, (r) => r.salesPerson?.name),
     [data.items],
   )
   const currencyFilters = useMemo(
@@ -210,8 +210,8 @@ export default function Orders() {
       width: ORDER_COL.sales,
       filters: salesFilters,
       filterSearch: true,
-      onFilter: (value: any, r: Any) => filterValue(r.signedById) === value,
-      render: (_: any, r: Any) => r.signedBy?.name || '—',
+      onFilter: (value: any, r: Any) => filterValue(r.customer?.ownerUserId) === value,
+      render: (_: any, r: Any) => r.salesPerson?.name || '—',
     },
     {
       title: '项目',

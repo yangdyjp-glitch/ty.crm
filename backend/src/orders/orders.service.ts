@@ -211,30 +211,41 @@ export class OrdersService {
         orderBy: { id: 'desc' },
         ...(showAll ? {} : { skip: (page - 1) * pageSize, take: pageSize }),
         include: {
-          customer: { select: { id: true, name: true, customerNo: true } },
+          customer: {
+            select: {
+              id: true,
+              name: true,
+              customerNo: true,
+              ownerUserId: true,
+            },
+          },
           product: { select: { id: true, name: true } },
         },
       }),
       this.prisma.order.count({ where }),
     ]);
-    const signedByIds = Array.from(
+    const salesUserIds = Array.from(
       new Set(
         items
-          .map((item) => item.signedById)
+          .map((item) => item.customer.ownerUserId)
           .filter((id): id is number => id != null),
       ),
     );
-    const signedByUsers = signedByIds.length
+    const salesUsers = salesUserIds.length
       ? await this.prisma.user.findMany({
-          where: { id: { in: signedByIds } },
+          where: { id: { in: salesUserIds } },
           select: { id: true, name: true },
         })
       : [];
-    const signedByMap = new Map(signedByUsers.map((signedBy) => [signedBy.id, signedBy]));
+    const salesUserMap = new Map(
+      salesUsers.map((salesPerson) => [salesPerson.id, salesPerson]),
+    );
     return {
       items: items.map((item) => ({
         ...item,
-        signedBy: item.signedById ? (signedByMap.get(item.signedById) ?? null) : null,
+        salesPerson: item.customer.ownerUserId
+          ? (salesUserMap.get(item.customer.ownerUserId) ?? null)
+          : null,
       })),
       total,
       page,
