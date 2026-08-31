@@ -20,11 +20,26 @@ export default function Reports() {
   const [month, setMonth] = useState(dayjs())
   const [channels, setChannels] = useState<Any[]>([])
   const [sales, setSales] = useState<Any[]>([])
+  const [channelsSalesLoading, setChannelsSalesLoading] = useState(false)
 
   useEffect(() => {
-    client.get('/reports/channels').then((r) => setChannels(r.data))
-    client.get('/reports/sales').then((r) => setSales(r.data))
-  }, [])
+    const params =
+      period === 'year'
+        ? { period, year: String(year.year()) }
+        : period === 'month'
+          ? { period, month: month.format('YYYY-MM') }
+          : { period }
+    setChannelsSalesLoading(true)
+    Promise.all([
+      client.get('/reports/channels', { params }),
+      client.get('/reports/sales', { params }),
+    ])
+      .then(([channelsResponse, salesResponse]) => {
+        setChannels(channelsResponse.data)
+        setSales(salesResponse.data)
+      })
+      .finally(() => setChannelsSalesLoading(false))
+  }, [period, year, month])
 
   useEffect(() => {
     const params =
@@ -37,6 +52,27 @@ export default function Reports() {
     client.get('/reports/finance', { params }).then((r) => setFinance(r.data)).finally(() => setFinanceLoading(false))
   }, [period, year, month])
 
+  const periodFilter = (
+    <Space style={{ marginBottom: 12 }} wrap>
+      <Select
+        value={period}
+        style={{ width: 120 }}
+        onChange={(v) => setPeriod(v)}
+        options={[
+          { value: 'all', label: '全部' },
+          { value: 'year', label: '按年' },
+          { value: 'month', label: '按月' },
+        ]}
+      />
+      {period === 'year' && (
+        <DatePicker picker="year" value={year} allowClear={false} onChange={(v) => setYear(v || dayjs())} />
+      )}
+      {period === 'month' && (
+        <DatePicker picker="month" value={month} allowClear={false} onChange={(v) => setMonth(v || dayjs())} />
+      )}
+    </Space>
+  )
+
   return (
     <Tabs
       items={[
@@ -45,24 +81,7 @@ export default function Reports() {
           label: '财务（分币种）',
           children: (
             <>
-              <Space style={{ marginBottom: 12 }} wrap>
-                <Select
-                  value={period}
-                  style={{ width: 120 }}
-                  onChange={(v) => setPeriod(v)}
-                  options={[
-                    { value: 'all', label: '全部' },
-                    { value: 'year', label: '按年' },
-                    { value: 'month', label: '按月' },
-                  ]}
-                />
-                {period === 'year' && (
-                  <DatePicker picker="year" value={year} allowClear={false} onChange={(v) => setYear(v || dayjs())} />
-                )}
-                {period === 'month' && (
-                  <DatePicker picker="month" value={month} allowClear={false} onChange={(v) => setMonth(v || dayjs())} />
-                )}
-              </Space>
+              {periodFilter}
               <Card title="公司现金总览（按币种）" size="small" style={{ marginBottom: 16 }}>
                 <Table
                   {...smallTableProps}
@@ -119,11 +138,13 @@ export default function Reports() {
           label: '渠道 / 销售',
           children: (
             <>
+              {periodFilter}
               <Card title="渠道统计" size="small" style={{ marginBottom: 16 }}>
                 <Table
                   {...smallTableProps}
                   pagination={false}
                   rowKey={(r: Any) => r.channelId + r.currency}
+                  loading={channelsSalesLoading}
                   dataSource={channels}
                   columns={[
                     { title: '渠道', width: COL.channel, render: (_: any, r: Any) => r.channel?.name || r.channelId },
@@ -140,6 +161,7 @@ export default function Reports() {
                   {...smallTableProps}
                   pagination={false}
                   rowKey={(r: Any) => r.ownerUserId}
+                  loading={channelsSalesLoading}
                   dataSource={sales}
                   columns={[
                     { title: '销售', dataIndex: 'name', width: COL.person },
