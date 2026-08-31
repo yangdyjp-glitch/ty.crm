@@ -487,6 +487,7 @@ export class CommissionsService {
               name: true,
               channelNameSnapshot: true,
               channel: { select: { name: true } },
+              acquisitionChannel: { select: { name: true } },
             },
           },
           commission: true,
@@ -546,7 +547,10 @@ export class CommissionsService {
           commission?.channelNameSnapshot ||
           order.customer.channelNameSnapshot ||
           order.customer.channel?.name ||
-          '—',
+          order.customer.acquisitionChannel?.name ||
+          (fundSettlementMode === FundSettlementMode.COMPANY_DIRECT
+            ? '自获取'
+            : '—'),
         rebateStatus,
         fundSettlementMode,
         currency: order.currency,

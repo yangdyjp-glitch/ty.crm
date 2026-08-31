@@ -23,7 +23,7 @@ const REBATE_STATUS_COLOR: Record<string, string> = {
   未返佣: 'orange',
   部分返佣: 'gold',
   已返佣: 'green',
-  无返佣: 'default',
+  无返佣: 'green',
 }
 const isSelfDeducted = (r: Any) =>
   r.fundSettlementMode === 'AGENT_NET' || r.status === 'SELF_DEDUCTED'
@@ -318,8 +318,8 @@ export default function Commissions() {
   return (
     <Tabs
       items={[
-        { key: 'settlement', label: '分成结算', children: settlementTable },
         { key: 'cash', label: '现金账目', children: cashTable },
+        { key: 'settlement', label: '分成结算', children: settlementTable },
       ]}
     />
   )
