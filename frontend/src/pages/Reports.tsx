@@ -5,7 +5,6 @@ import client from '../api/client'
 import {
   CURRENCY_LABEL,
   FUND_MODE_LABEL,
-  SALES_STAGE_LABEL,
   fmtMoney,
 } from '../api/types'
 import { COL, smallTableProps } from '../components/tableLayout'
@@ -21,12 +20,10 @@ export default function Reports() {
   const [month, setMonth] = useState(dayjs())
   const [channels, setChannels] = useState<Any[]>([])
   const [sales, setSales] = useState<Any[]>([])
-  const [funnel, setFunnel] = useState<Any[]>([])
 
   useEffect(() => {
     client.get('/reports/channels').then((r) => setChannels(r.data))
     client.get('/reports/sales').then((r) => setSales(r.data))
-    client.get('/reports/funnel').then((r) => setFunnel(r.data))
   }, [])
 
   useEffect(() => {
@@ -118,79 +115,41 @@ export default function Reports() {
           ),
         },
         {
-          key: 'channels',
-          label: '渠道',
+          key: 'channels-sales',
+          label: '渠道 / 销售',
           children: (
-            <Table
-              {...smallTableProps}
-              pagination={false}
-              rowKey={(r: Any) => r.channelId + r.currency}
-              dataSource={channels}
-              columns={[
-                { title: '渠道', width: COL.channel, render: (_: any, r: Any) => r.channel?.name || r.channelId },
-                { title: '币种', dataIndex: 'currency', width: COL.currency, render: (c: string) => CURRENCY_LABEL[c] },
-                { title: '笔数', dataIndex: '_count', width: COL.count },
-                { title: '应付分成', width: COL.money, align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.payableAmount) },
-                { title: '已付', width: COL.money, align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.paidAmount) },
-                { title: '未付', width: COL.money, align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.unpaidAmount) },
-              ]}
-            />
+            <>
+              <Card title="渠道统计" size="small" style={{ marginBottom: 16 }}>
+                <Table
+                  {...smallTableProps}
+                  pagination={false}
+                  rowKey={(r: Any) => r.channelId + r.currency}
+                  dataSource={channels}
+                  columns={[
+                    { title: '渠道', width: COL.channel, render: (_: any, r: Any) => r.channel?.name || r.channelId },
+                    { title: '币种', dataIndex: 'currency', width: COL.currency, render: (c: string) => CURRENCY_LABEL[c] },
+                    { title: '笔数', dataIndex: '_count', width: COL.count },
+                    { title: '应付分成', width: COL.money, align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.payableAmount) },
+                    { title: '已付', width: COL.money, align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.paidAmount) },
+                    { title: '未付', width: COL.money, align: 'right', render: (_: any, r: Any) => fmtMoney(r._sum?.unpaidAmount) },
+                  ]}
+                />
+              </Card>
+              <Card title="销售统计" size="small">
+                <Table
+                  {...smallTableProps}
+                  pagination={false}
+                  rowKey={(r: Any) => r.ownerUserId}
+                  dataSource={sales}
+                  columns={[
+                    { title: '销售', dataIndex: 'name', width: COL.person },
+                    { title: '负责客户数', dataIndex: 'customerCount', width: COL.count },
+                    { title: '签约数', dataIndex: 'signedCount', width: COL.count },
+                  ]}
+                />
+              </Card>
+            </>
           ),
-        },
-        {
-          key: 'sales',
-          label: '销售',
-          children: (
-            <Table
-              {...smallTableProps}
-              pagination={false}
-              rowKey={(r: Any) => r.ownerUserId}
-              dataSource={sales}
-              columns={[
-                { title: '销售', dataIndex: 'name', width: COL.person },
-                { title: '负责客户数', dataIndex: 'customerCount', width: COL.count },
-                { title: '签约数', dataIndex: 'signedCount', width: COL.count },
-              ]}
-            />
-          ),
-        },
-        {
-          key: 'funnel',
-          label: '销售漏斗',
-          children: (() => {
-            const map: Record<string, number> = Object.fromEntries(
-              funnel.map((f) => [f.salesStage, f._count]),
-            )
-            const max = Math.max(1, ...funnel.map((f) => f._count))
-            return (
-              <div style={{ maxWidth: 520 }}>
-                {Object.entries(SALES_STAGE_LABEL).map(([k, v]) => {
-                  const cnt = map[k] || 0
-                  return (
-                    <div key={k} style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
-                      <div style={{ width: 84, textAlign: 'right', marginRight: 12 }}>{v}</div>
-                      <div style={{ flex: 1, background: '#f0f0f0', borderRadius: 0 }}>
-                        <div
-                          style={{
-                            width: `${(cnt / max) * 100}%`,
-                            minWidth: cnt ? 28 : 0,
-                            background: '#15803d',
-                            color: '#fff',
-                            padding: '2px 8px',
-                            borderRadius: 0,
-                            fontSize: 12,
-                            textAlign: 'right',
-                          }}
-                        >
-                          {cnt || ''}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )
-          })(),
         },
       ]}
     />
