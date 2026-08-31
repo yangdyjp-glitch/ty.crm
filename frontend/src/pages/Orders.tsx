@@ -24,9 +24,9 @@ import { moneyIn } from '../api/money'
 type Any = Record<string, any>
 const EMPTY_FILTER = '__EMPTY__'
 const ORDER_COL = {
-  no: COL.no,
+  no: 96,
   date: COL.date,
-  person: COL.person,
+  person: 100,
   sales: COL.person,
   project: 170,
   currency: 64,
