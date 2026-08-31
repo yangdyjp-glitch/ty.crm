@@ -29,9 +29,8 @@ const ORDER_COL = {
   person: COL.person,
   sales: COL.person,
   project: 170,
-  currency: COL.currency,
+  currency: 64,
   money: 112,
-  count: 72,
   status: COL.status,
   action: 180,
 } as const
@@ -230,7 +229,6 @@ export default function Orders() {
       render: (c: string) => CURRENCY_LABEL[c],
     },
     { title: '单价', dataIndex: 'unitPrice', width: ORDER_COL.money, render: (_: any, r: Any) => fmtMoney(orderUnitPrice(r)), align: 'right' as const },
-    { title: '数量', dataIndex: 'quantity', width: ORDER_COL.count, render: (_: any, r: Any) => orderQuantity(r), align: 'right' as const },
     { title: '优惠', dataIndex: 'discountAmount', width: ORDER_COL.money, render: fmtMoney, align: 'right' as const },
     { title: '应收', dataIndex: 'receivableAmount', width: ORDER_COL.money, render: fmtMoney, align: 'right' as const },
     { title: '已收', dataIndex: 'paidAmount', width: ORDER_COL.money, render: moneyIn, align: 'right' as const },
