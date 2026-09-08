@@ -55,6 +55,17 @@ interface ChannelFormValues {
   contactInfo?: string
 }
 
+interface CommissionSyncResult {
+  updated: number
+  protected: number
+  unchanged: number
+  total: number
+}
+
+interface ChannelUpdateResult extends ChannelRow {
+  commissionSync?: CommissionSyncResult | null
+}
+
 interface AcquisitionChannelRow {
   id: number
   name: string
@@ -107,6 +118,7 @@ export default function Channels() {
   const [loadError, setLoadError] = useState('')
   const [open, setOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [syncingCommissions, setSyncingCommissions] = useState(false)
   const [editing, setEditing] = useState<ChannelRow | null>(null)
   const [form] = Form.useForm<ChannelFormValues>()
   const [ledger, setLedger] = useState<LedgerData | null>(null)
@@ -213,9 +225,21 @@ export default function Channels() {
     const v = await form.validateFields()
     setSubmitting(true)
     try {
-      if (editing) await client.patch(`/channels/${editing.id}`, v)
-      else await client.post('/channels', v)
-      message.success('已保存')
+      if (editing) {
+        const { data } = await client.patch<ChannelUpdateResult>(
+          `/channels/${editing.id}`,
+          v,
+        )
+        const sync = data.commissionSync
+        message.success(
+          sync
+            ? `已保存并同步 ${sync.updated} 条未结算返佣${sync.protected ? `；${sync.protected} 条历史/风险记录保持不变` : ''}`
+            : '已保存',
+        )
+      } else {
+        await client.post('/channels', v)
+        message.success('已保存')
+      }
       setOpen(false)
       load()
     } catch (error: unknown) {
@@ -243,6 +267,33 @@ export default function Channels() {
       message.error(apiErrorMessage(error, '操作失败（名称可能重复）'))
     }
   }
+
+  const syncCommissionPricing = async () => {
+    setSyncingCommissions(true)
+    try {
+      const { data } = await client.post<CommissionSyncResult>(
+        '/channels/sync-commission-pricing',
+      )
+      message.success(
+        `已同步 ${data.updated} 条未结算返佣${data.protected ? `；${data.protected} 条历史/风险记录保持不变` : ''}`,
+      )
+    } catch (error: unknown) {
+      message.error(apiErrorMessage(error, '返佣同步失败'))
+      throw error
+    } finally {
+      setSyncingCommissions(false)
+    }
+  }
+
+  const confirmCommissionPricingSync = () => {
+    Modal.confirm({
+      title: '按当前渠道比例同步未结算返佣？',
+      content: '只更新尚未支付且无退款追回的记录；已支付、部分支付及历史记录不会改变。',
+      okText: '确认同步',
+      cancelText: '取消',
+      onOk: syncCommissionPricing,
+    })
+  }
   const toggleAcq = async (rec: AcquisitionChannelRow) => {
     await client.patch(`/acquisition-channels/${rec.id}`, { active: !rec.active })
     loadAcq()
@@ -269,9 +320,19 @@ export default function Channels() {
   return (
     <div>
       <div>
-        <Button type="primary" style={{ marginBottom: 16 }} onClick={() => openForm()}>
-          {isAdmin ? '新增渠道' : '新增个人渠道'}
-        </Button>
+        <Space style={{ marginBottom: 16 }} wrap>
+          <Button type="primary" onClick={() => openForm()}>
+            {isAdmin ? '新增渠道' : '新增个人渠道'}
+          </Button>
+          {isAdmin && (
+            <Button
+              loading={syncingCommissions}
+              onClick={confirmCommissionPricingSync}
+            >
+              同步未结算返佣
+            </Button>
+          )}
+        </Space>
         {loadError && (
           <Alert
             type="error"

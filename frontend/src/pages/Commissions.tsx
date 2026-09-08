@@ -65,6 +65,7 @@ async function requestCommissions(selectedStatus?: string, signal?: AbortSignal)
   const { data } = await client.get<ListResponse<CommissionRow>>('/commissions', {
     params: { all: 1, status: selectedStatus },
     signal,
+    noCache: true,
   })
   return data
 }
@@ -72,7 +73,7 @@ async function requestCommissions(selectedStatus?: string, signal?: AbortSignal)
 async function requestCashAccounts(signal?: AbortSignal) {
   const { data } = await client.get<ListResponse<CashAccountRow>>(
     '/commissions/cash-accounts',
-    { params: { all: 1 }, signal },
+    { params: { all: 1 }, signal, noCache: true },
   )
   return data
 }

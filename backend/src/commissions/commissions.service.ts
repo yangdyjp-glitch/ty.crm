@@ -28,6 +28,21 @@ import {
   roundMoney,
 } from '../common/finance';
 
+type ChannelPricing = {
+  id: number;
+  name: string;
+  commissionMethod: CommissionMethod;
+  defaultCommissionRate: unknown;
+  defaultCommissionAmount: unknown;
+};
+
+export type CommissionPricingSyncResult = {
+  updated: number;
+  protected: number;
+  unchanged: number;
+  total: number;
+};
+
 @Injectable()
 export class CommissionsService {
   constructor(
@@ -424,6 +439,196 @@ export class CommissionsService {
     await this.onPaymentConfirmed(orderId);
   }
 
+  /**
+   * 将渠道当前的返佣数值同步到仍可安全改价的返佣记录。
+   * 已支付、部分支付、取消、挂起、已追回以及代收自扣记录属于历史账，必须保留。
+   */
+  async repriceOpenForChannel(
+    tx: Prisma.TransactionClient,
+    channel: ChannelPricing,
+    operatorId?: number,
+  ): Promise<CommissionPricingSyncResult> {
+    const commissions = await tx.commission.findMany({
+      where: { channelId: channel.id, deletedAt: null },
+      orderBy: { id: 'asc' },
+      include: {
+        order: {
+          include: {
+            payments: {
+              where: { deletedAt: null },
+              orderBy: { id: 'asc' },
+            },
+          },
+        },
+      },
+    });
+    const configuredValue =
+      channel.commissionMethod === CommissionMethod.FIXED_AMOUNT
+        ? channel.defaultCommissionAmount
+        : channel.defaultCommissionRate;
+    const result: CommissionPricingSyncResult = {
+      updated: 0,
+      protected: 0,
+      unchanged: 0,
+      total: commissions.length,
+    };
+    const numericValue = Number(configuredValue);
+    if (configuredValue == null || !Number.isFinite(numericValue)) {
+      result.protected = commissions.length;
+      return result;
+    }
+
+    for (const commission of commissions) {
+      const isProtected =
+        commission.fundSettlementMode !== FundSettlementMode.COMPANY_REBATE ||
+        commission.status === CommissionStatus.PAID ||
+        commission.status === CommissionStatus.CANCELLED ||
+        commission.status === CommissionStatus.SELF_DEDUCTED ||
+        Number(commission.paidAmount) > 0 ||
+        Number(commission.clawbackAmount) > 0 ||
+        commission.suspended ||
+        commission.commissionMethodSnapshot !== channel.commissionMethod ||
+        (channel.commissionMethod === CommissionMethod.FIXED_AMOUNT &&
+          numericValue > Number(commission.order.receivableAmount)) ||
+        (commission.settlementCondition === SettlementCondition.ON_EACH_PAYMENT &&
+          channel.commissionMethod !== CommissionMethod.NET_RECEIVED_RATIO);
+      if (isProtected) {
+        result.protected += 1;
+        continue;
+      }
+
+      const quote = commissionQuote({
+        method: channel.commissionMethod,
+        configuredValue: numericValue,
+        fundSettlementMode: commission.fundSettlementMode,
+        receivableAmount: Number(commission.order.receivableAmount),
+        confirmedReceived: Number(commission.order.paidAmount),
+      });
+      const eachPayment =
+        commission.settlementCondition === SettlementCondition.ON_EACH_PAYMENT;
+      const installmentQuote = eachPayment
+        ? paymentCommissionInstallments({
+            rate: numericValue,
+            paidAmount: 0,
+            payments: commission.order.payments,
+          })
+        : null;
+      const installmentState = eachPayment
+        ? this.eachPaymentState({
+            ...commission,
+            commissionRateSnapshot: numericValue,
+          })
+        : null;
+      const calcBaseType = eachPayment ? '每笔实收' : quote.calcBaseType;
+      const calcBaseAmount = eachPayment
+        ? roundMoney(
+            commission.order.payments.reduce(
+              (sum, payment) => sum + Number(payment.amount),
+              0,
+            ),
+          )
+        : quote.calcBaseAmount;
+      const payableAmount = installmentQuote?.totalPayable ?? quote.payableAmount;
+      const financialChanged =
+        Number(commission.payableAmount) !== payableAmount;
+      let nextStatus = installmentState?.status ?? commission.status;
+      if (
+        financialChanged &&
+        commission.status === CommissionStatus.PENDING_PAYMENT
+      ) {
+        nextStatus = CommissionStatus.PENDING_REVIEW;
+      }
+      const nextExpectedSettlementAt = eachPayment
+        ? (installmentState?.dueInstallment?.payment.confirmedAt ??
+          (installmentState?.dueInstallment ? new Date() : null))
+        : commission.expectedSettlementAt;
+      const nextRate =
+        channel.commissionMethod === CommissionMethod.FIXED_AMOUNT
+          ? null
+          : numericValue;
+      const nextFixedAmount =
+        channel.commissionMethod === CommissionMethod.FIXED_AMOUNT
+          ? numericValue
+          : null;
+      const changed =
+        Number(commission.commissionRateSnapshot ?? 0) !==
+          Number(nextRate ?? 0) ||
+        Number(commission.commissionFixedAmountSnapshot ?? 0) !==
+          Number(nextFixedAmount ?? 0) ||
+        commission.calcBaseType !== calcBaseType ||
+        Number(commission.calcBaseAmount) !== calcBaseAmount ||
+        financialChanged ||
+        Number(commission.unpaidAmount) !== payableAmount ||
+        commission.status !== nextStatus ||
+        Number(commission.expectedSettlementAt ?? 0) !==
+          Number(nextExpectedSettlementAt ?? 0);
+      if (!changed) {
+        result.unchanged += 1;
+        continue;
+      }
+
+      const claimed = await tx.commission.updateMany({
+        where: {
+          id: commission.id,
+          updatedAt: commission.updatedAt,
+          paidAmount: commission.paidAmount,
+          clawbackAmount: commission.clawbackAmount,
+          status: commission.status,
+          suspended: commission.suspended,
+        },
+        data: {
+          commissionRateSnapshot: nextRate,
+          commissionFixedAmountSnapshot: nextFixedAmount,
+          calcBaseType,
+          calcBaseAmount,
+          payableAmount,
+          unpaidAmount: payableAmount,
+          status: nextStatus,
+          expectedSettlementAt: nextExpectedSettlementAt,
+          reviewedById:
+            nextStatus === CommissionStatus.PENDING_REVIEW &&
+            commission.status === CommissionStatus.PENDING_PAYMENT
+              ? null
+              : commission.reviewedById,
+        },
+      });
+      if (claimed.count !== 1) {
+        result.protected += 1;
+        continue;
+      }
+      await this.audit.log(
+        {
+          operatorId,
+          relatedType: 'Commission',
+          relatedId: commission.id,
+          action: 'SYNC_CHANNEL_COMMISSION_PRICING',
+          fieldName:
+            channel.commissionMethod === CommissionMethod.FIXED_AMOUNT
+              ? 'commissionFixedAmountSnapshot'
+              : 'commissionRateSnapshot',
+          oldValue: JSON.stringify({
+            value:
+              channel.commissionMethod === CommissionMethod.FIXED_AMOUNT
+                ? Number(commission.commissionFixedAmountSnapshot ?? 0)
+                : Number(commission.commissionRateSnapshot ?? 0),
+            payableAmount: Number(commission.payableAmount),
+            status: commission.status,
+          }),
+          newValue: JSON.stringify({
+            value: numericValue,
+            payableAmount,
+            status: nextStatus,
+          }),
+          reason: `渠道“${channel.name}”返佣设置联动`,
+        },
+        tx,
+      );
+      result.updated += 1;
+    }
+
+    return result;
+  }
+
   // ============ 结算工作流（管理员，仅模式二） ============
 
   async list(q: {
@@ -625,74 +830,116 @@ export class CommissionsService {
   }
 
   async review(id: number) {
-    const c = await this.load(id);
-    if (c.settlementCondition === SettlementCondition.ON_EACH_PAYMENT) {
-      throw new BadRequestException('按每笔到账结算的返佣请在对应收款行确认支付');
-    }
-    if (c.suspended) throw new BadRequestException('分成已挂起，请先解除挂起');
-    if (c.status !== CommissionStatus.PENDING_REVIEW) {
-      throw new BadRequestException('仅待审核分成可审核');
-    }
-    return this.prisma.commission.update({
-      where: { id },
-      data: { status: CommissionStatus.PENDING_PAYMENT },
+    return this.serializableTransaction(async (tx) => {
+      const c = await tx.commission.findFirst({
+        where: { id, deletedAt: null },
+      });
+      if (!c) throw new NotFoundException('分成记录不存在');
+      if (c.settlementCondition === SettlementCondition.ON_EACH_PAYMENT) {
+        throw new BadRequestException('按每笔到账结算的返佣请在对应收款行确认支付');
+      }
+      if (c.suspended) throw new BadRequestException('分成已挂起，请先解除挂起');
+      if (c.status !== CommissionStatus.PENDING_REVIEW) {
+        throw new BadRequestException('仅待审核分成可审核');
+      }
+      const claimed = await tx.commission.updateMany({
+        where: {
+          id,
+          updatedAt: c.updatedAt,
+          status: CommissionStatus.PENDING_REVIEW,
+          suspended: false,
+          payableAmount: c.payableAmount,
+          paidAmount: c.paidAmount,
+        },
+        data: { status: CommissionStatus.PENDING_PAYMENT },
+      });
+      if (claimed.count !== 1) {
+        throw new BadRequestException('返佣金额刚刚发生变化，请刷新后重新审核');
+      }
+      return tx.commission.findUnique({ where: { id } });
     });
   }
 
   /** 支付分成：先用渠道往来挂账（第三方欠公司）抵扣，再付净额 */
   async pay(user: AuthUser, id: number, voucherAttachmentId?: number) {
-    const c = await this.load(id);
-    if (c.settlementCondition === SettlementCondition.ON_EACH_PAYMENT) {
-      throw new BadRequestException('按每笔到账结算的返佣请在对应收款行确认支付');
-    }
-    if (c.suspended) throw new BadRequestException('分成已挂起，无法支付');
-    if (
-      c.status !== CommissionStatus.PENDING_REVIEW &&
-      c.status !== CommissionStatus.PENDING_PAYMENT
-    ) {
-      throw new BadRequestException('仅待审核 / 待支付分成可结算');
-    }
-    const payable = Number(c.payableAmount);
-    const balance = await this.ledger.getBalance(c.channelId, c.currency);
-    const outstanding = roundMoney(
-      Math.max(0, payable - Number(c.paidAmount)),
-    );
-    if (outstanding <= 0) {
-      throw new BadRequestException('该分成没有待支付金额');
-    }
-    const offset = balance > 0 ? Math.min(outstanding, balance) : 0;
-    const cashOut = roundMoney(outstanding - offset);
-    if (offset > 0) {
-      await this.ledger.addEntry({
-        channelId: c.channelId,
-        currency: c.currency,
-        entryType: LedgerEntryType.NEW_ORDER_OFFSET,
-        amount: -offset,
-        relatedCommissionId: c.id,
-        note: `新单佣金抵扣往来挂账 ${offset}`,
-        operatorId: user.id,
+    return this.serializableTransaction(async (tx) => {
+      const c = await tx.commission.findFirst({
+        where: { id, deletedAt: null },
       });
-    }
-    await this.prisma.commission.update({
-      where: { id },
-      data: {
-        status: CommissionStatus.PAID,
-        paidAmount: payable,
-        unpaidAmount: 0,
-        actualSettlementAt: new Date(),
-        paidById: user.id,
-        paymentVoucherAttachmentId: voucherAttachmentId,
-        remark: offset > 0 ? `含往来抵扣 ${offset}，实付现金 ${cashOut}` : null,
-      },
+      if (!c) throw new NotFoundException('分成记录不存在');
+      if (c.settlementCondition === SettlementCondition.ON_EACH_PAYMENT) {
+        throw new BadRequestException('按每笔到账结算的返佣请在对应收款行确认支付');
+      }
+      if (c.suspended) throw new BadRequestException('分成已挂起，无法支付');
+      if (
+        c.status !== CommissionStatus.PENDING_REVIEW &&
+        c.status !== CommissionStatus.PENDING_PAYMENT
+      ) {
+        throw new BadRequestException('仅待审核 / 待支付分成可结算');
+      }
+      const payable = Number(c.payableAmount);
+      const balance = await this.ledger.getBalance(
+        c.channelId,
+        c.currency,
+        tx,
+      );
+      const outstanding = roundMoney(
+        Math.max(0, payable - Number(c.paidAmount)),
+      );
+      if (outstanding <= 0) {
+        throw new BadRequestException('该分成没有待支付金额');
+      }
+      const offset = balance > 0 ? Math.min(outstanding, balance) : 0;
+      const cashOut = roundMoney(outstanding - offset);
+      const claimed = await tx.commission.updateMany({
+        where: {
+          id,
+          updatedAt: c.updatedAt,
+          status: c.status,
+          suspended: false,
+          payableAmount: c.payableAmount,
+          paidAmount: c.paidAmount,
+        },
+        data: {
+          status: CommissionStatus.PAID,
+          paidAmount: payable,
+          unpaidAmount: 0,
+          actualSettlementAt: new Date(),
+          paidById: user.id,
+          paymentVoucherAttachmentId: voucherAttachmentId,
+          remark:
+            offset > 0 ? `含往来抵扣 ${offset}，实付现金 ${cashOut}` : null,
+        },
+      });
+      if (claimed.count !== 1) {
+        throw new BadRequestException('返佣金额刚刚发生变化，请刷新后重新支付');
+      }
+      if (offset > 0) {
+        await this.ledger.addEntry(
+          {
+            channelId: c.channelId,
+            currency: c.currency,
+            entryType: LedgerEntryType.NEW_ORDER_OFFSET,
+            amount: -offset,
+            relatedCommissionId: c.id,
+            note: `新单佣金抵扣往来挂账 ${offset}`,
+            operatorId: user.id,
+          },
+          tx,
+        );
+      }
+      await this.audit.log(
+        {
+          operatorId: user.id,
+          relatedType: 'Commission',
+          relatedId: id,
+          action: 'PAY_COMMISSION',
+          newValue: `应付=${payable} 往来抵扣=${offset} 实付现金=${cashOut}`,
+        },
+        tx,
+      );
+      return { id, payable, offset, cashOut };
     });
-    await this.audit.log({
-      operatorId: user.id,
-      relatedType: 'Commission',
-      relatedId: id,
-      action: 'PAY_COMMISSION',
-      newValue: `应付=${payable} 往来抵扣=${offset} 实付现金=${cashOut}`,
-    });
-    return { id, payable, offset, cashOut };
   }
 
   /** 按到账记录支付返佣：每次只结清对应的一笔收款返佣。 */

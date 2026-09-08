@@ -60,8 +60,18 @@ export class ChannelsController {
 
   @Patch(':id')
   @Roles(UserRole.ADMIN)
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateChannelDto) {
-    return this.channels.update(id, dto);
+  update(
+    @CurrentUser() u: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateChannelDto,
+  ) {
+    return this.channels.update(id, dto, u.id);
+  }
+
+  @Post('sync-commission-pricing')
+  @Roles(UserRole.ADMIN)
+  syncCommissionPricing(@CurrentUser() u: AuthUser) {
+    return this.channels.syncCommissionPricing(u.id);
   }
 
   @Delete(':id')
