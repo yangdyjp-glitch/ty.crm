@@ -294,26 +294,26 @@ export class ReportsService {
     const ms = this.monthStart();
     const [myCustomers, overdue, signedMonth] = await Promise.all([
       this.prisma.customer.count({
-        where: { deletedAt: null, ownerUserId: uid },
+        where: { deletedAt: null, salesMembers: { some: { userId: uid, removedAt: null } } },
       }),
       this.prisma.customer.count({
         where: {
           deletedAt: null,
-          ownerUserId: uid,
+          salesMembers: { some: { userId: uid, removedAt: null } },
           nextFollowUpAt: { lt: new Date() },
         },
       }),
       this.prisma.order.count({
         where: {
           deletedAt: null,
-          customer: { ownerUserId: uid },
+          salesMembers: { some: { userId: uid } },
           signedAt: { gte: ms },
         },
       }),
     ]);
     const orders = await this.prisma.order.groupBy({
       by: ['currency'],
-      where: { deletedAt: null, customer: { ownerUserId: uid } },
+      where: { deletedAt: null, salesMembers: { some: { userId: uid } } },
       _sum: { receivableAmount: true, paidAmount: true },
     });
     return {
@@ -430,7 +430,7 @@ export class ReportsService {
       orderBy: { id: 'desc' },
       include: {
         commission: true,
-        customer: { select: { ownerUserId: true } },
+        salesMembers: { select: { userId: true } },
         product: { select: { id: true, name: true } },
         refunds: {
           where: { deletedAt: null, status: RefundStatus.REFUNDED },
@@ -441,8 +441,7 @@ export class ReportsService {
     const salesUserIds = Array.from(
       new Set(
         orders
-          .map((order) => order.customer.ownerUserId)
-          .filter((id): id is number => id != null),
+          .flatMap((order) => order.salesMembers.map((member) => member.userId)),
       ),
     );
     const salesUsers = salesUserIds.length
@@ -461,6 +460,7 @@ export class ReportsService {
       currency,
       fundSettlementMode,
       orderCount: 0,
+      sharedOrderCount: 0,
       receivableAmount: 0,
       confirmedReceived: 0,
       unpaidAmount: 0,
@@ -479,8 +479,17 @@ export class ReportsService {
       const currency = order.currency;
       const fundSettlementMode =
         commission?.fundSettlementMode ?? order.fundSettlementMode;
-      const salesUserId = order.customer.ownerUserId;
-      const salesKey = `${currency}:${salesUserId ?? 'unassigned'}`;
+      const salesUserIdsForOrder: (number | null)[] = order.salesMembers.length
+        ? order.salesMembers.map((member) => member.userId) : [null];
+      const salesRows = salesUserIdsForOrder.map((salesUserId) => {
+        const key = `${currency}:${salesUserId ?? 'unassigned'}`;
+        const row = bySales.get(key) ?? {
+          ...empty(currency), salesUserId,
+          salesName: salesUserId ? (salesNameMap.get(salesUserId) ?? '未知销售') : '未分配',
+        };
+        bySales.set(key, row);
+        return row;
+      });
       const productKey = `${currency}:${order.product.id}`;
       const contractAmount = Number(order.receivableAmount);
       const confirmedReceived = Number(order.paidAmount);
@@ -521,21 +530,16 @@ export class ReportsService {
         summary.get(currency) ?? empty(currency),
         byMode.get(`${currency}:${fundSettlementMode}`) ??
           empty(currency, fundSettlementMode),
-        bySales.get(salesKey) ?? {
-          ...empty(currency),
-          salesUserId,
-          salesName: salesUserId
-            ? (salesNameMap.get(salesUserId) ?? '未知销售')
-            : '未分配',
-        },
         byProduct.get(productKey) ?? {
           ...empty(currency),
           productId: order.product.id,
           productName: order.product.name,
         },
+        ...salesRows,
       ];
       for (const row of rows) {
         row.orderCount += 1;
+        if (order.salesMembers.length > 1) row.sharedOrderCount += 1;
         row.receivableAmount = roundMoney(row.receivableAmount + contractAmount);
         row.confirmedReceived = roundMoney(row.confirmedReceived + confirmedReceived);
         row.unpaidAmount = roundMoney(row.unpaidAmount + unpaidAmount);
@@ -555,8 +559,7 @@ export class ReportsService {
       }
       summary.set(currency, rows[0]);
       byMode.set(`${currency}:${fundSettlementMode}`, rows[1]);
-      bySales.set(salesKey, rows[2]);
-      byProduct.set(productKey, rows[3]);
+      byProduct.set(productKey, rows[2]);
     }
 
     return {
@@ -634,49 +637,55 @@ export class ReportsService {
       month?: string;
     } = {},
   ) {
-    const byOwner = await this.prisma.customer.groupBy({
-      by: ['ownerUserId'],
+    const customers = await this.prisma.customer.findMany({
       where: {
         deletedAt: null,
-        ownerUserId: { not: null },
         ...this.createdAtRange(q),
       },
-      _count: true,
+      select: { id: true, salesMembers: { where: { removedAt: null }, select: { userId: true } } },
     });
     const signedByOwner = await this.prisma.order.findMany({
       where: {
         deletedAt: null,
-        customer: { deletedAt: null, ownerUserId: { not: null } },
+        customer: { deletedAt: null },
         ...this.signedAtRange(q),
       },
-      select: { customer: { select: { ownerUserId: true } } },
+      select: { id: true, salesMembers: { select: { userId: true } } },
     });
     const users = await this.prisma.user.findMany({
       where: {
-        deletedAt: null,
-        status: 'active',
-        role: { in: [UserRole.SALES, UserRole.BUSINESS_SUPERVISOR] },
+        OR: [
+          { deletedAt: null, status: 'active', role: { in: [UserRole.SALES, UserRole.BUSINESS_SUPERVISOR] } },
+          { id: { in: [...new Set([...customers, ...signedByOwner].flatMap((record) => record.salesMembers.map((member) => member.userId)))] } },
+        ],
       },
       select: { id: true, name: true },
     });
-    const countMap = new Map(byOwner.map((o) => [o.ownerUserId, o._count]));
-    const signedMap = new Map<number, number>();
-    signedByOwner.forEach((o) => {
-      const ownerUserId = o.customer.ownerUserId;
-      if (ownerUserId) signedMap.set(ownerUserId, (signedMap.get(ownerUserId) ?? 0) + 1);
-    });
-    return users
-      .map((u) => ({
-        ownerUserId: u.id,
-        name: u.name,
-        customerCount: countMap.get(u.id) ?? 0,
-        signedCount: signedMap.get(u.id) ?? 0,
-      }))
+    const counts = new Map(users.map((u) => [u.id, {
+      ownerUserId: u.id, name: u.name, customerCount: 0, signedCount: 0,
+      sharedCustomerCount: 0, sharedSignedCount: 0,
+    }]));
+    for (const customer of customers) for (const member of customer.salesMembers) {
+      const row = counts.get(member.userId);
+      if (row) { row.customerCount++; if (customer.salesMembers.length > 1) row.sharedCustomerCount++; }
+    }
+    for (const order of signedByOwner) for (const member of order.salesMembers) {
+      const row = counts.get(member.userId);
+      if (row) { row.signedCount++; if (order.salesMembers.length > 1) row.sharedSignedCount++; }
+    }
+    const rows = [...counts.values()]
       .sort(
         (a, b) =>
           b.customerCount - a.customerCount ||
           b.signedCount - a.signedCount ||
           a.name.localeCompare(b.name),
       );
+    rows.push({
+      ownerUserId: 0, name: '公司合计（去重）', customerCount: customers.length,
+      signedCount: signedByOwner.length,
+      sharedCustomerCount: customers.filter((c) => c.salesMembers.length > 1).length,
+      sharedSignedCount: signedByOwner.filter((o) => o.salesMembers.length > 1).length,
+    });
+    return rows;
   }
 }

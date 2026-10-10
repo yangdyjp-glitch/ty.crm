@@ -52,6 +52,7 @@ interface OrderDetails {
   unpaidAmount: MoneyValue
   refundAmount: MoneyValue
   customer: { name: string; customerNo: string }
+  salesOwners: { id: number; name: string }[]
   product: { name: string }
   payments: PaymentRecord[]
   refunds: RefundRecord[]
@@ -226,6 +227,9 @@ export default function OrderDetail() {
             </Form.Item>
             <Form.Item label="项目">
               <Input value={o.product?.name} disabled style={{ width: 200 }} />
+            </Form.Item>
+            <Form.Item label="签约销售">
+              <span>{o.salesOwners?.map((owner) => owner.name).join('、') || '未分配'}</span>
             </Form.Item>
             <Form.Item label="币种">
               <Input value={CURRENCY_LABEL[o.currency]} disabled style={{ width: 100 }} />

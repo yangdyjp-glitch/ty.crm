@@ -22,6 +22,7 @@ export class AcquisitionChannelsController {
   constructor(private channels: ChannelsService) {}
 
   @Get()
+  @Roles(UserRole.ADMIN, UserRole.MARKET, UserRole.BUSINESS_SUPERVISOR, UserRole.SALES)
   list() {
     return this.channels.listAcquisition();
   }

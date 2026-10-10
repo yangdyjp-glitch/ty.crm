@@ -37,8 +37,12 @@ export class ChannelsController {
   }
 
   @Get('options')
-  options() {
-    return this.channels.options();
+  @Roles(UserRole.ADMIN, UserRole.MARKET, UserRole.BUSINESS_SUPERVISOR, UserRole.SALES)
+  async options(@CurrentUser() user: AuthUser) {
+    const channels = await this.channels.options();
+    return user.role === UserRole.SALES
+      ? channels.map(({ id, name, channelType }) => ({ id, name, channelType }))
+      : channels;
   }
 
   @Get(':id')

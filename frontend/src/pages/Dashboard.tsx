@@ -23,6 +23,8 @@ type LeadCountRow = {
   category?: string | null
   customerCount?: number
   signedCount: number
+  sharedCustomerCount?: number
+  sharedSignedCount?: number
 }
 type StatusCountRow = { mainStatus: string; _count: number }
 type ReferralSummaryRow = {
@@ -141,12 +143,14 @@ function LeadCountTable({
   nameTitle,
   extraColumns = [],
   showCustomerCount = true,
+  showSharedCounts = false,
 }: {
   rows: LeadCountRow[]
   rowKey: (r: LeadCountRow) => string | number
   nameTitle: string
   extraColumns?: TableColumnsType<LeadCountRow>
   showCustomerCount?: boolean
+  showSharedCounts?: boolean
 }) {
   return (
     <Table<LeadCountRow>
@@ -161,6 +165,10 @@ function LeadCountTable({
           ? [{ title: '客户线索数', dataIndex: 'customerCount', width: COL.count, align: 'right' as const }]
           : []),
         { title: '签约数', dataIndex: 'signedCount', width: COL.count, align: 'right' },
+        ...(showSharedCounts ? [
+          { title: '其中共同客户', dataIndex: 'sharedCustomerCount', width: COL.count, align: 'right' as const },
+          { title: '其中共同签约', dataIndex: 'sharedSignedCount', width: COL.count, align: 'right' as const },
+        ] : []),
       ]}
     />
   )
@@ -303,7 +311,7 @@ export default function Dashboard() {
   useEffect(() => {
     const controller = new AbortController()
     let active = true
-    void client.get<DashboardData>('/reports/dashboard', { signal: controller.signal })
+    void client.get<DashboardData>('/reports/dashboard', { noCache: true, signal: controller.signal })
       .then((response) => {
         if (!active) return
         setData(response.data)
@@ -426,6 +434,7 @@ export default function Dashboard() {
             rows={data.leadStats?.sales}
             rowKey={(r) => r.ownerUserId ?? r.name}
             nameTitle="销售"
+            showSharedCounts
           />
         </Card>
       </div>

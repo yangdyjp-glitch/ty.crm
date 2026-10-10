@@ -30,7 +30,7 @@ interface OrderCustomer {
   id: number
   name: string
   customerNo: string
-  ownerUserId?: number | null
+  salesOwners?: NamedReference[]
 }
 
 interface NamedReference {
@@ -43,7 +43,7 @@ interface OrderRow {
   orderNo: string
   signedAt?: string | null
   customer: OrderCustomer
-  salesPerson?: NamedReference | null
+  salesOwners?: NamedReference[]
   product?: NamedReference | null
   currency: string
   unitPrice?: MoneyValue
@@ -183,6 +183,7 @@ export default function Orders() {
   const up = Form.useWatch('unitPrice', form)
   const qty = Form.useWatch('quantity', form)
   const dc = Form.useWatch('discountAmount', form)
+  const selectedCustomerId = Form.useWatch('customerId', form)
   const originalPrice = calcOriginalPrice(up, qty)
   const receivable = originalPrice - (Number(dc) || 0)
   const paySum = (Number(fp) || 0) + (Number(tp) || 0)
@@ -199,6 +200,7 @@ export default function Orders() {
     client
       .get<OrderListResponse>('/orders', {
         params: { all: 1 },
+        noCache: true,
         signal: controller.signal,
       })
       .then((response) => {
@@ -219,7 +221,7 @@ export default function Orders() {
   const openCreate = async () => {
     form.resetFields()
     form.setFieldsValue({ currency: 'JPY', quantity: 1, signedAt: todayDate(), firstPaymentPaidAt: todayDate() })
-    const cs = await client.get<CustomerListResponse>('/customers', { params: { all: 1 } })
+    const cs = await client.get<CustomerListResponse>('/customers', { params: { all: 1 }, noCache: true })
     setCustomers(cs.data.items)
     setProducts(await loadProducts().catch(() => []))
     setOpen(true)
@@ -291,7 +293,7 @@ export default function Orders() {
     [data.items],
   )
   const salesFilters = useMemo(
-    () => uniqueFilters(data.items, (r) => r.customer?.ownerUserId, (r) => r.salesPerson?.name),
+    () => uniqueFilters(data.items.flatMap((r) => r.salesOwners?.length ? r.salesOwners : [{ id: 0, name: '未分配' }]), (r) => r.id, (r) => r.name),
     [data.items],
   )
   const currencyFilters = useMemo(
@@ -319,8 +321,8 @@ export default function Orders() {
       width: ORDER_COL.sales,
       filters: salesFilters,
       filterSearch: true,
-      onFilter: (value, order) => filterValue(order.customer.ownerUserId) === value,
-      render: (_value: unknown, order) => order.salesPerson?.name || '—',
+      onFilter: (value, order) => value === '0' ? !order.salesOwners?.length : !!order.salesOwners?.some((owner) => String(owner.id) === value),
+      render: (_value: unknown, order) => order.salesOwners?.map((owner) => owner.name).join('、') || '未分配',
     },
     {
       title: '项目',
@@ -394,6 +396,9 @@ export default function Orders() {
               optionFilterProp="label"
               options={customers.map((c) => ({ value: c.id, label: `${c.name}（${c.customerNo}）` }))}
             />
+          </Form.Item>
+          <Form.Item label="签约销售">
+            {customers.find((customer) => customer.id === selectedCustomerId)?.salesOwners?.map((owner) => <Tag key={owner.id}>{owner.name}</Tag>) || '未分配'}
           </Form.Item>
           <Form.Item name="productId" label="项目" rules={[{ required: true }]}>
             <Select

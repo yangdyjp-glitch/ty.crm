@@ -16,6 +16,7 @@ type MoneyValue = number | string | null
 type FinanceMetrics = {
   currency: string
   orderCount: number
+  sharedOrderCount: number
   receivableAmount: MoneyValue
   channelPayable: MoneyValue
   channelSettled: MoneyValue
@@ -59,6 +60,8 @@ type SalesReportRow = {
   name: string
   customerCount: number
   signedCount: number
+  sharedCustomerCount: number
+  sharedSignedCount: number
 }
 
 function reportParams(period: Period, year: Dayjs, month: Dayjs) {
@@ -86,8 +89,8 @@ export default function Reports() {
       setChannelsSalesLoading(true)
       try {
         const [channelsResponse, salesResponse] = await Promise.all([
-          client.get<ChannelReportRow[]>('/reports/channels', { params, signal: controller.signal }),
-          client.get<SalesReportRow[]>('/reports/sales', { params, signal: controller.signal }),
+          client.get<ChannelReportRow[]>('/reports/channels', { params, noCache: true, signal: controller.signal }),
+          client.get<SalesReportRow[]>('/reports/sales', { params, noCache: true, signal: controller.signal }),
         ])
         if (!active) return
         setChannels(channelsResponse.data)
@@ -118,6 +121,7 @@ export default function Reports() {
       try {
         const response = await client.get<FinanceReport>('/reports/finance', {
           params,
+          noCache: true,
           signal: controller.signal,
         })
         if (active) setFinance(response.data)
@@ -250,11 +254,13 @@ export default function Reports() {
                   columns={[
                     { title: '销售', dataIndex: 'name', width: COL.person },
                     { title: '负责客户数', dataIndex: 'customerCount', width: COL.count },
+                    { title: '其中共同客户', dataIndex: 'sharedCustomerCount', width: COL.count },
                     { title: '签约数', dataIndex: 'signedCount', width: COL.count },
+                    { title: '其中共同签约', dataIndex: 'sharedSignedCount', width: COL.count },
                   ]}
                 />
               </Card>
-              <Card title="销售拆分（按币种 × 销售）" size="small" style={{ marginBottom: 16 }}>
+              <Card title="销售业绩（个人全额口径，含共同订单）" size="small" style={{ marginBottom: 16 }}>
                 <Table<FinanceSalesRow>
                   {...smallTableProps}
                   className="finance-report-table"
@@ -265,8 +271,8 @@ export default function Reports() {
                   dataSource={finance?.bySales || []}
                   columns={[
                     { title: '币种', dataIndex: 'currency', width: '6%', render: (c: string) => CURRENCY_LABEL[c] },
-                    { title: '销售', dataIndex: 'salesName', width: '14%' },
-                    { title: '订单', dataIndex: 'orderCount', width: '6%', align: 'right' },
+                    { title: '销售', dataIndex: 'salesName', width: '11%' },
+                    { title: '订单 / 共同', width: '9%', align: 'right', render: (_, row) => `${row.orderCount} / ${row.sharedOrderCount ?? 0}` },
                     { title: '应收', dataIndex: 'receivableAmount', width: '10.5%', render: fmtMoney, align: 'right' },
                     { title: '分成应付', dataIndex: 'channelPayable', width: '10.5%', render: fmtMoney, align: 'right' },
                     { title: '已扣/已付', dataIndex: 'channelSettled', width: '10.5%', render: fmtMoney, align: 'right' },

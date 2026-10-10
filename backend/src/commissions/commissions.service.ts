@@ -100,8 +100,8 @@ export class CommissionsService {
   // ============ 生成（实时触发） ============
 
   /** 订单签约时生成分成记录 */
-  async onOrderSigned(orderId: number) {
-    const order = await this.prisma.order.findUnique({
+  async onOrderSigned(orderId: number, tx: Prisma.TransactionClient) {
+    const order = await tx.order.findUnique({
       where: { id: orderId },
       include: {
         customer: { include: { channel: true } },
@@ -109,7 +109,7 @@ export class CommissionsService {
       },
     });
     if (!order || !order.hasCommission || !order.customer.channel) return;
-    const existing = await this.prisma.commission.findUnique({
+    const existing = await tx.commission.findUnique({
       where: { orderId },
     });
     if (existing) return;
@@ -150,10 +150,10 @@ export class CommissionsService {
 
     if (mode === FundSettlementMode.AGENT_NET) {
       // 模式一：第三方代收自扣 → 只记录供报表，终态“已自扣”
-      await this.prisma.commission.create({
+      await tx.commission.create({
         data: {
           commissionNo: await nextPairedNo(
-            this.prisma.commission,
+            tx.commission,
             'commissionNo',
             'FC',
             order.customer.customerNo,
@@ -187,10 +187,10 @@ export class CommissionsService {
             (payment) =>
               payment.confirmStatus === PaymentConfirmStatus.CONFIRMED,
           ));
-      await this.prisma.commission.create({
+      await tx.commission.create({
         data: {
           commissionNo: await nextPairedNo(
-            this.prisma.commission,
+            tx.commission,
             'commissionNo',
             'FC',
             order.customer.customerNo,

@@ -36,10 +36,12 @@ export class PaymentsService {
     ) {
       throw new BadRequestException('订单已终止，无法收款');
     }
-    const payment = await this.prisma.payment.create({
+    const payment = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Customer" WHERE id = ${order.customerId} FOR UPDATE`;
+      return tx.payment.create({
       data: {
         paymentNo: await nextPairedNo(
-          this.prisma.payment,
+          tx.payment,
           'paymentNo',
           'SK',
           order.customer.customerNo,
@@ -54,6 +56,7 @@ export class PaymentsService {
         createdById: user.id,
         remark: dto.remark,
       },
+      });
     });
     await this.commissions.onPaymentPlanChanged(order.id);
     return payment;

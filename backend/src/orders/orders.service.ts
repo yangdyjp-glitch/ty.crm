@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -98,34 +99,24 @@ export class OrdersService {
       throw new BadRequestException('首款+尾款与应收不一致，请填写差异说明');
     }
 
-    const orderNo = await nextPairedNo(
-      this.prisma.order,
-      'orderNo',
-      'DD',
-      customer.customerNo,
-    );
-    const contractNo =
-      dto.contractNo ||
-      (await nextPairedNo(this.prisma.order, 'contractNo', 'HT', customer.customerNo));
-    const firstPayNo = await nextPairedNo(
-      this.prisma.payment,
-      'paymentNo',
-      'SK',
-      customer.customerNo,
-    );
     const hasTail = !!dto.tailPaymentAmount && dto.tailPaymentAmount > 0;
-    // 尾款继续沿用客户编号尾号，加后缀避免与首款编号撞号。
-    const tailPayNo = hasTail
-      ? await nextPairedNo(
-          this.prisma.payment,
-          'paymentNo',
-          'SK',
-          customer.customerNo,
-          [firstPayNo],
-        )
-      : null;
 
     const order = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Customer" WHERE id = ${customer.id} FOR UPDATE`;
+      const currentCustomer = await tx.customer.findFirst({
+        where: { id: customer.id, deletedAt: null, ...customerScopeWhere(user) },
+        include: { salesMembers: { where: { removedAt: null } } },
+      });
+      if (!currentCustomer) throw new NotFoundException('客户不存在或无权访问');
+      if (currentCustomer.channelId !== customer.channelId) {
+        throw new ConflictException('客户渠道已变化，请重新核对订单');
+      }
+      // Allocate paired numbers under the customer lock for simultaneous joint-sales orders.
+      const orderNo = await nextPairedNo(tx.order, 'orderNo', 'DD', customer.customerNo);
+      const contractNo = dto.contractNo || await nextPairedNo(tx.order, 'contractNo', 'HT', customer.customerNo);
+      const firstPayNo = await nextPairedNo(tx.payment, 'paymentNo', 'SK', customer.customerNo);
+      const tailPayNo = hasTail
+        ? await nextPairedNo(tx.payment, 'paymentNo', 'SK', customer.customerNo, [firstPayNo]) : null;
       const o = await tx.order.create({
         data: {
           orderNo,
@@ -134,6 +125,8 @@ export class OrdersService {
           currency: dto.currency,
           fundSettlementMode: fundMode,
           signedById: user.id,
+          salesSnapshotTaken: true,
+          salesMembers: { create: currentCustomer.salesMembers.map((member) => ({ userId: member.userId })) },
           signedAt: dto.signedAt ? new Date(dto.signedAt) : new Date(),
           contractNo, // 自动合同号
           unitPrice,
@@ -181,13 +174,12 @@ export class OrdersService {
           },
         });
       }
+      await this.commissions.onOrderSigned(o.id, tx);
       return o;
     });
 
     // 客户主状态按订单聚合（新签约 → 已签约）
     await this.customers.recomputeMainStatus(dto.customerId);
-    // 实时生成上游分成（模式一记录自扣 / 模式二进入结算流程）
-    await this.commissions.onOrderSigned(order.id);
     return this.get(user, order.id);
   }
 
@@ -211,6 +203,7 @@ export class OrdersService {
         orderBy: { id: 'desc' },
         ...(showAll ? {} : { skip: (page - 1) * pageSize, take: pageSize }),
         include: {
+          salesMembers: { include: { user: { select: { id: true, name: true } } } },
           customer: {
             select: {
               id: true,
@@ -224,28 +217,10 @@ export class OrdersService {
       }),
       this.prisma.order.count({ where }),
     ]);
-    const salesUserIds = Array.from(
-      new Set(
-        items
-          .map((item) => item.customer.ownerUserId)
-          .filter((id): id is number => id != null),
-      ),
-    );
-    const salesUsers = salesUserIds.length
-      ? await this.prisma.user.findMany({
-          where: { id: { in: salesUserIds } },
-          select: { id: true, name: true },
-        })
-      : [];
-    const salesUserMap = new Map(
-      salesUsers.map((salesPerson) => [salesPerson.id, salesPerson]),
-    );
     return {
       items: items.map((item) => ({
         ...item,
-        salesPerson: item.customer.ownerUserId
-          ? (salesUserMap.get(item.customer.ownerUserId) ?? null)
-          : null,
+        salesOwners: item.salesMembers.map((member) => member.user),
       })),
       total,
       page,
@@ -257,6 +232,7 @@ export class OrdersService {
     const o = await this.prisma.order.findFirst({
       where: { id, deletedAt: null, customer: customerScopeWhere(user) },
       include: {
+        salesMembers: { include: { user: { select: { id: true, name: true } } } },
         customer: { select: { id: true, name: true, customerNo: true } },
         product: true,
         payments: { where: { deletedAt: null }, orderBy: { id: 'desc' } },
@@ -265,7 +241,7 @@ export class OrdersService {
       },
     });
     if (!o) throw new NotFoundException('订单不存在或无权访问');
-    return o;
+    return { ...o, salesOwners: o.salesMembers.map((member) => member.user) };
   }
 
   private async loadScoped(user: AuthUser, id: number) {

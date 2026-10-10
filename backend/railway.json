@@ -6,7 +6,7 @@
   },
   "deploy": {
     "startCommand": "node dist/main.js",
-    "preDeployCommand": "npx prisma db push --skip-generate",
+    "preDeployCommand": "npx prisma db push --skip-generate && node scripts/backfill-shared-sales.js",
     "healthcheckPath": "/api/health",
     "healthcheckTimeout": 100,
     "restartPolicyType": "ON_FAILURE",

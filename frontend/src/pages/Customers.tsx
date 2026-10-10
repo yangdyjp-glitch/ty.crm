@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import {
   Button,
+  Alert,
   Form,
   Input,
   Modal,
+  Radio,
   Select,
   Space,
   Table,
@@ -54,6 +56,8 @@ interface CustomerRow {
   intentionLevel?: string | null
   discoveredAt?: string | null
   createdAt: string
+  updatedAt: string
+  salesOwners: NamedOption[]
   ownerUserId?: number | null
   ownerName?: string | null
   channel?: ChannelReference | null
@@ -83,6 +87,7 @@ interface CustomerFormValues {
   channelId?: number
   acquisitionChannelId?: number
   ownerUserId?: number
+  salesUserIds?: number[]
   intentionLevel?: string | null
   mainStatus: string
   discoveredAt?: string
@@ -90,6 +95,7 @@ interface CustomerFormValues {
 }
 
 interface CustomerUpdatePayload {
+  expectedUpdatedAt: string
   name?: string
   intentionLevel: string | null
   mainStatus: string
@@ -100,8 +106,17 @@ interface CustomerUpdatePayload {
 }
 
 interface DuplicateCustomer {
-  name?: string
+  id: number
+  customerNo: string
+  name: string
+  channelName: string
+  salesOwners: NamedOption[]
+  alreadyResponsible: boolean
+  canOpen: boolean
+  matchReason: string
 }
+
+type CustomerIdentity = Pick<CustomerFormValues, 'name' | 'sourceCategory' | 'channelId' | 'acquisitionChannelId'>
 
 interface CustomerErrorBody {
   message?: string | string[]
@@ -161,6 +176,14 @@ export default function Customers() {
   const [modalOpen, setModalOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [assignTarget, setAssignTarget] = useState<CustomerRow | null>(null)
+  const [assignedIds, setAssignedIds] = useState<number[]>([])
+  const [duplicates, setDuplicates] = useState<DuplicateCustomer[]>([])
+  const [duplicateOpen, setDuplicateOpen] = useState(false)
+  const [duplicateIdentity, setDuplicateIdentity] = useState<CustomerIdentity | null>(null)
+  const [selectedDuplicateId, setSelectedDuplicateId] = useState<number>()
+  const [distinctMode, setDistinctMode] = useState(false)
+  const [distinctReason, setDistinctReason] = useState('')
+  const [checkingDuplicate, setCheckingDuplicate] = useState(false)
   const [form] = Form.useForm<CustomerFormValues>()
   const [sourceCat, setSourceCat] = useState<SourceCategory>('SELF')
   const [channels, setChannels] = useState<ChannelOption[]>([])
@@ -170,8 +193,17 @@ export default function Customers() {
   const [editForm] = Form.useForm<CustomerFormValues>()
   const [editSourceCat, setEditSourceCat] = useState<SourceCategory>('SELF')
   const [inlineUpdatingId, setInlineUpdatingId] = useState<number | null>(null)
+  const watchedName = Form.useWatch('name', form)
+  const watchedSource = Form.useWatch('sourceCategory', form)
+  const watchedChannel = Form.useWatch('channelId', form)
+  const watchedAcquisition = Form.useWatch('acquisitionChannelId', form)
+  const duplicateIsCurrent = !!duplicateIdentity
+    && duplicateIdentity.name === watchedName && duplicateIdentity.sourceCategory === watchedSource
+    && (watchedSource === 'SELF' ? duplicateIdentity.acquisitionChannelId === watchedAcquisition : duplicateIdentity.channelId === watchedChannel)
 
-  const canCreate = user?.role === 'MARKET' || user?.role === 'BUSINESS_SUPERVISOR' || user?.role === 'ADMIN'
+  const canManageSales = user?.role === 'MARKET' || user?.role === 'BUSINESS_SUPERVISOR' || user?.role === 'ADMIN'
+  const canCreate = canManageSales || user?.role === 'SALES'
+  const canJoin = user?.role === 'SALES' || user?.role === 'BUSINESS_SUPERVISOR'
   const canEditCustomerName = user?.role === 'BUSINESS_SUPERVISOR' || user?.role === 'ADMIN'
 
   const reload = () => {
@@ -185,10 +217,14 @@ export default function Customers() {
     client
       .get<CustomerListResponse>('/customers', {
         params: { all: 1, search: search || undefined },
+        noCache: true,
         signal: controller.signal,
       })
       .then((response) => {
-        if (active) setData(response.data)
+        if (active) setData({ ...response.data, items: response.data.items.map((customer) => ({
+          ...customer,
+          salesOwners: customer.salesOwners ?? (customer.ownerUserId ? [{ id: customer.ownerUserId, name: customer.ownerName || '负责销售' }] : []),
+        })) })
       })
       .catch((error: unknown) => {
         if (active) message.error(apiErrorMessage(error, '客户数据加载失败'))
@@ -202,36 +238,72 @@ export default function Customers() {
     }
   }, [reloadKey, search])
 
+  useEffect(() => {
+    const controller = new AbortController()
+    if (!modalOpen || !watchedName?.trim() || !watchedSource) return
+    const timer = setTimeout(() => {
+      setCheckingDuplicate(true)
+      const identity: CustomerIdentity = {
+        name: watchedName, sourceCategory: watchedSource,
+        channelId: watchedSource === 'SELF' ? undefined : watchedChannel,
+        acquisitionChannelId: watchedSource === 'SELF' ? watchedAcquisition : undefined,
+      }
+      void client.post<DuplicateCustomer[]>('/customers/check-duplicate', identity, { signal: controller.signal })
+        .then(({ data: matches }) => {
+          if (controller.signal.aborted) return
+          setDuplicates(matches)
+          setDuplicateIdentity(identity)
+          setSelectedDuplicateId(matches.length === 1 ? matches[0].id : undefined)
+        })
+        .catch((error: unknown) => {
+          if (!controller.signal.aborted) message.error(apiErrorMessage(error, '客户查重失败，提交时将再次检查'))
+        })
+        .finally(() => { if (!controller.signal.aborted) setCheckingDuplicate(false) })
+    }, 400)
+    return () => { clearTimeout(timer); controller.abort() }
+  }, [modalOpen, watchedName, watchedSource, watchedChannel, watchedAcquisition])
+
   const openCreate = async () => {
     form.resetFields()
-    form.setFieldsValue({ sourceCategory: 'SELF', discoveredAt: todayDate() })
+    setDuplicates([])
+    setDuplicateOpen(false)
+    setDistinctMode(false)
+    setDistinctReason('')
+    form.setFieldsValue({ sourceCategory: 'SELF', discoveredAt: todayDate(), salesUserIds: canJoin && user ? [user.id] : [] })
     setSourceCat('SELF')
     setChannels(await loadChannelOptions().catch(() => []))
     setAcq(await loadAcqChannels().catch(() => []))
-    setSales(await loadUserOptions('SALES').catch(() => []))
+    setSales(canManageSales ? await loadUserOptions('SALES').catch(() => []) : user ? [{ id: user.id, name: user.name }] : [])
     setModalOpen(true)
   }
 
-  const submitCreate = async (force = false) => {
+  const submitCreate = async (reason?: string) => {
     const v = await form.validateFields()
     setSubmitting(true)
     try {
-      await client.post('/customers', { ...v, force })
+      await client.post('/customers', {
+        ...v,
+        channelId: v.sourceCategory === 'SELF' ? undefined : v.channelId,
+        acquisitionChannelId: v.sourceCategory === 'SELF' ? v.acquisitionChannelId : undefined,
+        distinctReason: reason,
+      })
       message.success('已创建')
       setModalOpen(false)
+      setDuplicateOpen(false)
       reload()
     } catch (error: unknown) {
       const response = axios.isAxiosError<CustomerErrorBody>(error)
         ? error.response
         : undefined
       if (response?.status === 409) {
-        const duplicates = response.data?.duplicates ?? []
-        Modal.confirm({
-          title: '疑似重复客户',
-          content: `已存在 ${duplicates.length} 个匹配（${duplicates.map((duplicate) => duplicate.name || '未命名').join('、')}），仍要创建吗？`,
-          okText: '仍然创建',
-          onOk: () => submitCreate(true),
-        })
+        const matches = response.data?.duplicates ?? []
+        setDuplicates(matches)
+        setDuplicateIdentity({ name: v.name, sourceCategory: v.sourceCategory,
+          channelId: v.sourceCategory === 'SELF' ? undefined : v.channelId,
+          acquisitionChannelId: v.sourceCategory === 'SELF' ? v.acquisitionChannelId : undefined })
+        setSelectedDuplicateId(matches.length === 1 ? matches[0].id : undefined)
+        setDistinctMode(false)
+        setDuplicateOpen(true)
       } else {
         message.error(apiErrorMessage(error, '创建失败'))
       }
@@ -240,12 +312,35 @@ export default function Customers() {
     }
   }
 
-  const doAssign = async (ownerUserId: number) => {
+  const doJoin = async () => {
+    if (!selectedDuplicateId || !duplicateIdentity || !duplicateIsCurrent) return
+    const selected = duplicates.find((candidate) => candidate.id === selectedDuplicateId)
+    setSubmitting(true)
+    try {
+      if (!selected?.alreadyResponsible && canJoin) {
+        await client.post(`/customers/${selectedDuplicateId}/join-sales`, duplicateIdentity)
+        message.success('已加入共同销售')
+      }
+      setDuplicateOpen(false)
+      setModalOpen(false)
+      nav(`/customers/${selectedDuplicateId}`)
+    } catch (error: unknown) {
+      message.error(apiErrorMessage(error, '加入失败，请重新查重'))
+    } finally { setSubmitting(false) }
+  }
+
+  const doAssign = async () => {
     if (!assignTarget) return
-    await client.post(`/customers/${assignTarget.id}/assign`, { ownerUserId })
-    message.success('已指派')
-    setAssignTarget(null)
-    reload()
+    setSubmitting(true)
+    try {
+      await client.post(`/customers/${assignTarget.id}/assign`, { salesUserIds: assignedIds, expectedUpdatedAt: assignTarget.updatedAt })
+      message.success('已更新负责销售')
+      setAssignTarget(null)
+      reload()
+    } catch (error: unknown) {
+      message.error(apiErrorMessage(error, '指派失败'))
+      if (axios.isAxiosError(error) && error.response?.status === 409) { setAssignTarget(null); reload() }
+    } finally { setSubmitting(false) }
   }
 
   const doDelete = async (id: number) => {
@@ -279,6 +374,7 @@ export default function Customers() {
     try {
       if (!editCust) return
       const payload: CustomerUpdatePayload = {
+        expectedUpdatedAt: editCust.updatedAt,
         intentionLevel: v.intentionLevel ?? null,
         mainStatus: v.mainStatus,
         sourceCategory: v.sourceCategory,
@@ -293,6 +389,7 @@ export default function Customers() {
       reload()
     } catch (error: unknown) {
       message.error(apiErrorMessage(error, '操作失败'))
+      if (axios.isAxiosError(error) && error.response?.status === 409) { setEditCust(null); reload() }
     } finally {
       setSubmitting(false)
     }
@@ -304,11 +401,14 @@ export default function Customers() {
   ) => {
     setInlineUpdatingId(id)
     try {
-      await client.patch(`/customers/${id}`, payload)
+      const row = data.items.find((customer) => customer.id === id)
+      if (!row) return
+      await client.patch(`/customers/${id}`, { ...payload, expectedUpdatedAt: row.updatedAt })
       message.success('已修改')
       reload()
     } catch (error: unknown) {
       message.error(apiErrorMessage(error, '操作失败'))
+      if (axios.isAxiosError(error) && error.response?.status === 409) reload()
     } finally {
       setInlineUpdatingId(null)
     }
@@ -318,9 +418,9 @@ export default function Customers() {
   const ownerFilters = useMemo(
     () =>
       uniqueFilters(
-        data.items,
-        (r) => r.ownerName || '未分配',
-        (r) => (r.ownerUserId ? String(r.ownerUserId) : UNASSIGNED_FILTER),
+        data.items.flatMap((r) => r.salesOwners.length ? r.salesOwners : [{ id: 0, name: '未分配' }]),
+        (owner) => owner.name,
+        (owner) => owner.id ? String(owner.id) : UNASSIGNED_FILTER,
       ),
     [data.items],
   )
@@ -408,11 +508,11 @@ export default function Customers() {
       width: COL.status,
       filters: ownerFilters,
       filterSearch: true,
-      onFilter: (value, customer) => (customer.ownerUserId ? String(customer.ownerUserId) : UNASSIGNED_FILTER) === value,
+      onFilter: (value, customer) => value === UNASSIGNED_FILTER ? customer.salesOwners.length === 0 : customer.salesOwners.some((owner) => String(owner.id) === value),
       render: (_value: unknown, customer) => {
-        const label = customer.ownerName ? <Tag color="green">{customer.ownerName}</Tag> : <Tag>未分配</Tag>
-        return canCreate ? (
-          <a onClick={async () => { setSales(await loadUserOptions('SALES').catch(() => [])); setAssignTarget(customer) }}>{label}</a>
+        const label = customer.salesOwners.length ? <Space size={2} wrap>{customer.salesOwners.map((owner) => <Tag key={owner.id} color="green">{owner.name}</Tag>)}</Space> : <Tag>未分配</Tag>
+        return canManageSales ? (
+          <a onClick={async () => { setSales(await loadUserOptions('SALES').catch(() => [])); setAssignedIds(customer.salesOwners.map((owner) => owner.id)); setAssignTarget(customer) }}>{label}</a>
         ) : (
           label
         )
@@ -445,7 +545,7 @@ export default function Customers() {
           style={{ width: 240 }}
         />
         {canCreate && <Button type="primary" onClick={openCreate}>新增客户</Button>}
-        {canCreate && (
+        {canManageSales && (
           <Upload
             accept=".xlsx"
             showUploadList={false}
@@ -472,21 +572,21 @@ export default function Customers() {
         dataSource={data.items}
       />
 
-      <Modal title="新增客户" open={modalOpen} onCancel={() => setModalOpen(false)} onOk={() => submitCreate(false)} confirmLoading={submitting} okText={submitting ? '处理中…' : '确定'} maskClosable={false} cancelButtonProps={{ disabled: submitting }} destroyOnClose>
+      <Modal title="新增客户" open={modalOpen} onCancel={() => setModalOpen(false)} onOk={() => submitCreate()} confirmLoading={submitting} okText={submitting ? '处理中…' : '确定'} maskClosable={false} cancelButtonProps={{ disabled: submitting }} destroyOnClose>
         <Form form={form} layout="vertical" initialValues={{ sourceCategory: 'SELF' }}>
-          <Form.Item name="name" label="姓名" rules={[{ required: true }]}>
+          <Form.Item name="name" label="姓名" rules={[{ required: true, whitespace: true }]}>
             <Input />
           </Form.Item>
           <Form.Item name="discoveredAt" label="时间">
             <Input type="date" />
           </Form.Item>
-          <Space>
+          <Space wrap>
             <Form.Item name="phone" label="电话"><Input /></Form.Item>
             <Form.Item name="wechat" label="微信"><Input /></Form.Item>
             <Form.Item name="email" label="邮箱"><Input /></Form.Item>
           </Space>
           <Form.Item name="sourceCategory" label="来源" rules={[{ required: true }]}>
-            <Select onChange={(value: SourceCategory) => { setSourceCat(value); form.setFieldValue('channelId', undefined) }} options={Object.entries(SOURCE_LABEL).map(([k, v]) => ({ value: k, label: v }))} />
+            <Select onChange={(value: SourceCategory) => { setSourceCat(value); form.setFieldValue('channelId', undefined); form.setFieldValue('acquisitionChannelId', undefined) }} options={Object.entries(SOURCE_LABEL).map(([k, v]) => ({ value: k, label: v }))} />
           </Form.Item>
           {sourceCat === 'SELF' ? (
             <Form.Item name="acquisitionChannelId" label="获取渠道">
@@ -497,8 +597,13 @@ export default function Customers() {
               <Select options={channels.filter((c) => (sourceCat === 'INDIVIDUAL_THIRD_PARTY' ? c.channelType === 'INDIVIDUAL' : c.channelType === 'ENTERPRISE')).map((c) => ({ value: c.id, label: c.name }))} />
             </Form.Item>
           )}
-          <Form.Item name="ownerUserId" label="负责销售（可后续指派）">
-            <Select allowClear options={sales.map((s) => ({ value: s.id, label: s.name }))} />
+          {duplicateIsCurrent && !!duplicates.length && (
+            <Alert style={{ marginBottom: 16 }} type="warning" showIcon
+              message={`该客户可能已存在（${duplicates.length} 条匹配）`}
+              action={<Button size="small" loading={checkingDuplicate} onClick={() => { setDistinctMode(false); setDuplicateOpen(true) }}>核对客户</Button>} />
+          )}
+          <Form.Item name="salesUserIds" label="负责销售">
+            <Select mode="multiple" allowClear={canManageSales} disabled={!canManageSales} options={sales.map((s) => ({ value: s.id, label: s.name }))} />
           </Form.Item>
           <Form.Item name="intentionLevel" label="意向">
             <Select allowClear options={Object.entries(INTENTION_LABEL).map(([k, v]) => ({ value: k, label: v }))} />
@@ -507,13 +612,39 @@ export default function Customers() {
         </Form>
       </Modal>
 
-      <Modal title="指派负责销售" open={!!assignTarget} onCancel={() => setAssignTarget(null)} footer={null} destroyOnClose>
+      <Modal title="指派负责销售" open={!!assignTarget} onCancel={() => setAssignTarget(null)} onOk={doAssign} confirmLoading={submitting} destroyOnClose>
         <Select
+          mode="multiple"
+          allowClear
+          value={assignedIds}
           style={{ width: '100%' }}
           placeholder="选择销售"
           options={sales.map((s) => ({ value: s.id, label: s.name }))}
-          onChange={doAssign}
+          onChange={setAssignedIds}
         />
+      </Modal>
+
+      <Modal title="该客户可能已存在" width={620} open={duplicateOpen} onCancel={() => !submitting && setDuplicateOpen(false)} maskClosable={false}
+        footer={[
+          <Button key="cancel" disabled={submitting} onClick={() => setDuplicateOpen(false)}>取消</Button>,
+          <Button key="distinct" disabled={submitting} onClick={() => setDistinctMode(true)}>不是同一人</Button>,
+          ...(distinctMode ? [<Button key="create" type="primary" loading={submitting} disabled={!distinctReason.trim()} onClick={() => submitCreate(distinctReason.trim())}>建立独立客户</Button>]
+            : [<Button key="join" type="primary" loading={submitting}
+              disabled={!duplicateIsCurrent || !selectedDuplicateId || (!canJoin && !duplicates.find((d) => d.id === selectedDuplicateId)?.canOpen)}
+              onClick={doJoin}>{duplicates.find((d) => d.id === selectedDuplicateId)?.alreadyResponsible || !canJoin ? '打开已有客户' : '确认同一客户并加入'}</Button>]),
+        ]}>
+        <Radio.Group style={{ width: '100%' }} value={selectedDuplicateId} onChange={(event) => setSelectedDuplicateId(event.target.value)}>
+          <Space direction="vertical" style={{ width: '100%' }} size={12}>
+            {duplicates.map((candidate) => <Radio value={candidate.id} key={candidate.id}>
+              <div>{candidate.name} · {candidate.customerNo}</div>
+              <div>{candidate.channelName} · {candidate.matchReason}</div>
+              <div>负责销售：{candidate.salesOwners.map((owner) => owner.name).join('、') || '未分配'}{candidate.alreadyResponsible ? '（您已负责）' : ''}</div>
+            </Radio>)}
+          </Space>
+        </Radio.Group>
+        {distinctMode && <Form.Item label="区分说明" required style={{ marginTop: 16, marginBottom: 0 }}>
+          <Input.TextArea rows={3} maxLength={500} value={distinctReason} onChange={(event) => setDistinctReason(event.target.value)} placeholder="填写能够区分两位客户的信息" />
+        </Form.Item>}
       </Modal>
 
       <Modal title={canEditCustomerName ? '快速修改（姓名 / 意向 / 状态 / 来源渠道）' : '快速修改（意向 / 状态 / 来源渠道）'} open={!!editCust} onCancel={() => setEditCust(null)} onOk={submitQuickEdit} confirmLoading={submitting} okText={submitting ? '处理中…' : '确定'} maskClosable={false} cancelButtonProps={{ disabled: submitting }} destroyOnClose>

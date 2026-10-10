@@ -22,7 +22,7 @@
 - 后端：NestJS 11 + Prisma + PostgreSQL/Supabase，Node 22
 - 前端：React 19 + Ant Design v6 + Vite
 - 鉴权：JWT + 全局 `JwtAuthGuard` + `RolesGuard`
-- 数据库同步：Railway 后端 `preDeployCommand` 会执行 `npx prisma db push --skip-generate`
+- 数据库同步：Railway 后端 `preDeployCommand` 会执行 `npx prisma db push --skip-generate`，再运行 `node scripts/backfill-shared-sales.js` 补齐销售关系及历史订单归属。
 
 ## 本地目录
 
@@ -111,14 +111,14 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
 
 - `ADMIN`：管理员，全权后台权限
 - `MARKET`：市场，登记线索、维护个人渠道、指派负责销售
-- `SALES`：销售，负责自己的客户、跟进、签约、收款、退款发起
+- `SALES`：销售，可登记客户、经查重确认加入共同销售，负责自己参与的客户、跟进、签约、收款、退款发起
 - `BUSINESS_SUPERVISOR`：营业主管，等于市场 + 销售的界面和业务能力，但不拥有管理员审核/支付/用户管理权限
 - `DOWNSTREAM_SALES`：下游销售，查看分配给自己的转介绍收佣
 
 客户数据范围由 `backend/src/common/scope.ts` 的 `customerScopeWhere(user)` 控制：
 
 - 管理员看全部
-- 销售看 `ownerUserId = user.id`
+- 销售看 `CustomerSales` 中 `userId = user.id` 且 `removedAt = null` 的客户。`ownerUserId` 仅为旧结构兼容，不代表主销售，不得用于权限或业绩统计。
 - 市场看 `enteredById = user.id`
 - 营业主管看自己登记的 + 自己负责的
 - 下游销售看 `downstreamSalesUserId = user.id`
@@ -145,6 +145,20 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
 - 编号使用 6 位顺序号，工具函数是 `backend/src/common/util.ts` 的 `nextNo(...)`。
 
 ## 最近新增的重要功能
+
+### 共同销售与客户查重
+
+- 客户有多个平级负责销售，没有主次。市场、主管、管理员可多选调整；普通销售只能通过查重确认加入本人。
+- `POST /customers/check-duplicate` 按规范化姓名和准确的渠道 ID 匹配。第三方与自获取渠道分别比较；渠道缺失时仅给同名弱提示，不自动合并。
+- `POST /customers/:id/join-sales` 再次校验姓名及渠道，保留原编号、录入人和资料，幂等加入并通知已有销售。
+- 同名同渠道仍可确认“不是同一人”，必须提交 `distinctReason`，另建档案并留审计记录。导入遇重复则跳过，不能绕过查重。
+- 客户修改、分配、跟进、状态和销售阶段接口需提交读取时的 `expectedUpdatedAt`；过期返回 409，前端刷新核对后重提。
+- 跟进记录包含操作人；客户详情的修改记录包含操作人、字段及前后值。销售加入/退出也留痕。
+- 新订单的 `OrderSales` 固定保存签约时的全部销售；后续客户分配变动不追溯改写历史业绩。旧订单只迁移原单人归属，原未分配订单仍未分配。
+- 公司、渠道、产品汇总只计一次。个人客户数和订单业绩分别全额计入每名参与销售，并显示共同部分；个人相加不是公司合计。
+- 新订单、配套收款及分成在同一事务中创建；同一客户的编号分配使用行锁，避免并发撞号。
+- 部署前备份数据库并用 `scripts/verify-shared-sales.js before <仓库外私有路径>` 留核对快照；部署后重跑幂等回填以补齐旧实例退出前的新记录，再运行 `after` 核对。该核对工具用于本次单销售升级，后续多人版本不要用它重新判定历史应为单人。
+- 普通测试：`npm.cmd test`。真实 PostgreSQL 集成测试需显式设置 `TEST_DATABASE_URL`，只允许本机的 `crm_shared_sales_test` 一次性数据库，会清空该测试库；绝不能指向线上库。
 
 ### 营业主管
 

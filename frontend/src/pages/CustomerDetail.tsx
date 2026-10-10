@@ -19,6 +19,7 @@ import {
 } from 'antd'
 import { UploadOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
+import axios from 'axios'
 import client, { downloadFile } from '../api/client'
 import { apiErrorMessage } from '../api/errors'
 import { useAuth } from '../auth/AuthContext'
@@ -45,6 +46,7 @@ interface NamedReference {
 
 interface FollowUp {
   id: number
+  operatorName: string
   followedAt: string
   method: string
   content: string
@@ -61,6 +63,44 @@ interface CustomerOrder {
   paidAmount: MoneyValue
   unpaidAmount: MoneyValue
   status: string
+  salesOwners: NamedReference[]
+}
+
+interface CustomerChange {
+  id: number
+  createdAt: string
+  operatorName: string
+  action: string
+  fieldName: string | null
+  oldValue: string | null
+  newValue: string | null
+  reason: string | null
+}
+
+const CHANGE_LABEL: Record<string, string> = {
+  CREATE_CUSTOMER: '新建客户', CREATE_DISTINCT_CUSTOMER: '确认同名不同人', ADD_FOLLOW_UP: '新增跟进',
+  JOIN_CUSTOMER_SALES: '加入共同销售', ASSIGN_CUSTOMER_SALES: '调整负责销售', UPDATE_CUSTOMER: '修改资料',
+  salesOwners: '负责销售', name: '姓名', nickname: '昵称', phone: '电话', wechat: '微信', email: '邮箱',
+  countryRegion: '国家 / 地区', educationLevel: '学历', targetStage: '目标阶段', targetStartTime: '目标入学时间',
+  sourceCategory: '来源', channelId: '渠道编号', acquisitionChannelId: '获取渠道编号', channelNameSnapshot: '渠道名称',
+  commissionRateSnapshot: '渠道比例', discoveredAt: '登记时间', intentionLevel: '意向', mainStatus: '状态',
+  salesStage: '销售阶段', remark: '备注', latestFollowUpAt: '最近跟进', nextFollowUpAt: '下次跟进',
+  hasProblem: '问题标记', problemNote: '问题说明', problemHandlerId: '问题处理人',
+}
+
+function changeValue(value: string | null, field: string | null) {
+  if (!value) return '—'
+  let parsed: unknown = value
+  try { parsed = JSON.parse(value) } catch { /* Follow-up contents are plain text. */ }
+  if (parsed == null || parsed === '') return '—'
+  if (Array.isArray(parsed)) return parsed.join('、') || '未分配'
+  if (typeof parsed === 'boolean') return parsed ? '是' : '否'
+  if (typeof parsed === 'object') return '已创建客户档案'
+  const text = String(parsed)
+  const labels = field === 'mainStatus' ? CUSTOMER_STATUS_LABEL : field === 'intentionLevel' ? INTENTION_LABEL
+    : field === 'salesStage' ? SALES_STAGE_LABEL : field === 'sourceCategory' ? SOURCE_LABEL : {}
+  if (field?.endsWith('At') && dayjs(text).isValid()) return dayjs(text).format('YYYY-MM-DD HH:mm:ss')
+  return labels[text] || text
 }
 
 interface Referral {
@@ -81,6 +121,9 @@ interface Attachment {
 
 interface CustomerDetails {
   name: string
+  updatedAt: string
+  salesOwners: NamedReference[]
+  changes: CustomerChange[]
   customerNo: string
   mainStatus: string
   intentionLevel: string | null
@@ -118,6 +161,7 @@ export default function CustomerDetail() {
   const [attachmentErrors, setAttachmentErrors] = useState<Record<string, string>>({})
   const [reloadKey, setReloadKey] = useState(0)
   const [followOpen, setFollowOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [aiSummaries, setAiSummaries] = useState<Record<string, string>>({})
   const [attachmentsByCustomer, setAttachmentsByCustomer] = useState<Record<string, Attachment[]>>({})
   const [form] = Form.useForm<FollowFormValues>()
@@ -242,21 +286,32 @@ export default function CustomerDetail() {
 
   const addFollow = async () => {
     const v = await form.validateFields()
-    await client.post(`/customers/${customerId}/follow-ups`, {
-      ...v,
-      nextFollowUpAt: v.nextFollowUpAt ? dayjs(v.nextFollowUpAt).toISOString() : undefined,
-    })
-    if (!mountedRef.current) return
-    message.success('已记录跟进')
-    setFollowOpen(false)
-    form.resetFields()
-    await loadCustomer()
+    setSaving(true)
+    try {
+      await client.post(`/customers/${customerId}/follow-ups`, {
+        ...v, expectedUpdatedAt: c.updatedAt,
+        nextFollowUpAt: v.nextFollowUpAt ? dayjs(v.nextFollowUpAt).toISOString() : undefined,
+      })
+      if (!mountedRef.current) return
+      message.success('已记录跟进')
+      setFollowOpen(false)
+      form.resetFields()
+      await loadCustomer()
+    } catch (error) {
+      message.error(apiErrorMessage(error, '记录失败'))
+      if (axios.isAxiosError(error) && error.response?.status === 409) await loadCustomer()
+    } finally { setSaving(false) }
   }
   const setStage = async (salesStage: string) => {
-    await client.post(`/customers/${customerId}/sales-stage`, { salesStage })
-    if (!mountedRef.current) return
-    message.success('已更新销售阶段')
-    await loadCustomer()
+    try {
+      await client.post(`/customers/${customerId}/sales-stage`, { salesStage, expectedUpdatedAt: c.updatedAt })
+      if (!mountedRef.current) return
+      message.success('已更新销售阶段')
+      await loadCustomer()
+    } catch (error) {
+      message.error(apiErrorMessage(error, '更新失败'))
+      if (axios.isAxiosError(error) && error.response?.status === 409) await loadCustomer()
+    }
   }
   const doAi = async () => {
     const requestId = (summaryRequests.current.get(customerId) ?? 0) + 1
@@ -319,6 +374,7 @@ export default function CustomerDetail() {
       >
         <Descriptions size="small" column={3}>
           <Descriptions.Item label="编号">{c.customerNo}</Descriptions.Item>
+          <Descriptions.Item label="负责销售">{c.salesOwners?.map((owner) => owner.name).join('、') || '未分配'}</Descriptions.Item>
           <Descriptions.Item label="时间">{fmtDate(c.discoveredAt ?? c.createdAt)}</Descriptions.Item>
           <Descriptions.Item label="电话">{c.phone || '—'}</Descriptions.Item>
           <Descriptions.Item label="微信">{c.wechat || '—'}</Descriptions.Item>
@@ -354,6 +410,7 @@ export default function CustomerDetail() {
                   pagination={false}
                   columns={[
                     { title: '时间', dataIndex: 'followedAt', width: COL.datetime, render: (t) => dayjs(t).format('MM-DD HH:mm') },
+                    { title: '操作人', dataIndex: 'operatorName', width: COL.person },
                     { title: '方式', dataIndex: 'method', width: COL.type, render: (m) => FOLLOW_METHOD_LABEL[m] },
                     { title: '内容', dataIndex: 'content', width: COL.note },
                     { title: '结果', dataIndex: 'result', width: COL.text },
@@ -374,6 +431,7 @@ export default function CustomerDetail() {
                 pagination={false}
                 columns={[
                   { title: '订单号', dataIndex: 'orderNo', width: COL.no },
+                  { title: '签约销售', width: COL.person, render: (_: unknown, order: CustomerOrder) => order.salesOwners?.map((owner) => owner.name).join('、') || '未分配' },
                   { title: '时间', dataIndex: 'signedAt', width: COL.date, render: fmtDate },
                   { title: '币种', dataIndex: 'currency', width: COL.currency },
                   { title: '应收', dataIndex: 'receivableAmount', width: COL.money, render: fmtMoney, align: 'right' },
@@ -389,6 +447,27 @@ export default function CustomerDetail() {
                         },
                       ]
                     : []),
+                ]}
+              />
+            ),
+          },
+          {
+            key: 'changes',
+            label: '修改记录',
+            children: (
+              <Table<CustomerChange>
+                {...smallTableProps}
+                rowKey="id"
+                dataSource={c.changes || []}
+                pagination={{ pageSize: 20 }}
+                columns={[
+                  { title: '时间', dataIndex: 'createdAt', width: COL.datetime, render: (t: string) => dayjs(t).format('YYYY-MM-DD HH:mm:ss') },
+                  { title: '操作人', dataIndex: 'operatorName', width: COL.person },
+                  { title: '操作', dataIndex: 'action', width: COL.text, render: (action: string) => CHANGE_LABEL[action] || action },
+                  { title: '字段', dataIndex: 'fieldName', width: COL.text, render: (field: string | null) => field ? CHANGE_LABEL[field] || field : '—' },
+                  { title: '修改前', width: COL.note, render: (_: unknown, row) => changeValue(row.oldValue, row.fieldName) },
+                  { title: '修改后', width: COL.note, render: (_: unknown, row) => changeValue(row.newValue, row.fieldName) },
+                  { title: '说明', dataIndex: 'reason', width: COL.note },
                 ]}
               />
             ),
@@ -465,7 +544,7 @@ export default function CustomerDetail() {
         ]}
       />
 
-      <Modal title="新增跟进" open={followOpen} onCancel={() => setFollowOpen(false)} onOk={addFollow} destroyOnClose>
+      <Modal title="新增跟进" open={followOpen} onCancel={() => setFollowOpen(false)} onOk={addFollow} confirmLoading={saving} destroyOnClose>
         <Form form={form} layout="vertical">
           <Form.Item name="method" label="方式" rules={[{ required: true }]}>
             <Select options={Object.entries(FOLLOW_METHOD_LABEL).map(([k, v]) => ({ value: k, label: v }))} />

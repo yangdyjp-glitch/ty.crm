@@ -5,6 +5,11 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  IsArray,
+  ArrayUnique,
+  ArrayMaxSize,
+  Min,
+  MaxLength,
 } from 'class-validator';
 import {
   CustomerMainStatus,
@@ -30,15 +35,28 @@ export class CreateCustomerDto {
   @IsOptional() @IsInt() channelId?: number;
 
   @IsOptional() @IsInt() ownerUserId?: number;
+  @IsOptional() @IsArray() @ArrayUnique() @ArrayMaxSize(20) @IsInt({ each: true }) @Min(1, { each: true }) salesUserIds?: number[];
   @IsOptional() @IsEnum(IntentionLevel) intentionLevel?: IntentionLevel;
   @IsOptional() @IsString() remark?: string;
   @IsOptional() @IsDateString() discoveredAt?: string;
 
-  /** 确认疑似重复后强制创建 */
+  /** 兼容旧客户端；不能绕过查重，另建档案必须提供 distinctReason。 */
   @IsOptional() @IsBoolean() force?: boolean;
+  @IsOptional() @IsString() @MaxLength(500) distinctReason?: string;
 }
 
-export class UpdateCustomerDto {
+export class CustomerVersionDto {
+  @IsDateString() expectedUpdatedAt: string;
+}
+
+export class CustomerIdentityDto {
+  @IsString() @MaxLength(100) name: string;
+  @IsEnum(SourceCategory) sourceCategory: SourceCategory;
+  @IsOptional() @IsInt() @Min(1) channelId?: number;
+  @IsOptional() @IsInt() @Min(1) acquisitionChannelId?: number;
+}
+
+export class UpdateCustomerDto extends CustomerVersionDto {
   @IsOptional() @IsString() name?: string;
   @IsOptional() @IsString() nickname?: string;
   @IsOptional() @IsString() phone?: string;
@@ -57,15 +75,15 @@ export class UpdateCustomerDto {
   @IsOptional() @IsDateString() discoveredAt?: string;
 }
 
-export class AssignDto {
-  @IsInt() ownerUserId: number;
+export class AssignDto extends CustomerVersionDto {
+  @IsArray() @ArrayUnique() @ArrayMaxSize(20) @IsInt({ each: true }) @Min(1, { each: true }) salesUserIds: number[];
 }
 
 export class AssignDownstreamDto {
   @IsInt() downstreamSalesUserId: number;
 }
 
-export class FollowUpDto {
+export class FollowUpDto extends CustomerVersionDto {
   @IsEnum(FollowMethod) method: FollowMethod;
   @IsString() content: string;
   @IsOptional() @IsString() customerFeedback?: string;
@@ -74,16 +92,16 @@ export class FollowUpDto {
   @IsOptional() @IsDateString() followedAt?: string;
 }
 
-export class SetProblemDto {
+export class SetProblemDto extends CustomerVersionDto {
   @IsBoolean() hasProblem: boolean;
   @IsOptional() @IsString() problemNote?: string;
   @IsOptional() @IsInt() problemHandlerId?: number;
 }
 
-export class SetStatusDto {
+export class SetStatusDto extends CustomerVersionDto {
   @IsEnum(CustomerMainStatus) mainStatus: CustomerMainStatus;
 }
 
-export class SetSalesStageDto {
+export class SetSalesStageDto extends CustomerVersionDto {
   @IsEnum(SalesStage) salesStage: SalesStage;
 }

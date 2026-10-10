@@ -64,20 +64,22 @@ export class NotificationsService {
     const overdue = await this.prisma.customer.findMany({
       where: {
         deletedAt: null,
-        ownerUserId: { not: null },
+        salesMembers: { some: { removedAt: null } },
         nextFollowUpAt: { lt: now },
         mainStatus: { in: [CustomerMainStatus.NEW_LEAD, CustomerMainStatus.FOLLOWING] },
       },
-      select: { id: true, name: true, ownerUserId: true },
+      select: { id: true, name: true, salesMembers: { where: { removedAt: null }, select: { userId: true } } },
     });
     for (const c of overdue) {
+      for (const member of c.salesMembers) {
       await this.create({
-        userId: c.ownerUserId!,
+        userId: member.userId,
         type: 'OVERDUE_FOLLOWUP',
         title: `客户「${c.name}」已逾期未跟进`,
         relatedType: 'Customer',
         relatedId: c.id,
       });
+      }
     }
 
     const pendingReview = await this.prisma.commission.count({
@@ -100,12 +102,12 @@ export class NotificationsService {
 
     const unpaid = await this.prisma.order.findMany({
       where: { deletedAt: null, status: OrderStatus.PARTIAL_PAID },
-      select: { id: true, orderNo: true, customer: { select: { ownerUserId: true, name: true } } },
+      select: { id: true, orderNo: true, customer: { select: { name: true, salesMembers: { where: { removedAt: null }, select: { userId: true } } } } },
     });
     for (const o of unpaid) {
-      if (o.customer?.ownerUserId) {
+      for (const member of o.customer.salesMembers) {
         await this.create({
-          userId: o.customer.ownerUserId,
+          userId: member.userId,
           type: 'UNPAID_BALANCE',
           title: `订单 ${o.orderNo}（${o.customer.name}）有未缴尾款`,
           relatedType: 'Order',

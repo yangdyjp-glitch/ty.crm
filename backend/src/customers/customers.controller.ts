@@ -20,6 +20,7 @@ import {
   AssignDownstreamDto,
   AssignDto,
   CreateCustomerDto,
+  CustomerIdentityDto,
   FollowUpDto,
   SetProblemDto,
   SetSalesStageDto,
@@ -38,14 +39,19 @@ export class CustomersController {
     return this.customers.list(user, q);
   }
 
-  @Get('check-duplicate')
-  @Roles(UserRole.MARKET, UserRole.BUSINESS_SUPERVISOR, UserRole.ADMIN)
+  @Post('check-duplicate')
+  @Roles(UserRole.MARKET, UserRole.SALES, UserRole.BUSINESS_SUPERVISOR, UserRole.ADMIN)
   checkDuplicate(
-    @Query('phone') phone?: string,
-    @Query('wechat') wechat?: string,
-    @Query('email') email?: string,
+    @CurrentUser() user: AuthUser,
+    @Body() input: CustomerIdentityDto,
   ) {
-    return this.customers.findDuplicates(phone, wechat, email);
+    return this.customers.findDuplicates(user, input);
+  }
+
+  @Post(':id/join-sales')
+  @Roles(UserRole.SALES, UserRole.BUSINESS_SUPERVISOR)
+  joinSales(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number, @Body() input: CustomerIdentityDto) {
+    return this.customers.joinSales(user, id, input);
   }
 
   @Get('export')
@@ -75,7 +81,7 @@ export class CustomersController {
   }
 
   @Post()
-  @Roles(UserRole.MARKET, UserRole.BUSINESS_SUPERVISOR, UserRole.ADMIN)
+  @Roles(UserRole.MARKET, UserRole.SALES, UserRole.BUSINESS_SUPERVISOR, UserRole.ADMIN)
   create(@CurrentUser() user: AuthUser, @Body() dto: CreateCustomerDto) {
     return this.customers.create(user, dto);
   }
@@ -152,7 +158,7 @@ export class CustomersController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: SetSalesStageDto,
   ) {
-    return this.customers.setSalesStage(user, id, dto.salesStage);
+    return this.customers.setSalesStage(user, id, dto.salesStage, dto.expectedUpdatedAt);
   }
 
   @Get(':id/ai-summary')
