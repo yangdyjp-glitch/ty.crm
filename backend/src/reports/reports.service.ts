@@ -13,9 +13,24 @@ import {
   companyCashRefunds,
   orderCashPosition,
   pendingAgentDeduction,
-  realizedAgentNetCommission,
   roundMoney,
 } from '../common/finance';
+
+type ChannelReportRow = {
+  channelId: number;
+  currency: string;
+  channel: { id: number; name: string };
+  _count: number;
+  _sum: {
+    receivableAmount: number;
+    confirmedReceived: number;
+    orderUnpaidAmount: number;
+    payableAmount: number;
+    paidAmount: number;
+    unpaidAmount: number;
+    companyNetReceived: number;
+  };
+};
 
 @Injectable()
 export class ReportsService {
@@ -585,41 +600,88 @@ export class ReportsService {
       month?: string;
     } = {},
   ) {
-    const commissions = await this.prisma.commission.findMany({
-      where: { deletedAt: null, order: this.signedAtRange(q) },
+    // Start from orders so zero-commission and non-commission orders retain their revenue.
+    const orders = await this.prisma.order.findMany({
+      where: {
+        deletedAt: null,
+        ...this.signedAtRange(q),
+        OR: [
+          { commission: { isNot: null } },
+          { customer: { channelId: { not: null } } },
+        ],
+      },
       include: {
-        order: { select: { paidAmount: true, receivableAmount: true } },
+        commission: {
+          include: { channel: { select: { id: true, name: true } } },
+        },
+        customer: {
+          select: {
+            channelId: true,
+            channel: { select: { id: true, name: true } },
+          },
+        },
+        refunds: {
+          where: { deletedAt: null, status: RefundStatus.REFUNDED },
+          select: { status: true, bearer: true, cashAmount: true },
+        },
       },
     });
-    const channels = await this.prisma.channel.findMany({
-      where: { deletedAt: null },
-      select: { id: true, name: true, channelType: true },
-    });
-    const nameMap = new Map(channels.map((c) => [c.id, c]));
-    const grouped = new Map<string, any>();
-    for (const commission of commissions) {
-      const key = `${commission.channelId}:${commission.currency}`;
+    const grouped = new Map<string, ChannelReportRow>();
+    for (const order of orders) {
+      // Preserve the signed order's channel even if the customer's channel later changes.
+      const channelId = order.commission?.channelId ?? order.customer.channelId;
+      if (channelId == null) continue;
+      const channel = order.commission?.channel ?? order.customer.channel ?? {
+        id: channelId,
+        name: order.commission?.channelNameSnapshot || `渠道 ${channelId}`,
+      };
+      const commission =
+        order.commission && !order.commission.deletedAt ? order.commission : null;
+      const contractAmount = Number(order.receivableAmount);
+      const received = Number(order.paidAmount);
+      const payable = Number(commission?.payableAmount ?? 0);
+      const cash = orderCashPosition({
+        confirmedReceived: received,
+        receivableAmount: contractAmount,
+        companyCashRefund: companyCashRefunds(order.refunds),
+        fundSettlementMode: commission?.fundSettlementMode ?? order.fundSettlementMode,
+        commission,
+      });
+      // Only currencies actually present in orders produce rows; never mix currencies.
+      const key = `${channelId}:${order.currency}`;
       const row =
         grouped.get(key) ??
         {
-          channelId: commission.channelId,
-          currency: commission.currency,
-          _sum: { payableAmount: 0, paidAmount: 0, unpaidAmount: 0 },
+          channelId,
+          currency: order.currency,
+          _sum: {
+            receivableAmount: 0,
+            confirmedReceived: 0,
+            orderUnpaidAmount: 0,
+            payableAmount: 0,
+            paidAmount: 0,
+            unpaidAmount: 0,
+            companyNetReceived: 0,
+          },
           _count: 0,
-          channel: nameMap.get(commission.channelId) ?? null,
+          channel,
         };
-      const payable = Number(commission.payableAmount);
-      const paid =
-        commission.fundSettlementMode === FundSettlementMode.AGENT_NET
-          ? realizedAgentNetCommission(commission, commission.order)
-          : Number(commission.paidAmount || 0);
       row._count += 1;
+      row._sum.receivableAmount = roundMoney(row._sum.receivableAmount + contractAmount);
+      row._sum.confirmedReceived = roundMoney(row._sum.confirmedReceived + received);
+      row._sum.orderUnpaidAmount = roundMoney(row._sum.orderUnpaidAmount + Number(order.unpaidAmount));
       row._sum.payableAmount = roundMoney(row._sum.payableAmount + payable);
-      row._sum.paidAmount = roundMoney(row._sum.paidAmount + paid);
-      row._sum.unpaidAmount = roundMoney(row._sum.unpaidAmount + Math.max(0, payable - paid));
+      row._sum.paidAmount = roundMoney(row._sum.paidAmount + cash.channelSettled);
+      row._sum.unpaidAmount = roundMoney(row._sum.unpaidAmount + Math.max(0, payable - cash.channelSettled));
+      row._sum.companyNetReceived = roundMoney(row._sum.companyNetReceived + cash.balance);
       grouped.set(key, row);
     }
-    return [...grouped.values()];
+    return [...grouped.values()].sort(
+      (a, b) =>
+        a.channel.name.localeCompare(b.channel.name, 'zh-CN') ||
+        a.channelId - b.channelId ||
+        a.currency.localeCompare(b.currency),
+    );
   }
 
   async funnel() {
