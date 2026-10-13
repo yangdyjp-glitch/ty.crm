@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import {
+  CommissionMethod,
   CommissionStatus,
   FundSettlementMode,
   PaymentConfirmStatus,
@@ -19,7 +20,13 @@ import {
 type ChannelReportRow = {
   channelId: number;
   currency: string;
-  channel: { id: number; name: string };
+  channel: {
+    id: number;
+    name: string;
+    commissionMethod: CommissionMethod | null;
+    defaultCommissionRate: Prisma.Decimal | null;
+    defaultCommissionAmount: Prisma.Decimal | null;
+  };
   _count: number;
   _sum: {
     receivableAmount: number;
@@ -600,6 +607,13 @@ export class ReportsService {
       month?: string;
     } = {},
   ) {
+    const channelSelect = {
+      id: true,
+      name: true,
+      commissionMethod: true,
+      defaultCommissionRate: true,
+      defaultCommissionAmount: true,
+    } satisfies Prisma.ChannelSelect;
     // Start from orders so zero-commission and non-commission orders retain their revenue.
     const orders = await this.prisma.order.findMany({
       where: {
@@ -612,12 +626,12 @@ export class ReportsService {
       },
       include: {
         commission: {
-          include: { channel: { select: { id: true, name: true } } },
+          include: { channel: { select: channelSelect } },
         },
         customer: {
           select: {
             channelId: true,
-            channel: { select: { id: true, name: true } },
+            channel: { select: channelSelect },
           },
         },
         refunds: {
@@ -634,6 +648,9 @@ export class ReportsService {
       const channel = order.commission?.channel ?? order.customer.channel ?? {
         id: channelId,
         name: order.commission?.channelNameSnapshot || `渠道 ${channelId}`,
+        commissionMethod: null,
+        defaultCommissionRate: null,
+        defaultCommissionAmount: null,
       };
       const commission =
         order.commission && !order.commission.deletedAt ? order.commission : null;
@@ -679,9 +696,10 @@ export class ReportsService {
     return [...grouped.values()]
       .map((row) => ({
         ...row,
-        // Effective percentage within this report period, not today's channel default.
-        commissionRate: row._sum.receivableAmount > 0
-          ? roundMoney((row._sum.payableAmount / row._sum.receivableAmount) * 100)
+        // Display the channel management default, independently of historical amounts.
+        commissionRate: row.channel.commissionMethod !== CommissionMethod.FIXED_AMOUNT &&
+          row.channel.defaultCommissionRate != null
+          ? Number(row.channel.defaultCommissionRate)
           : null,
       }))
       .sort(

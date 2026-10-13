@@ -2,8 +2,14 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { ReportsService } = require('../dist/reports/reports.service');
 
-const xidian = { id: 15, name: '西安电子科技大学' };
-const partner = { id: 2, name: '合作渠道' };
+const xidian = {
+  id: 15, name: '西安电子科技大学', commissionMethod: 'NET_RECEIVED_RATIO',
+  defaultCommissionRate: '0', defaultCommissionAmount: null,
+};
+const partner = {
+  id: 2, name: '合作渠道', commissionMethod: 'SIGNED_RATIO',
+  defaultCommissionRate: '15', defaultCommissionAmount: null,
+};
 
 function order(overrides = {}) {
   return {
@@ -105,27 +111,58 @@ test('all CNY channels precede JPY channels regardless of name or input order', 
   ]);
 });
 
-test('commission percentage is weighted by contract amount within each currency', async () => {
+test('commission percentage comes from the current channel default, not historical amounts or snapshots', async () => {
+  const channel = { ...xidian, defaultCommissionRate: '17.125' };
   const { service } = setup([
-    order({ receivableAmount: '10000', commission: commission({ payableAmount: '2000' }) }),
-    order({ id: 2, receivableAmount: '30000', commission: commission({ payableAmount: '3000' }) }),
-    order({ id: 3, currency: 'JPY', receivableAmount: '700000', commission: commission({ payableAmount: '280000' }) }),
+    order({ receivableAmount: '10000', commission: commission({ channel, commissionRateSnapshot: '20', payableAmount: '2000' }) }),
+    order({ id: 2, receivableAmount: '30000', commission: commission({ channel, commissionRateSnapshot: '10', payableAmount: '3000' }) }),
+    order({ id: 3, currency: 'JPY', receivableAmount: '700000', commission: commission({ channel, payableAmount: '280000' }) }),
   ]);
   const rows = await service.channels();
   assert.deepEqual(rows.map((row) => [row.currency, row.commissionRate]), [
-    ['CNY', 12.5], ['JPY', 40],
+    ['CNY', 17.125], ['JPY', 17.125],
+  ]);
+  assert.deepEqual(rows.map((row) => row._sum.payableAmount), [5000, 280000]);
+});
+
+test('default commission is available without a commission record or a positive contract total', async () => {
+  const { service } = setup([
+    order({ receivableAmount: '0', paidAmount: '0', customer: { channelId: partner.id, channel: partner } }),
+    order({ id: 2, currency: 'JPY', customer: { channelId: partner.id, channel: partner } }),
+  ]);
+  const rows = await service.channels();
+  assert.deepEqual(rows.map((row) => [row.currency, row.commissionRate]), [
+    ['CNY', 15], ['JPY', 15],
   ]);
 });
 
-test('commission percentage rounds to two decimals and has no value for a zero contract total', async () => {
-  const { service } = setup([
-    order({ receivableAmount: '3000', commission: commission({ payableAmount: '1000' }) }),
-    order({ id: 2, currency: 'JPY', receivableAmount: '0', paidAmount: '0' }),
-  ]);
-  const rows = await service.channels();
-  assert.deepEqual(rows.map((row) => [row.currency, row.commissionRate]), [
-    ['CNY', 33.33], ['JPY', null],
-  ]);
+test('refreshing the report follows a changed channel default without repricing historical commissions', async () => {
+  const records = [order({ commission: commission({ payableAmount: '9600' }) })];
+  const { service } = setup(records);
+  const [before] = await service.channels();
+  records[0].commission.channel = { ...xidian, defaultCommissionRate: '25' };
+  const [after] = await service.channels();
+  assert.equal(before.commissionRate, 0);
+  assert.equal(after.commissionRate, 25);
+  assert.deepEqual(after._sum, before._sum);
+});
+
+test('fixed default commissions expose the configured amount instead of a stale percentage', async () => {
+  const channel = { ...partner, commissionMethod: 'FIXED_AMOUNT', defaultCommissionAmount: '800.50' };
+  const { service } = setup([order({ customer: { channelId: channel.id, channel } })]);
+  const [row] = await service.channels();
+  assert.equal(row.commissionRate, null);
+  assert.equal(row.channel.commissionMethod, 'FIXED_AMOUNT');
+  assert.equal(row.channel.defaultCommissionAmount, '800.50');
+});
+
+test('an unset default percentage remains absent even when historical commission amounts exist', async () => {
+  const channel = { ...xidian, defaultCommissionRate: null };
+  const { service } = setup([order({ commission: commission({ channel, payableAmount: '9600' }) })]);
+  const [row] = await service.channels();
+  assert.equal(row.commissionRate, null);
+  assert.equal(row.channel.defaultCommissionRate, null);
+  assert.equal(row._sum.payableAmount, 9600);
 });
 
 test('net receipts deduct actual rebates, prorated agent deductions and completed company cash refunds', async () => {
@@ -171,6 +208,7 @@ test('channel attribution uses the signed snapshot and deleted commissions do no
   ]);
   const [row] = await service.channels();
   assert.equal(row.channelId, xidian.id);
+  assert.equal(row.commissionRate, 0);
   assert.equal(row._count, 2);
   assert.equal(row._sum.payableAmount, 9600);
   assert.equal(row._sum.paidAmount, 9600);
@@ -190,6 +228,12 @@ test('year and month filters select undeleted orders by signing time and only co
   for (const query of calls) {
     assert.equal(query.where.deletedAt, null);
     assert.deepEqual(query.include.refunds.where, { deletedAt: null, status: 'REFUNDED' });
+    const channelSelect = {
+      id: true, name: true, commissionMethod: true,
+      defaultCommissionRate: true, defaultCommissionAmount: true,
+    };
+    assert.deepEqual(query.include.commission.include.channel.select, channelSelect);
+    assert.deepEqual(query.include.customer.select.channel.select, channelSelect);
   }
 });
 
