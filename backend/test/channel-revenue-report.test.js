@@ -51,6 +51,7 @@ test('a zero-commission channel still reports its fully collected contract reven
   const [row] = await service.channels();
   assert.equal(row.channel.name, xidian.name);
   assert.equal(row._count, 1);
+  assert.equal(row.commissionRate, 0);
   assert.deepEqual(row._sum, {
     receivableAmount: 48000,
     confirmedReceived: 48000,
@@ -88,6 +89,43 @@ test('only actual order currencies create rows and a mixed-currency channel is n
   assert.deepEqual(mixed.map((row) => row._sum.confirmedReceived), [48000, 400000]);
   assert.equal(rows.filter((row) => row.channelId === partner.id).length, 1);
   assert.equal(rows.reduce((sum, row) => sum + row._count, 0), 3);
+});
+
+test('all CNY channels precede JPY channels regardless of name or input order', async () => {
+  const { service } = setup([
+    order({ currency: 'JPY', customer: { channelId: partner.id, channel: partner } }),
+    order({ id: 2 }),
+    order({ id: 3, currency: 'JPY' }),
+    order({ id: 4, customer: { channelId: partner.id, channel: partner } }),
+  ]);
+  const rows = await service.channels();
+  assert.deepEqual(rows.map((row) => [row.currency, row.channelId]), [
+    ['CNY', partner.id], ['CNY', xidian.id],
+    ['JPY', partner.id], ['JPY', xidian.id],
+  ]);
+});
+
+test('commission percentage is weighted by contract amount within each currency', async () => {
+  const { service } = setup([
+    order({ receivableAmount: '10000', commission: commission({ payableAmount: '2000' }) }),
+    order({ id: 2, receivableAmount: '30000', commission: commission({ payableAmount: '3000' }) }),
+    order({ id: 3, currency: 'JPY', receivableAmount: '700000', commission: commission({ payableAmount: '280000' }) }),
+  ]);
+  const rows = await service.channels();
+  assert.deepEqual(rows.map((row) => [row.currency, row.commissionRate]), [
+    ['CNY', 12.5], ['JPY', 40],
+  ]);
+});
+
+test('commission percentage rounds to two decimals and has no value for a zero contract total', async () => {
+  const { service } = setup([
+    order({ receivableAmount: '3000', commission: commission({ payableAmount: '1000' }) }),
+    order({ id: 2, currency: 'JPY', receivableAmount: '0', paidAmount: '0' }),
+  ]);
+  const rows = await service.channels();
+  assert.deepEqual(rows.map((row) => [row.currency, row.commissionRate]), [
+    ['CNY', 33.33], ['JPY', null],
+  ]);
 });
 
 test('net receipts deduct actual rebates, prorated agent deductions and completed company cash refunds', async () => {

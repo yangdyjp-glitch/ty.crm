@@ -676,12 +676,21 @@ export class ReportsService {
       row._sum.companyNetReceived = roundMoney(row._sum.companyNetReceived + cash.balance);
       grouped.set(key, row);
     }
-    return [...grouped.values()].sort(
-      (a, b) =>
-        a.channel.name.localeCompare(b.channel.name, 'zh-CN') ||
-        a.channelId - b.channelId ||
-        a.currency.localeCompare(b.currency),
-    );
+    return [...grouped.values()]
+      .map((row) => ({
+        ...row,
+        // Effective percentage within this report period, not today's channel default.
+        commissionRate: row._sum.receivableAmount > 0
+          ? roundMoney((row._sum.payableAmount / row._sum.receivableAmount) * 100)
+          : null,
+      }))
+      .sort(
+        (a, b) =>
+          // CNY precedes JPY; keep each currency's channels in name order.
+          a.currency.localeCompare(b.currency) ||
+          a.channel.name.localeCompare(b.channel.name, 'zh-CN') ||
+          a.channelId - b.channelId,
+      );
   }
 
   async funnel() {

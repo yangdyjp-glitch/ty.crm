@@ -46,6 +46,7 @@ type FinanceReport = {
 type ChannelReportRow = {
   channelId: number
   currency: string
+  commissionRate?: number | null
   channel?: { name: string } | null
   _count: number
   _sum?: {
@@ -234,6 +235,7 @@ export default function Reports() {
               <Card title="渠道统计" size="small" style={{ marginBottom: 16 }}>
                 <div style={{ color: '#64748b', fontSize: 12, marginBottom: 10 }}>
                   按订单签约时间统计，每笔订单仅计一次。单币种渠道显示一行，双币种渠道分行列示。
+                  分成比例 = 渠道分成 ÷ 合同总额（当前筛选范围的综合比例）。
                   公司净入账 = 已收金额 − 已付／已代扣分成 − 公司承担的已支付退款。
                 </div>
                 <Table<ChannelReportRow>
@@ -245,16 +247,17 @@ export default function Reports() {
                   loading={channelsSalesLoading}
                   dataSource={channels}
                   columns={[
-                    { title: '渠道', width: '20%', render: (_, r) => r.channel?.name || r.channelId },
+                    { title: '渠道', width: '18%', render: (_, r) => r.channel?.name || r.channelId },
                     { title: '币种', dataIndex: 'currency', width: '6%', render: (c: string) => CURRENCY_LABEL[c] },
                     { title: '订单数', dataIndex: '_count', width: '4%', align: 'right' },
-                    { title: '合同总额', width: '10%', align: 'right', render: (_, r) => fmtMoney(r._sum?.receivableAmount) },
-                    { title: '已收金额', width: '10%', align: 'right', render: (_, r) => fmtMoney(r._sum?.confirmedReceived) },
-                    { title: '未收金额', width: '10%', align: 'right', render: (_, r) => fmtMoney(r._sum?.orderUnpaidAmount) },
-                    { title: '渠道分成', width: '10%', align: 'right', render: (_, r) => fmtMoney(r._sum?.payableAmount) },
-                    { title: '分成已付／已扣', width: '10%', align: 'right', render: (_, r) => fmtMoney(r._sum?.paidAmount) },
-                    { title: '分成未付／未扣', width: '10%', align: 'right', render: (_, r) => fmtMoney(r._sum?.unpaidAmount) },
-                    { title: '公司净入账', width: '10%', align: 'right', render: (_, r) => fmtMoney(r._sum?.companyNetReceived) },
+                    { title: '合同总额', width: '9%', align: 'right', render: (_, r) => fmtMoney(r._sum?.receivableAmount) },
+                    { title: '已收金额', width: '9%', align: 'right', render: (_, r) => fmtMoney(r._sum?.confirmedReceived) },
+                    { title: '未收金额', width: '9%', align: 'right', render: (_, r) => fmtMoney(r._sum?.orderUnpaidAmount) },
+                    { title: '分成比例', dataIndex: 'commissionRate', width: '6%', align: 'right', render: (rate: number | null | undefined) => rate == null ? '—' : `${rate}%` },
+                    { title: '渠道分成', width: '9%', align: 'right', render: (_, r) => fmtMoney(r._sum?.payableAmount) },
+                    { title: '分成已扣', width: '9%', align: 'right', render: (_, r) => fmtMoney(r._sum?.paidAmount) },
+                    { title: '分成未扣', width: '9%', align: 'right', render: (_, r) => fmtMoney(r._sum?.unpaidAmount) },
+                    { title: '公司净入账', width: '12%', align: 'right', render: (_, r) => fmtMoney(r._sum?.companyNetReceived) },
                   ]}
                 />
               </Card>
