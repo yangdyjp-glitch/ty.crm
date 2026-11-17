@@ -79,6 +79,10 @@ export class ReportsService {
       problem,
       pendingReview,
       pendingPay,
+      channelLeads,
+      productLeads,
+      salesLeads,
+      trend,
     ] = await Promise.all([
       this.prisma.customer.count({ where: { deletedAt: null } }),
       this.prisma.customer.count({
@@ -100,13 +104,11 @@ export class ReportsService {
       this.prisma.payment.count({
         where: { deletedAt: null, confirmStatus: PaymentConfirmStatus.PENDING },
       }),
-    ]);
-    const [channelLeads, productLeads, salesLeads] = await Promise.all([
       this.channelLeadStats(),
       this.productLeadStats(),
       this.sales(),
+      this.leadTrendStats(),
     ]);
-    const trend = await this.leadTrendStats();
     return {
       role: 'ADMIN',
       counts: {
@@ -728,21 +730,23 @@ export class ReportsService {
       month?: string;
     } = {},
   ) {
-    const customers = await this.prisma.customer.findMany({
-      where: {
-        deletedAt: null,
-        ...this.createdAtRange(q),
-      },
-      select: { id: true, salesMembers: { where: { removedAt: null }, select: { userId: true } } },
-    });
-    const signedByOwner = await this.prisma.order.findMany({
-      where: {
-        deletedAt: null,
-        customer: { deletedAt: null },
-        ...this.signedAtRange(q),
-      },
-      select: { id: true, salesMembers: { select: { userId: true } } },
-    });
+    const [customers, signedByOwner] = await Promise.all([
+      this.prisma.customer.findMany({
+        where: {
+          deletedAt: null,
+          ...this.createdAtRange(q),
+        },
+        select: { id: true, salesMembers: { where: { removedAt: null }, select: { userId: true } } },
+      }),
+      this.prisma.order.findMany({
+        where: {
+          deletedAt: null,
+          customer: { deletedAt: null },
+          ...this.signedAtRange(q),
+        },
+        select: { id: true, salesMembers: { select: { userId: true } } },
+      }),
+    ]);
     const users = await this.prisma.user.findMany({
       where: {
         OR: [

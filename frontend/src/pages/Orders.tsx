@@ -222,9 +222,12 @@ export default function Orders() {
   const openCreate = async () => {
     form.resetFields()
     form.setFieldsValue({ currency: 'JPY', quantity: 1, signedAt: todayDate(), firstPaymentPaidAt: todayDate() })
-    const cs = await client.get<CustomerListResponse>('/customers', { params: { all: 1 }, noCache: true })
+    const [cs, productOptions] = await Promise.all([
+      client.get<CustomerListResponse>('/customers', { params: { all: 1 }, noCache: true }),
+      loadProducts().catch(() => []),
+    ])
     setCustomers(cs.data.items)
-    setProducts(await loadProducts().catch(() => []))
+    setProducts(productOptions)
     setOpen(true)
   }
 

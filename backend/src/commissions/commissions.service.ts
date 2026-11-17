@@ -19,6 +19,7 @@ import { LedgerService } from '../ledger/ledger.service';
 import { AuditService } from '../audit/audit.service';
 import { AuthUser } from '../auth/current-user.decorator';
 import { nextPairedNo } from '../common/util';
+import { readPage } from '../common/read-page';
 import { cashRebateStatus, commissionOutstanding, hasSettledCommission, settlementDisplayStatus } from '../common/commission-status';
 import {
   commissionQuote,
@@ -737,7 +738,7 @@ export class CommissionsService {
     const page = Math.max(1, parseInt(q.page || '1', 10));
     const pageSize = Math.min(100, Math.max(1, parseInt(q.pageSize || '20', 10)));
     const where: Prisma.OrderWhereInput = { deletedAt: null };
-    const [orders, total] = await this.prisma.$transaction([
+    const [orders, total] = await readPage(this.prisma, showAll,
       this.prisma.order.findMany({
         where,
         orderBy: { id: 'desc' },
@@ -758,8 +759,8 @@ export class CommissionsService {
           },
         },
       }),
-      this.prisma.order.count({ where }),
-    ]);
+      () => this.prisma.order.count({ where }),
+    );
 
     const items = orders.map((order) => {
       const commission =

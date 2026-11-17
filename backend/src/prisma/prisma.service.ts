@@ -1,5 +1,6 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
+import { databaseOptions } from './database-options';
 
 @Injectable()
 export class PrismaService
@@ -8,6 +9,10 @@ export class PrismaService
 {
   private readonly logger = new Logger(PrismaService.name);
   private keepAlive?: ReturnType<typeof setInterval>;
+
+  constructor() {
+    super(databaseOptions());
+  }
 
   onModuleInit() {
     // 关键：不要 await——连接慢/卡住会阻塞 Nest 启动，导致 HTTP 迟迟不监听、Railway 健康检查超时失败。

@@ -19,6 +19,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuthUser } from '../auth/current-user.decorator';
 import { customerScopeWhere } from '../common/scope';
 import { nextNo } from '../common/util';
+import { readPage } from '../common/read-page';
 import {
   AssignDto,
   CreateCustomerDto,
@@ -227,7 +228,7 @@ export class CustomersService {
     if (q.channelId) where.channelId = parseInt(q.channelId, 10);
     if (q.ownerUserId) where.salesMembers = { some: { userId: parseInt(q.ownerUserId, 10), removedAt: null } };
 
-    const [items, total] = await this.prisma.$transaction([
+    const [items, total] = await readPage(this.prisma, showAll,
       this.prisma.customer.findMany({
         where,
         orderBy: { id: 'desc' },
@@ -238,8 +239,8 @@ export class CustomersService {
           salesMembers: memberInclude,
         },
       }),
-      this.prisma.customer.count({ where }),
-    ]);
+      () => this.prisma.customer.count({ where }),
+    );
     const enriched = items.map((i) => ({
       ...i,
       salesOwners: i.salesMembers.map((member) => member.user),

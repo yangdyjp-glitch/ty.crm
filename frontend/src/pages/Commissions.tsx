@@ -125,12 +125,14 @@ function uniqueFilters<T>(rows: T[], getValue: (row: T) => unknown, getText: (ro
 }
 
 export default function Commissions() {
+  const [activeTab, setActiveTab] = useState('cash')
   const [data, setData] = useState<ListResponse<CommissionRow>>({ items: [], total: 0 })
   const [status, setStatus] = useState<string>()
   const [loading, setLoading] = useState(true)
   const [reloadKey, setReloadKey] = useState(0)
   const [cashData, setCashData] = useState<ListResponse<CashAccountRow>>({ items: [], total: 0 })
   const [cashLoading, setCashLoading] = useState(true)
+  const [cashReloadKey, setCashReloadKey] = useState(0)
   const settlementRequestId = useRef(0)
   const cashRequestId = useRef(0)
 
@@ -140,23 +142,13 @@ export default function Commissions() {
   }
 
   const loadCash = () => {
-    const requestId = ++cashRequestId.current
+    // Invalidate even when payment finishes after the user switches tabs.
     setCashLoading(true)
-    void requestCashAccounts()
-      .then((response) => {
-        if (requestId === cashRequestId.current) setCashData(response)
-      })
-      .catch((error: unknown) => {
-        if (requestId === cashRequestId.current) {
-          message.error(apiErrorMessage(error, '现金账目加载失败'))
-        }
-      })
-      .finally(() => {
-        if (requestId === cashRequestId.current) setCashLoading(false)
-      })
+    setCashReloadKey((key) => key + 1)
   }
 
   useEffect(() => {
+    if (activeTab !== 'settlement') return
     const controller = new AbortController()
     const requestId = ++settlementRequestId.current
     void requestCommissions(status, controller.signal)
@@ -176,9 +168,10 @@ export default function Commissions() {
         }
       })
     return () => controller.abort()
-  }, [reloadKey, status])
+  }, [activeTab, reloadKey, status])
 
   useEffect(() => {
+    if (activeTab !== 'cash') return
     const controller = new AbortController()
     const requestId = ++cashRequestId.current
     void requestCashAccounts(controller.signal)
@@ -198,7 +191,7 @@ export default function Commissions() {
         }
       })
     return () => controller.abort()
-  }, [])
+  }, [activeTab, cashReloadKey])
 
   const changeStatus = (nextStatus?: string) => {
     if (nextStatus === status) return
@@ -459,6 +452,12 @@ export default function Commissions() {
 
   return (
     <Tabs
+      activeKey={activeTab}
+      onChange={(key) => {
+        if (key === 'cash') setCashLoading(true)
+        else setLoading(true)
+        setActiveTab(key)
+      }}
       items={[
         { key: 'cash', label: '现金账目', children: cashTable },
         { key: 'settlement', label: '分成结算', children: settlementTable },

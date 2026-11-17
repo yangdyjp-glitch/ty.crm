@@ -271,9 +271,14 @@ export default function Customers() {
     setDistinctReason('')
     form.setFieldsValue({ sourceCategory: 'SELF', discoveredAt: todayDate(), salesUserIds: canJoin && user ? [user.id] : [] })
     setSourceCat('SELF')
-    setChannels(await loadChannelOptions().catch(() => []))
-    setAcq(await loadAcqChannels().catch(() => []))
-    setSales(canManageSales ? await loadUserOptions('SALES').catch(() => []) : user ? [{ id: user.id, name: user.name }] : [])
+    const [channelOptions, acquisitionOptions, salesOptions] = await Promise.all([
+      loadChannelOptions().catch(() => []),
+      loadAcqChannels().catch(() => []),
+      canManageSales ? loadUserOptions('SALES').catch(() => []) : Promise.resolve(user ? [{ id: user.id, name: user.name }] : []),
+    ])
+    setChannels(channelOptions)
+    setAcq(acquisitionOptions)
+    setSales(salesOptions)
     setModalOpen(true)
   }
 
@@ -354,8 +359,11 @@ export default function Customers() {
   }
 
   const openQuickEdit = async (customer: CustomerRow) => {
-    setChannels(await loadChannelOptions().catch(() => []))
-    setAcq(await loadAcqChannels().catch(() => []))
+    const [channelOptions, acquisitionOptions] = await Promise.all([
+      loadChannelOptions().catch(() => []), loadAcqChannels().catch(() => []),
+    ])
+    setChannels(channelOptions)
+    setAcq(acquisitionOptions)
     setEditSourceCat(customer.sourceCategory)
     editForm.setFieldsValue({
       name: customer.name,

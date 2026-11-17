@@ -281,3 +281,14 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
 ## 当前已知本地情况
 
 如果新电脑从 GitHub 克隆，直接以远端 `main` 为准即可。旧电脑曾经有未提交的 `.gitignore` 本地改动，不要假设它属于功能提交。
+
+## 查询与加载性能（2026-11-17）
+
+- Prisma 6.19.3 启用 `relationJoins`，关联列表用数据库 JOIN 一次读取，避免每个关系往返数据库。此功能仍为 Preview，升级 Prisma 后需对比实际返回结果。[官方说明](https://www.prisma.io/docs/orm/v6/prisma-client/queries/relation-queries)。本次没有修改表结构。
+- 客户、订单、现金账目 `all=1` 用返回记录数作为总数，不重复 COUNT 或开启只读批次事务；分页查询仍保留总数查询。写入事务、权限和财务校验保持原规则。
+- `database-options.ts` 在 URL 未显式配置时默认 `connection_limit=3`、`connect_timeout=15`；尊重已有 URL 参数。Supabase session pool 本次实测上限为 15，不要按开发机 CPU 数量自动创建大量连接；滚动部署和维护也需要连接余量。
+- 报表、分成/账目仅请求当前页签；切换时重新获取，付款后同步失效现金账目。客户与签约弹窗的独立选项并行加载；只读的客户查重 POST 不再清空全部 GET 缓存，真正写入仍清空。
+- API 使用压缩中间件压缩大于 1 KB 的可压缩响应，跨域预检缓存 600 秒；这不缓存业务响应或绕过身份校验。[压缩组件说明](https://expressjs.com/en/resources/middleware/compression/)。
+- 只读测量：先在 backend 执行 `npm.cmd run build`，再执行 `node --env-file=.env scripts/profile-reads.js`。脚本禁止业务写入，只输出耗时、查询数、字节数和内容摘要，不输出客户数据或凭据。
+- 本机直连线上数据库的单轮对比：客户 2008→580 ms（8→1 次查询），订单 1613→247 ms（8→1），收款 1201→227 ms（5→1），现金账目 1326→228 ms（9→1），分成 990→225 ms（4→1），渠道报表 1355→264 ms（6→1）。9 组结果摘要全部相同。这些是服务读取耗时，不是浏览器端响应保证，网络与冷连接会影响结果。
+- 回归验证：后端 80 项通过，1 项需专用 PostgreSQL 的集成测试跳过；前端缓存回归 3 项通过。真实业务写入测试不得指向生产数据库。

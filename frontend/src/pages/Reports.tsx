@@ -81,6 +81,7 @@ function reportParams(period: Period, year: Dayjs, month: Dayjs) {
 }
 
 export default function Reports() {
+  const [activeTab, setActiveTab] = useState('finance')
   const [finance, setFinance] = useState<FinanceReport | null>(null)
   const [financeLoading, setFinanceLoading] = useState(true)
   const [period, setPeriod] = useState<Period>('all')
@@ -91,6 +92,7 @@ export default function Reports() {
   const [channelsSalesLoading, setChannelsSalesLoading] = useState(true)
 
   useEffect(() => {
+    if (activeTab !== 'channels-sales') return
     let active = true
     const controller = new AbortController()
     const params = reportParams(period, year, month)
@@ -119,9 +121,10 @@ export default function Reports() {
       active = false
       controller.abort()
     }
-  }, [period, year, month])
+  }, [activeTab, period, year, month])
 
   useEffect(() => {
+    if (activeTab !== 'finance') return
     let active = true
     const controller = new AbortController()
     const params = reportParams(period, year, month)
@@ -148,7 +151,7 @@ export default function Reports() {
       active = false
       controller.abort()
     }
-  }, [period, year, month])
+  }, [activeTab, period, year, month])
 
   const periodFilter = (
     <Space style={{ marginBottom: 12 }} wrap>
@@ -173,6 +176,8 @@ export default function Reports() {
 
   return (
     <Tabs
+      activeKey={activeTab}
+      onChange={setActiveTab}
       items={[
         {
           key: 'finance',

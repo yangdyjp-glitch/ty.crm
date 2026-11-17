@@ -84,9 +84,12 @@ client.get = async function cachedGet<T = unknown, D = unknown>(
   return response;
 };
 
-// 写操作（POST/PUT/PATCH/DELETE）成功后清空缓存，保证数据不陈旧
+// 查重是只读 POST；输入姓名时不要反复清空渠道、销售等选项缓存。
+// 其他写操作成功后清空缓存，保证数据不陈旧。
 axiosClient.interceptors.response.use((res) => {
-  if ((res.config.method ?? 'get').toLowerCase() !== 'get') clearApiCache();
+  const method = (res.config.method ?? 'get').toLowerCase();
+  const readOnlyPost = method === 'post' && res.config.url === '/customers/check-duplicate';
+  if (method !== 'get' && !readOnlyPost) clearApiCache();
   return res;
 });
 

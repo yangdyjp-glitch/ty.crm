@@ -21,6 +21,7 @@ import { AuthUser } from '../auth/current-user.decorator';
 import { customerScopeWhere } from '../common/scope';
 import { nextPairedNo } from '../common/util';
 import { roundMoney } from '../common/finance';
+import { readPage } from '../common/read-page';
 import { hasSettledCommission } from '../common/commission-status';
 import { CreateOrderDto, UpdateOrderDto } from './dto/order.dto';
 
@@ -198,7 +199,7 @@ export class OrdersService {
     if (q.customerId) where.customerId = parseInt(q.customerId, 10);
     if (q.status) where.status = q.status;
 
-    const [items, total] = await this.prisma.$transaction([
+    const [items, total] = await readPage(this.prisma, showAll,
       this.prisma.order.findMany({
         where,
         orderBy: { id: 'desc' },
@@ -216,8 +217,8 @@ export class OrdersService {
           product: { select: { id: true, name: true } },
         },
       }),
-      this.prisma.order.count({ where }),
-    ]);
+      () => this.prisma.order.count({ where }),
+    );
     return {
       items: items.map((item) => ({
         ...item,
