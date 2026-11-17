@@ -108,7 +108,8 @@ function uniqueFilters<T>(rows: T[], getValue: (row: T) => unknown, getText: (ro
 }
 
 function arrivalMonthValue(r: PaymentRow) {
-  return r.confirmStatus === 'CONFIRMED' && r.confirmedAt ? dayjs(r.confirmedAt).format('YYYY-MM') : EMPTY_FILTER
+  if (r.confirmStatus !== 'CONFIRMED') return EMPTY_FILTER
+  return r.confirmedAt ? dayjs(r.confirmedAt).format('YYYY-MM') : '__CONFIRMED_WITHOUT_DATE__'
 }
 
 function monthFilters<T>(rows: T[], getValue: (row: T) => string) {
@@ -119,7 +120,7 @@ function monthFilters<T>(rows: T[], getValue: (row: T) => string) {
       if (b === EMPTY_FILTER) return -1
       return b.localeCompare(a)
     })
-    .map((value) => ({ value, text: value === EMPTY_FILTER ? '未到账' : value }))
+    .map((value) => ({ value, text: value === EMPTY_FILTER ? '未到账' : value === '__CONFIRMED_WITHOUT_DATE__' ? '已到账（日期未填）' : value }))
 }
 
 export default function Payments() {
@@ -266,7 +267,7 @@ export default function Payments() {
             width: COL.date,
             filters: arrivalMonthFilters,
             onFilter: (value, r) => arrivalMonthValue(r) === value,
-            render: (t: string, r: PaymentRow) => (r.confirmStatus === 'CONFIRMED' ? fmtDate(t) : '—'),
+            render: (t: string, r: PaymentRow) => (r.confirmStatus === 'CONFIRMED' ? (t ? fmtDate(t) : '日期未填') : '—'),
           },
           { title: '客户', width: COL.person, render: (_, r) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
           {

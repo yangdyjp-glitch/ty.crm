@@ -89,6 +89,7 @@ interface DeleteOrderErrorBody {
   message?: string | string[]
   blockingPayments?: string[]
   blockingRefunds?: string[]
+  blockingCommissions?: string[]
 }
 
 const EMPTY_FILTER = '__EMPTY__'
@@ -270,7 +271,7 @@ export default function Orders() {
       const detail = axios.isAxiosError<DeleteOrderErrorBody>(error)
         ? error.response?.data
         : undefined
-      if (detail?.blockingPayments?.length || detail?.blockingRefunds?.length) {
+      if (detail?.blockingPayments?.length || detail?.blockingRefunds?.length || detail?.blockingCommissions?.length) {
         Modal.error({
           title: '无法删除订单',
           content: (
@@ -278,6 +279,7 @@ export default function Orders() {
               <p>{apiErrorMessage(error, '该订单存在关联财务记录')}</p>
               {!!detail.blockingPayments?.length && <p>已到账收款：{detail.blockingPayments.join('、')}</p>}
               {!!detail.blockingRefunds?.length && <p>已退款：{detail.blockingRefunds.join('、')}</p>}
+              {!!detail.blockingCommissions?.length && <p>已结算分成：{detail.blockingCommissions.join('、')}</p>}
             </div>
           ),
         })
@@ -369,7 +371,7 @@ export default function Orders() {
           {isAdmin && (
             <DeleteBtn
               onConfirm={() => doDelete(order.id)}
-              title="确认删除该订单？未确认的收款及未执行的退款会一并删除；如存在已到账收款或已退款记录，系统将阻止删除。"
+              title="确认删除该订单？未确认的收款及未执行的退款会一并删除；如存在已到账、已退款或已结算分成记录，系统将阻止删除。"
             />
           )}
         </Space>

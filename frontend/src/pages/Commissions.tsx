@@ -28,9 +28,11 @@ interface CommissionRow {
   payableAmount: MoneyValue
   paidAmount: MoneyValue
   status: string
+  displayStatus?: string
   suspended?: boolean
   isPaymentInstallment?: boolean
   parentStatus?: string
+  parentPaidAmount?: MoneyValue
   installmentIndex?: number
 }
 
@@ -90,6 +92,7 @@ const REBATE_STATUS_COLOR: Record<string, string> = {
   已部分返佣: 'orange',
   已返佣: 'green',
   无返佣: 'green',
+  已取消: 'red',
 }
 const rebateStatusLabel = (status: string) =>
   status === '部分返佣' ? '已部分返佣' : status
@@ -99,6 +102,7 @@ const isSelfDeducted = (r: CommissionRow) =>
 const canConfirmPayment = (r: CommissionRow) =>
   r.fundSettlementMode === 'COMPANY_REBATE' &&
   CONFIRMABLE_STATUS.includes(r.status) &&
+  Number(r.payableAmount) > Number(r.paidAmount) &&
   !r.suspended
 
 function filterValue(v: unknown) {
@@ -331,7 +335,7 @@ export default function Commissions() {
             width: COL.status,
             render: (_, r) => (
               <Space>
-                <Tag color={COMMISSION_STATUS_COLOR[r.status]}>{COMMISSION_STATUS_LABEL[r.status]}</Tag>
+                <Tag color={COMMISSION_STATUS_COLOR[r.displayStatus ?? r.status]}>{COMMISSION_STATUS_LABEL[r.displayStatus ?? r.status]}</Tag>
                 {r.suspended && <Tag color="red">挂起</Tag>}
               </Space>
             ),
@@ -340,7 +344,10 @@ export default function Commissions() {
             title: '操作',
             width: COL.actionWide,
             render: (_, r) => {
-              if (isSelfDeducted(r)) return <Tag color="default">已自扣(报表)</Tag>
+              if (isSelfDeducted(r) || r.displayStatus === 'NO_COMMISSION') {
+                const displayStatus = r.displayStatus ?? r.status
+                return <Tag color={COMMISSION_STATUS_COLOR[displayStatus]}>{COMMISSION_STATUS_LABEL[displayStatus]}</Tag>
+              }
 
               if (r.isPaymentInstallment) {
                 const parentIsFinal = FINAL_STATUS.includes(r.parentStatus ?? '')
@@ -366,7 +373,7 @@ export default function Commissions() {
                         取消
                       </ActionBtn>
                     )}
-                    {showParentActions && <DeleteBtn onConfirm={() => doRemove(r.id)} />}
+                    {showParentActions && <DeleteBtn disabled={Number(r.parentPaidAmount) > 0} onConfirm={() => doRemove(r.id)}>{Number(r.parentPaidAmount) > 0 ? '不可删除' : '删除'}</DeleteBtn>}
                   </Space>
                 )
               }
@@ -390,7 +397,7 @@ export default function Commissions() {
                       取消
                     </ActionBtn>
                   )}
-                  <DeleteBtn onConfirm={() => doRemove(r.id)} />
+                  <DeleteBtn disabled={Number(r.paidAmount) > 0 || r.status === 'PAID'} onConfirm={() => doRemove(r.id)}>{Number(r.paidAmount) > 0 || r.status === 'PAID' ? '不可删除' : '删除'}</DeleteBtn>
                 </Space>
               )
             },

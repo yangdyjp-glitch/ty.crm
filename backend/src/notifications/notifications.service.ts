@@ -3,6 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import {
   CommissionStatus,
   CustomerMainStatus,
+  FundSettlementMode,
   OrderStatus,
   UserRole,
 } from '@prisma/client';
@@ -83,7 +84,8 @@ export class NotificationsService {
     }
 
     const pendingReview = await this.prisma.commission.count({
-      where: { deletedAt: null, status: CommissionStatus.PENDING_REVIEW },
+      where: { deletedAt: null, status: CommissionStatus.PENDING_REVIEW, suspended: false,
+        fundSettlementMode: FundSettlementMode.COMPANY_REBATE, payableAmount: { gt: 0 }, unpaidAmount: { gt: 0 }, order: { deletedAt: null } },
     });
     if (pendingReview > 0) {
       const admins = await this.prisma.user.findMany({

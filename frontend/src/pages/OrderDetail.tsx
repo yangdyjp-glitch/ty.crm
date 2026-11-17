@@ -276,7 +276,7 @@ export default function OrderDetail() {
           columns={[
             { title: '收款号', dataIndex: 'paymentNo', width: COL.no },
             { title: '登记时间', dataIndex: 'createdAt', width: COL.date, render: fmtDate },
-            { title: '到账时间', dataIndex: 'confirmedAt', width: COL.date, render: (t: string | null, r: PaymentRecord) => (r.confirmStatus === 'CONFIRMED' ? fmtDate(t) : '—') },
+            { title: '到账时间', dataIndex: 'confirmedAt', width: COL.date, render: (t: string | null, r: PaymentRecord) => (r.confirmStatus === 'CONFIRMED' ? (t ? fmtDate(t) : '日期未填') : '—') },
             { title: '金额', dataIndex: 'amount', width: COL.money, render: moneyIn, align: 'right' },
             { title: '状态', dataIndex: 'confirmStatus', width: COL.status, render: (s: string) => PAYMENT_CONFIRM_LABEL[s] },
             { title: '备注', dataIndex: 'remark', width: COL.note },
@@ -293,7 +293,7 @@ export default function OrderDetail() {
           columns={[
             { title: '退款号', dataIndex: 'refundNo', width: COL.no },
             { title: '登记时间', dataIndex: 'appliedAt', width: COL.date, render: (t: string | null, r: RefundRecord) => fmtDate(t ?? r.createdAt) },
-            { title: '到账时间', dataIndex: 'completedAt', width: COL.date, render: fmtDate },
+            { title: '退款完成时间', dataIndex: 'completedAt', width: COL.date, render: (t: string | null, r: RefundRecord) => r.status === 'REFUNDED' ? (t ? fmtDate(t) : '日期未填') : '—' },
             { title: '名义额', dataIndex: 'nominalAmount', width: COL.money, render: moneyOut, align: 'right' },
             { title: '状态', dataIndex: 'status', width: COL.status, render: (s: string) => REFUND_STATUS_LABEL[s] },
           ]}

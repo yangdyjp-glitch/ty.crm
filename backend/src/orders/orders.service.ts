@@ -21,6 +21,7 @@ import { AuthUser } from '../auth/current-user.decorator';
 import { customerScopeWhere } from '../common/scope';
 import { nextPairedNo } from '../common/util';
 import { roundMoney } from '../common/finance';
+import { hasSettledCommission } from '../common/commission-status';
 import { CreateOrderDto, UpdateOrderDto } from './dto/order.dto';
 
 @Injectable()
@@ -363,48 +364,66 @@ export class OrdersService {
     return this.get(user, id);
   }
 
-  /** 删除订单：级联软删除其收款/退款/分成；若存在已到账收款或已退款则拦截并提示先删款项 */
+  /** Only orders without executed financial history may be soft-deleted. */
   async remove(user: AuthUser, id: number) {
-    const order = await this.loadScoped(user, id);
-    const [confirmedPays, executedRefunds] = await Promise.all([
-      this.prisma.payment.findMany({
+    const customerId = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Order" WHERE id = ${id} FOR UPDATE`;
+      await tx.$queryRaw`SELECT id FROM "Payment" WHERE "orderId" = ${id} ORDER BY id FOR UPDATE`;
+      await tx.$queryRaw`SELECT id FROM "Commission" WHERE "orderId" = ${id} FOR UPDATE`;
+      const order = await tx.order.findFirst({
+        where: { id, deletedAt: null, customer: customerScopeWhere(user) }, include: { commission: true },
+      });
+      if (!order) throw new NotFoundException('订单不存在或无权访问');
+      const confirmedPays = await tx.payment.findMany({
         where: {
           orderId: id,
           deletedAt: null,
           confirmStatus: PaymentConfirmStatus.CONFIRMED,
         },
         select: { paymentNo: true },
-      }),
-      this.prisma.refund.findMany({
+      });
+      const executedRefunds = await tx.refund.findMany({
         where: { orderId: id, deletedAt: null, status: RefundStatus.REFUNDED },
         select: { refundNo: true },
-      }),
-    ]);
-    if (confirmedPays.length || executedRefunds.length) {
-      throw new BadRequestException({
-        message:
-          '该订单存在「已到账收款」或「已退款」记录，请先到收款 / 退款页删除这些记录，再删除订单。',
-        blockingPayments: confirmedPays.map((p) => p.paymentNo),
-        blockingRefunds: executedRefunds.map((r) => r.refundNo),
       });
-    }
-    const now = new Date();
-    await this.prisma.$transaction([
-      this.prisma.payment.updateMany({
+      const c = order.commission;
+      const blockingCommissions = c && hasSettledCommission(c, Number(order.paidAmount)) ? [c.commissionNo] : [];
+      const ledgerCount = await tx.channelLedger.count({ where: { OR: [
+        { relatedOrderId: id }, ...(c ? [{ relatedCommissionId: c.id }] : []),
+      ] } });
+      if (confirmedPays.length || executedRefunds.length || blockingCommissions.length || ledgerCount > 0
+        || Number(order.paidAmount) > 0 || Number(order.refundAmount) > 0) {
+        throw new BadRequestException({
+          message: '该订单存在已到账、已退款、已结算分成或往来记录，不能删除；如需更正，请先核对历史调整预览。',
+          blockingPayments: confirmedPays.map((p) => p.paymentNo),
+          blockingRefunds: executedRefunds.map((r) => r.refundNo), blockingCommissions,
+        });
+      }
+      const now = new Date();
+      await tx.payment.updateMany({
         where: { orderId: id, deletedAt: null },
         data: { deletedAt: now },
-      }),
-      this.prisma.refund.updateMany({
+      });
+      await tx.refund.updateMany({
         where: { orderId: id, deletedAt: null },
         data: { deletedAt: now },
-      }),
-      this.prisma.commission.updateMany({
+      });
+      await tx.commission.updateMany({
         where: { orderId: id, deletedAt: null },
         data: { deletedAt: now },
-      }),
-      this.prisma.order.update({ where: { id }, data: { deletedAt: now } }),
-    ]);
-    await this.customers.recomputeMainStatus(order.customerId);
+      });
+      await tx.order.update({ where: { id }, data: { deletedAt: now } });
+      await tx.auditLog.create({ data: {
+        operatorId: user.id, relatedType: 'Order', relatedId: id, action: 'DELETE_UNSETTLED_ORDER',
+        oldValue: JSON.stringify({ orderNo: order.orderNo, deletedAt: order.deletedAt }),
+        newValue: JSON.stringify({ deletedAt: now }),
+      } });
+      return order.customerId;
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000 }).catch((error) => {
+      if (error?.code === 'P2034') throw new ConflictException('订单或结算记录正在更新，请刷新后重试');
+      throw error;
+    });
+    await this.customers.recomputeMainStatus(customerId);
     return { ok: true };
   }
 }

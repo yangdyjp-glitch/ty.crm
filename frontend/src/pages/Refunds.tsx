@@ -65,7 +65,8 @@ type RefundForm = {
 const EMPTY_FILTER = '__EMPTY__'
 
 function arrivalMonthValue(r: RefundRow) {
-  return r.completedAt ? dayjs(r.completedAt).format('YYYY-MM') : EMPTY_FILTER
+  if (r.status !== 'REFUNDED') return EMPTY_FILTER
+  return r.completedAt ? dayjs(r.completedAt).format('YYYY-MM') : '__REFUNDED_WITHOUT_DATE__'
 }
 
 function monthFilters(rows: RefundRow[]) {
@@ -76,7 +77,7 @@ function monthFilters(rows: RefundRow[]) {
       if (b === EMPTY_FILTER) return -1
       return b.localeCompare(a)
     })
-    .map((value) => ({ value, text: value === EMPTY_FILTER ? '未到账' : value }))
+    .map((value) => ({ value, text: value === EMPTY_FILTER ? '未完成退款' : value === '__REFUNDED_WITHOUT_DATE__' ? '已退款（日期未填）' : value }))
 }
 
 const fetchRefunds = (signal?: AbortSignal) => client.get<RefundRow[]>('/refunds', { signal })
@@ -171,12 +172,12 @@ export default function Refunds() {
           { title: '退款号', dataIndex: 'refundNo', width: COL.no },
           { title: '登记时间', dataIndex: 'appliedAt', width: COL.date, render: (t: string | null, r) => fmtDate(t ?? r.createdAt) },
           {
-            title: '到账时间',
+            title: '退款完成时间',
             dataIndex: 'completedAt',
             width: COL.date,
             filters: arrivalMonthFilters,
             onFilter: (value, r) => arrivalMonthValue(r) === String(value),
-            render: fmtDate,
+            render: (t: string | null, r: RefundRow) => r.status === 'REFUNDED' ? (t ? fmtDate(t) : '日期未填') : '—',
           },
           { title: '客户', width: COL.person, render: (_, r) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
           { title: '名义额', dataIndex: 'nominalAmount', width: COL.money, render: moneyOut, align: 'right' },

@@ -104,6 +104,12 @@ export const REFUND_BEARER_LABEL: Record<string, string> = {
 };
 
 export const COMMISSION_STATUS_LABEL: Record<string, string> = {
+  NOT_RECEIVED: '未到账',
+  NO_COMMISSION: '无返佣',
+  NOT_DEDUCTED: '未自扣',
+  PARTIALLY_DEDUCTED: '部分自扣',
+  PARTIALLY_PAID: '已部分返佣',
+  UNPAID: '未返佣',
   SELF_DEDUCTED: '已自扣(报表)',
   NOT_DUE: '未到结算',
   PENDING_REVIEW: '待审核',
@@ -113,6 +119,12 @@ export const COMMISSION_STATUS_LABEL: Record<string, string> = {
 };
 
 export const COMMISSION_STATUS_COLOR: Record<string, string> = {
+  NOT_RECEIVED: 'default',
+  NO_COMMISSION: 'green',
+  NOT_DEDUCTED: 'red',
+  PARTIALLY_DEDUCTED: 'gold',
+  PARTIALLY_PAID: 'orange',
+  UNPAID: 'red',
   SELF_DEDUCTED: 'default',
   NOT_DUE: 'default',
   PENDING_REVIEW: 'orange',

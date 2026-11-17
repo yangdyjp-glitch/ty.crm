@@ -19,6 +19,7 @@ import { LedgerService } from '../ledger/ledger.service';
 import { AuditService } from '../audit/audit.service';
 import { AuthUser } from '../auth/current-user.decorator';
 import { nextPairedNo } from '../common/util';
+import { cashRebateStatus, commissionOutstanding, hasSettledCommission, settlementDisplayStatus } from '../common/commission-status';
 import {
   commissionQuote,
   companyCashRefunds,
@@ -638,7 +639,7 @@ export class CommissionsService {
 
   async list(q: {
     channelId?: string;
-    status?: CommissionStatus;
+    status?: string;
     all?: string;
     page?: string;
     pageSize?: string;
@@ -646,7 +647,7 @@ export class CommissionsService {
     const showAll = q.all === '1' || q.all === 'true';
     const page = Math.max(1, parseInt(q.page || '1', 10));
     const pageSize = Math.min(100, Math.max(1, parseInt(q.pageSize || '20', 10)));
-    const where: Prisma.CommissionWhereInput = { deletedAt: null };
+    const where: Prisma.CommissionWhereInput = { deletedAt: null, order: { deletedAt: null } };
     if (q.channelId) where.channelId = parseInt(q.channelId, 10);
     const items = await this.prisma.commission.findMany({
       where,
@@ -686,6 +687,7 @@ export class CommissionsService {
           ...item,
           recordKey: `commission-${item.id}-payment-${installment.payment.id}`,
           parentStatus: state.status,
+          parentPaidAmount: Number(item.paidAmount),
           isPaymentInstallment: true,
           installmentIndex,
           paymentId: installment.payment.id,
@@ -695,7 +697,7 @@ export class CommissionsService {
           paymentConfirmStatus: installment.payment.confirmStatus,
           payableAmount: installment.payableAmount,
           paidAmount: installment.paidAmount,
-          unpaidAmount: installment.unpaidAmount,
+          unpaidAmount: commissionOutstanding({ ...installment, status: installment.status }),
           status: installment.status,
         }));
       }
@@ -708,15 +710,17 @@ export class CommissionsService {
           ...item,
           recordKey: `commission-${item.id}`,
           paidAmount,
-          unpaidAmount: roundMoney(
-            Math.max(0, Number(item.payableAmount) - paidAmount),
-          ),
+          unpaidAmount: commissionOutstanding({ ...item, paidAmount }),
         },
       ];
     });
+    const displayItems = expandedItems.map((item) => ({
+      ...item,
+      displayStatus: settlementDisplayStatus(item, Number(item.order.paidAmount)),
+    }));
     const filteredItems = q.status
-      ? expandedItems.filter((item) => item.status === q.status)
-      : expandedItems;
+      ? displayItems.filter((item) => item.displayStatus === q.status)
+      : displayItems;
     const pagedItems = showAll
       ? filteredItems
       : filteredItems.slice((page - 1) * pageSize, page * pageSize);
@@ -761,7 +765,6 @@ export class CommissionsService {
       const commission =
         order.commission && !order.commission.deletedAt ? order.commission : null;
       const contractAmount = Number(order.receivableAmount);
-      const payableAmount = Number(commission?.payableAmount ?? 0);
       const confirmedReceived = Number(order.paidAmount);
       const cashRefund = companyCashRefunds(order.refunds);
       const fundSettlementMode =
@@ -773,35 +776,7 @@ export class CommissionsService {
         fundSettlementMode,
         commission,
       });
-      let rebateStatus = '未到账';
-
-      if (confirmedReceived > 0) {
-        if (!commission || (payableAmount <= 0 && cash.channelSettled <= 0)) {
-          rebateStatus = '无返佣';
-        } else if (fundSettlementMode === FundSettlementMode.AGENT_NET) {
-          const deducted = cash.channelSettled;
-          rebateStatus =
-            deducted <= 0
-              ? '未自扣'
-              : deducted >= payableAmount
-                ? '已自扣'
-                : '部分自扣';
-        } else {
-          const paidCommissionAmount = roundMoney(
-            Math.max(0, Number(commission.paidAmount)),
-          );
-          const unpaidCommissionAmount = roundMoney(
-            Math.max(0, payableAmount - paidCommissionAmount),
-          );
-          if (paidCommissionAmount > 0 && unpaidCommissionAmount > 0) {
-            rebateStatus = '已部分返佣';
-          } else if (paidCommissionAmount > 0) {
-            rebateStatus = '已返佣';
-          } else {
-            rebateStatus = '未返佣';
-          }
-        }
-      }
+      const rebateStatus = cashRebateStatus(commission, confirmedReceived, cash.channelSettled);
 
       return {
         orderId: order.id,
@@ -847,6 +822,7 @@ export class CommissionsService {
       if (c.status !== CommissionStatus.PENDING_REVIEW) {
         throw new BadRequestException('仅待审核分成可审核');
       }
+      if (commissionOutstanding(c) <= 0) throw new BadRequestException('该分成没有待支付金额，无需审核');
       const claimed = await tx.commission.updateMany({
         where: {
           id,
@@ -1312,11 +1288,26 @@ export class CommissionsService {
     });
   }
 
-  async remove(id: number) {
-    await this.load(id);
-    return this.prisma.commission.update({
-      where: { id },
-      data: { deletedAt: new Date() },
+  async remove(id: number, user?: AuthUser) {
+    return this.serializableTransaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Commission" WHERE id = ${id} FOR UPDATE`;
+      const c = await tx.commission.findFirst({ where: { id, deletedAt: null }, include: {
+        order: { select: { paidAmount: true, payments: {
+          where: { deletedAt: null, confirmStatus: PaymentConfirmStatus.CONFIRMED }, select: { amount: true },
+        } } },
+      } });
+      if (!c) throw new NotFoundException('分成记录不存在');
+      const received = Math.max(Number(c.order.paidAmount), c.order.payments.reduce((sum, p) => sum + Number(p.amount), 0));
+      const ledgerCount = await tx.channelLedger.count({ where: { OR: [{ relatedCommissionId: id }, { relatedOrderId: c.orderId }] } });
+      if (hasSettledCommission(c, received) || ledgerCount > 0) {
+        throw new BadRequestException('该分成已有支付、代扣或往来记录，不能删除；如需更正，请先核对历史调整预览');
+      }
+      const updated = await tx.commission.update({ where: { id }, data: { deletedAt: new Date() } });
+      await tx.auditLog.create({ data: {
+        operatorId: user?.id, relatedType: 'Commission', relatedId: id, action: 'DELETE_UNSETTLED_COMMISSION',
+        oldValue: JSON.stringify(c), newValue: JSON.stringify(updated),
+      } });
+      return updated;
     });
   }
 

@@ -10,6 +10,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthUser } from '../auth/current-user.decorator';
+import { commissionOutstanding } from '../common/commission-status';
 import {
   companyCashRefunds,
   orderCashPosition,
@@ -93,7 +94,8 @@ export class ReportsService {
         where: { deletedAt: null, hasProblem: true },
       }),
       this.prisma.commission.count({
-        where: { deletedAt: null, status: CommissionStatus.PENDING_REVIEW },
+        where: { deletedAt: null, status: CommissionStatus.PENDING_REVIEW, suspended: false,
+          fundSettlementMode: FundSettlementMode.COMPANY_REBATE, payableAmount: { gt: 0 }, unpaidAmount: { gt: 0 }, order: { deletedAt: null } },
       }),
       this.prisma.payment.count({
         where: { deletedAt: null, confirmStatus: PaymentConfirmStatus.PENDING },
@@ -539,12 +541,9 @@ export class ReportsService {
       if (commission) {
         if (
           fundSettlementMode === FundSettlementMode.COMPANY_REBATE &&
-          commission.status !== CommissionStatus.PAID &&
           commission.status !== CommissionStatus.CANCELLED
         ) {
-          pendingRebate = roundMoney(
-            Math.max(0, channelPayable - Number(commission.paidAmount || 0)),
-          );
+          pendingRebate = commissionOutstanding(commission);
         }
       }
 
@@ -690,7 +689,9 @@ export class ReportsService {
       row._sum.orderUnpaidAmount = roundMoney(row._sum.orderUnpaidAmount + Number(order.unpaidAmount));
       row._sum.payableAmount = roundMoney(row._sum.payableAmount + payable);
       row._sum.paidAmount = roundMoney(row._sum.paidAmount + cash.channelSettled);
-      row._sum.unpaidAmount = roundMoney(row._sum.unpaidAmount + Math.max(0, payable - cash.channelSettled));
+      row._sum.unpaidAmount = roundMoney(row._sum.unpaidAmount + commissionOutstanding({
+        payableAmount: payable, paidAmount: cash.channelSettled, status: commission?.status,
+      }));
       row._sum.companyNetReceived = roundMoney(row._sum.companyNetReceived + cash.balance);
       grouped.set(key, row);
     }

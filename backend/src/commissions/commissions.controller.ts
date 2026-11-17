@@ -8,7 +8,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { CommissionStatus, UserRole } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 import { CommissionsService } from './commissions.service';
 import { Roles } from '../auth/roles.decorator';
 import { CurrentUser, AuthUser } from '../auth/current-user.decorator';
@@ -23,7 +23,7 @@ export class CommissionsController {
     @Query()
     q: {
       channelId?: string;
-      status?: CommissionStatus;
+      status?: string;
       all?: string;
       page?: string;
       pageSize?: string;
@@ -111,7 +111,7 @@ export class CommissionsController {
   }
 
   @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.commissions.remove(id);
+  remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthUser) {
+    return this.commissions.remove(id, user);
   }
 }
