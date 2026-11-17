@@ -30,6 +30,7 @@ import {
 } from './dto/customer.dto';
 import * as ExcelJS from 'exceljs';
 import { CustomerIdentity, normalizeCustomerName, sameCustomerCandidate } from '../common/customer-identity';
+import { syncCustomerChannel } from '../common/customer-channel-sync';
 
 const memberInclude = {
   where: { removedAt: null },
@@ -317,8 +318,17 @@ export class CustomersService {
           acquisitionChannelId: dto.acquisitionChannelId !== undefined ? dto.acquisitionChannelId : current.acquisitionChannelId,
         }));
       }
+      if (data.channelId !== undefined && data.channelId !== current.channelId) {
+        await syncCustomerChannel(tx, {
+          id, customerNo: current.customerNo, channelId: data.channelId as number | null,
+        }, user.id);
+      }
       return this.saveWithAudit(tx, user, current, data);
-    });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000 })
+      .catch((error) => {
+        if (error?.code === 'P2034') throw new ConflictException('客户或结算记录正在更新，请刷新后重试');
+        throw error;
+      });
   }
 
   private async loadForWrite(tx: Prisma.TransactionClient, user: AuthUser, id: number, version: string) {

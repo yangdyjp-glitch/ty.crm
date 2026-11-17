@@ -278,7 +278,25 @@ export class CommissionsService {
     return { ...breakdown, installments, status, dueInstallment };
   }
 
-  private async syncEachPaymentCommissionById(id: number) {
+  private async updateCalculatedCommission(
+    snapshot: { id: number; updatedAt: Date },
+    data: Prisma.CommissionUpdateInput,
+    attempt: number,
+    retry: () => Promise<unknown>,
+  ) {
+    try {
+      return await this.prisma.commission.update({
+        where: { id: snapshot.id, updatedAt: snapshot.updatedAt, deletedAt: null }, data,
+      });
+    } catch (error) {
+      if ((error as { code?: string })?.code !== 'P2025') throw error;
+      if (attempt >= 2) throw new BadRequestException('分成正在更新，请刷新后重试');
+      // A customer-channel change or payment won the race. Re-read its rules and amounts.
+      return retry();
+    }
+  }
+
+  private async syncEachPaymentCommissionById(id: number, attempt = 0): Promise<unknown> {
     const c = await this.prisma.commission.findFirst({
       where: { id, deletedAt: null },
       include: {
@@ -306,9 +324,7 @@ export class CommissionsService {
     const calcBaseAmount = roundMoney(
       c.order.payments.reduce((sum, payment) => sum + Number(payment.amount), 0),
     );
-    return this.prisma.commission.update({
-      where: { id: c.id },
-      data: {
+    return this.updateCalculatedCommission(c, {
         calcBaseType: '每笔实收',
         calcBaseAmount,
         payableAmount: state.totalPayable,
@@ -321,8 +337,7 @@ export class CommissionsService {
           state.status === CommissionStatus.PAID
             ? (c.actualSettlementAt ?? new Date())
             : null,
-      },
-    });
+      }, attempt, () => this.syncEachPaymentCommissionById(id, attempt + 1));
   }
 
   async onPaymentPlanChanged(orderId: number) {
@@ -332,12 +347,12 @@ export class CommissionsService {
   }
 
   /** 收款确认后：重算实收基数；满足“缴清后”条件则进入待审核 */
-  async onPaymentConfirmed(orderId: number) {
+  async onPaymentConfirmed(orderId: number, attempt = 0): Promise<unknown> {
     const c = await this.prisma.commission.findUnique({
       where: { orderId },
       include: { order: true },
     });
-    if (!c) return;
+    if (!c || c.deletedAt) return;
     if (c.settlementCondition === SettlementCondition.ON_EACH_PAYMENT) {
       await this.syncEachPaymentCommissionById(c.id);
       return;
@@ -364,17 +379,13 @@ export class CommissionsService {
         { payableAmount: payable },
         c.order,
       );
-      await this.prisma.commission.update({
-        where: { id: c.id },
-        data: {
+      return this.updateCalculatedCommission(c, {
           calcBaseType: quote.calcBaseType,
           calcBaseAmount: quote.calcBaseAmount,
           payableAmount: payable,
           paidAmount,
           unpaidAmount: roundMoney(Math.max(0, payable - paidAmount)),
-        },
-      });
-      return;
+        }, attempt, () => this.onPaymentConfirmed(orderId, attempt + 1));
     }
     if (
       (
@@ -393,9 +404,7 @@ export class CommissionsService {
       status = CommissionStatus.PENDING_REVIEW;
       expected = new Date();
     }
-    await this.prisma.commission.update({
-      where: { id: c.id },
-      data: {
+    return this.updateCalculatedCommission(c, {
         calcBaseType: quote.calcBaseType,
         calcBaseAmount: quote.calcBaseAmount,
         payableAmount: payable,
@@ -404,17 +413,16 @@ export class CommissionsService {
         ),
         status,
         expectedSettlementAt: expected,
-      },
-    });
+      }, attempt, () => this.onPaymentConfirmed(orderId, attempt + 1));
   }
 
   /** 服务完成后：满足“服务完成后”条件则进入待审核并定稿应付 */
-  async onServiceCompleted(orderId: number) {
+  async onServiceCompleted(orderId: number, attempt = 0): Promise<unknown> {
     await this.onPaymentConfirmed(orderId);
     const c = await this.prisma.commission.findUnique({
       where: { orderId },
     });
-    if (!c || c.fundSettlementMode === FundSettlementMode.AGENT_NET) return;
+    if (!c || c.deletedAt || c.fundSettlementMode === FundSettlementMode.AGENT_NET) return;
     if (
       (
         [CommissionStatus.PAID, CommissionStatus.CANCELLED] as CommissionStatus[]
@@ -425,13 +433,10 @@ export class CommissionsService {
       c.settlementCondition === SettlementCondition.ON_SERVICE_COMPLETE &&
       c.status === CommissionStatus.NOT_DUE
     ) {
-      await this.prisma.commission.update({
-        where: { id: c.id },
-        data: {
+      return this.updateCalculatedCommission(c, {
           status: CommissionStatus.PENDING_REVIEW,
           expectedSettlementAt: new Date(),
-        },
-      });
+        }, attempt, () => this.onServiceCompleted(orderId, attempt + 1));
     }
   }
 
