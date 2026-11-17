@@ -38,6 +38,7 @@ test('shared sales end-to-end with real PostgreSQL', { skip: !url }, async (t) =
     defaultCommissionRate: 20, fundSettlementMode: 'AGENT_NET', settlementCondition: 'ON_SIGN',
   } }));
   const acquisition = await db.acquisitionChannel.create({ data: { name: '测试自获取' } });
+  const personalAcquisition = await db.acquisitionChannel.create({ data: { name: '个人渠道' } });
   const product = await db.product.create({ data: { name: '测试项目', standardPrice: 10000, currency: 'CNY' } });
   const customers = new CustomersService(db);
   const commissions = new CommissionsService(db, new LedgerService(db), new AuditService(db));
@@ -88,11 +89,16 @@ test('shared sales end-to-end with real PostgreSQL', { skip: !url }, async (t) =
     assert.equal(result.find((r) => r.status === 'rejected').reason.getStatus(), 409);
     assert.equal(await db.customer.count({ where: { name: '并发录入测试' } }), 1);
   });
-  await t.test('self-acquired identity, missing-channel warning and supervisor default membership', async () => {
+  await t.test('self-acquired identity uses the personal default and preserves manually chosen channels', async () => {
     const own = await customers.create(supervisor, { name: '自主测试', sourceCategory: 'SELF', acquisitionChannelId: acquisition.id });
     assert.equal((await customers.get(supervisor, own.id)).salesOwners[0].id, supervisor.id);
+    assert.equal(own.acquisitionChannelId, acquisition.id);
+    assert.deepEqual(await customers.findDuplicates(b, { name: '自主测试', sourceCategory: 'SELF' }), []);
+    const personal = await customers.create(supervisor, { name: '自主测试', sourceCategory: 'SELF' });
+    assert.equal(personal.acquisitionChannelId, personalAcquisition.id);
     const hint = await customers.findDuplicates(b, { name: '自主测试', sourceCategory: 'SELF' });
-    assert.equal(hint[0].matchReason, '同名，渠道信息不完整');
+    assert.equal(hint[0].customerNo, personal.customerNo);
+    assert.equal(hint[0].matchReason, '同名同渠道');
   });
   await t.test('joining is scoped to the chosen identity, idempotent, audited and notifies existing owners', async () => {
     await assert.rejects(customers.joinSales(c, shared.id, { ...identity, channelId: channels[1].id }), rejectsStatus(409));

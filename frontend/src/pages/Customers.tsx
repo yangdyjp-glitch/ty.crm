@@ -24,6 +24,7 @@ import { apiErrorMessage } from '../api/errors'
 import { useAuth } from '../auth/AuthContext'
 import {
   loadAcqChannels,
+  defaultAcquisitionChannelId,
   loadChannelOptions,
   loadUserOptions,
 } from '../api/options'
@@ -279,6 +280,7 @@ export default function Customers() {
     setChannels(channelOptions)
     setAcq(acquisitionOptions)
     setSales(salesOptions)
+    form.setFieldValue('acquisitionChannelId', defaultAcquisitionChannelId(acquisitionOptions))
     setModalOpen(true)
   }
 
@@ -371,7 +373,8 @@ export default function Customers() {
       mainStatus: customer.mainStatus,
       sourceCategory: customer.sourceCategory,
       channelId: customer.channel?.id,
-      acquisitionChannelId: customer.acquisitionChannel?.id,
+      acquisitionChannelId: customer.acquisitionChannel?.id
+        ?? (customer.sourceCategory === 'SELF' ? defaultAcquisitionChannelId(acquisitionOptions) : undefined),
       discoveredAt: fmtDate(customer.discoveredAt ?? customer.createdAt),
     })
     setEditCust(customer)
@@ -594,11 +597,11 @@ export default function Customers() {
             <Form.Item name="email" label="邮箱"><Input /></Form.Item>
           </Space>
           <Form.Item name="sourceCategory" label="来源" rules={[{ required: true }]}>
-            <Select onChange={(value: SourceCategory) => { setSourceCat(value); form.setFieldValue('channelId', undefined); form.setFieldValue('acquisitionChannelId', undefined) }} options={Object.entries(SOURCE_LABEL).map(([k, v]) => ({ value: k, label: v }))} />
+            <Select onChange={(value: SourceCategory) => { setSourceCat(value); form.setFieldValue('channelId', undefined); form.setFieldValue('acquisitionChannelId', value === 'SELF' ? defaultAcquisitionChannelId(acq) : undefined) }} options={Object.entries(SOURCE_LABEL).map(([k, v]) => ({ value: k, label: v }))} />
           </Form.Item>
           {sourceCat === 'SELF' ? (
-            <Form.Item name="acquisitionChannelId" label="获取渠道">
-              <Select allowClear options={acq.map((a) => ({ value: a.id, label: a.name }))} />
+            <Form.Item name="acquisitionChannelId" label="获取渠道" rules={[{ required: true, message: '请选择获取渠道' }]}>
+              <Select options={acq.map((a) => ({ value: a.id, label: a.name }))} />
             </Form.Item>
           ) : (
             <Form.Item name="channelId" label="第三方渠道" rules={[{ required: true }]}>
@@ -672,11 +675,11 @@ export default function Customers() {
             <Input type="date" />
           </Form.Item>
           <Form.Item name="sourceCategory" label="来源" rules={[{ required: true }]}>
-            <Select onChange={(value: SourceCategory) => { setEditSourceCat(value); editForm.setFieldValue('channelId', undefined); editForm.setFieldValue('acquisitionChannelId', undefined) }} options={Object.entries(SOURCE_LABEL).map(([k, v]) => ({ value: k, label: v }))} />
+            <Select onChange={(value: SourceCategory) => { setEditSourceCat(value); editForm.setFieldValue('channelId', undefined); editForm.setFieldValue('acquisitionChannelId', value === 'SELF' ? defaultAcquisitionChannelId(acq) : undefined) }} options={Object.entries(SOURCE_LABEL).map(([k, v]) => ({ value: k, label: v }))} />
           </Form.Item>
           {editSourceCat === 'SELF' ? (
-            <Form.Item name="acquisitionChannelId" label="获取渠道">
-              <Select allowClear options={acq.map((a) => ({ value: a.id, label: a.name }))} />
+            <Form.Item name="acquisitionChannelId" label="获取渠道" rules={[{ required: true, message: '请选择获取渠道' }]}>
+              <Select options={acq.map((a) => ({ value: a.id, label: a.name }))} />
             </Form.Item>
           ) : (
             <Form.Item name="channelId" label="第三方渠道" rules={[{ required: true }]}>

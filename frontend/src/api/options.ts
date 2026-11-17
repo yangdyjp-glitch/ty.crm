@@ -27,6 +27,10 @@ export interface AcquisitionChannelOption {
   active: boolean
 }
 
+export function defaultAcquisitionChannelId(channels: { id: number; name: string }[]): number | undefined {
+  return channels.find((channel) => channel.name === '个人渠道')?.id
+}
+
 export interface UserOption {
   id: number
   name: string

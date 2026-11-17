@@ -55,9 +55,10 @@ export interface CustomerListQuery {
 export class CustomersService {
   constructor(private prisma: PrismaService) {}
 
-  async findDuplicates(user: AuthUser, input: CustomerIdentityDto, tx: Prisma.TransactionClient = this.prisma) {
+  async findDuplicates(user: AuthUser, input: CustomerIdentity, tx: Prisma.TransactionClient = this.prisma) {
     const normalizedName = normalizeCustomerName(input.name);
     if (!normalizedName) return [];
+    const identity = await this.withDefaultAcquisition(tx, input);
     const matches = await tx.customer.findMany({
       where: { deletedAt: null, normalizedName },
       orderBy: { id: 'asc' },
@@ -69,7 +70,7 @@ export class CustomersService {
         salesMembers: memberInclude,
       },
     });
-    return matches.filter((customer) => sameCustomerCandidate(input, customer)).map((customer) => ({
+    return matches.filter((customer) => sameCustomerCandidate(identity, customer)).map((customer) => ({
       id: customer.id,
       customerNo: customer.customerNo,
       name: customer.name,
@@ -79,7 +80,7 @@ export class CustomersService {
       canOpen: user.role === UserRole.ADMIN
         || customer.enteredById === user.id && user.role !== UserRole.SALES
         || customer.salesMembers.some((member) => member.userId === user.id),
-      matchReason: (input.sourceCategory === SourceCategory.SELF ? input.acquisitionChannelId : input.channelId)
+      matchReason: (identity.sourceCategory === SourceCategory.SELF ? identity.acquisitionChannelId : identity.channelId)
         && (customer.sourceCategory === SourceCategory.SELF ? customer.acquisitionChannelId : customer.channelId)
         ? '同名同渠道' : '同名，渠道信息不完整',
     }));
@@ -100,7 +101,18 @@ export class CustomersService {
     return unique;
   }
 
+  private async withDefaultAcquisition(tx: Prisma.TransactionClient, input: CustomerIdentity): Promise<CustomerIdentity> {
+    if (input.sourceCategory !== SourceCategory.SELF || input.acquisitionChannelId != null) return input;
+    const channel = await tx.acquisitionChannel.findFirst({
+      where: { name: '个人渠道', active: true, deletedAt: null },
+      select: { id: true },
+    });
+    if (!channel) throw new BadRequestException('请启用“个人渠道”，或手动选择其他获取渠道');
+    return { ...input, acquisitionChannelId: channel.id };
+  }
+
   private async sourceData(tx: Prisma.TransactionClient, input: CustomerIdentity) {
+    input = await this.withDefaultAcquisition(tx, input);
     if (input.sourceCategory === SourceCategory.SELF) {
       if (input.acquisitionChannelId) {
         const channel = await tx.acquisitionChannel.findFirst({ where: { id: input.acquisitionChannelId, deletedAt: null } });
@@ -124,7 +136,7 @@ export class CustomersService {
     return this.prisma.$transaction(async (tx) => {
       await this.lockWrites(tx);
       const source = await this.sourceData(tx, dto);
-      const dups = await this.findDuplicates(user, dto, tx);
+      const dups = await this.findDuplicates(user, { ...dto, ...source }, tx);
       if (dups.length && !dto.distinctReason?.trim()) {
         throw new ConflictException({ code: 'DUPLICATE_CUSTOMER', message: '该客户可能已存在', duplicates: dups });
       }
@@ -176,7 +188,8 @@ export class CustomersService {
       await this.lockWrites(tx);
       await tx.$queryRaw`SELECT id FROM "Customer" WHERE id = ${id} FOR UPDATE`;
       const customer = await tx.customer.findFirst({ where: { id, deletedAt: null }, include: { salesMembers: memberInclude } });
-      if (!customer || !sameCustomerCandidate(input, customer)) {
+      const identity = await this.withDefaultAcquisition(tx, input);
+      if (!customer || !sameCustomerCandidate(identity, customer)) {
         throw new ConflictException('客户姓名或渠道已变化，请重新查重');
       }
       await this.validateSales(tx, [user.id]);
