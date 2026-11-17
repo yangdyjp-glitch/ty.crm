@@ -642,18 +642,19 @@ export class ReportsService {
     });
     const grouped = new Map<string, ChannelReportRow>();
     for (const order of orders) {
-      // Preserve the signed order's channel even if the customer's channel later changes.
-      const channelId = order.commission?.channelId ?? order.customer.channelId;
+      // Active commissions are synchronized with customer-channel edits. Removed ones
+      // must not keep a self-acquired order attributed to its former channel.
+      const commission =
+        order.commission && !order.commission.deletedAt ? order.commission : null;
+      const channelId = commission?.channelId ?? order.customer.channelId;
       if (channelId == null) continue;
-      const channel = order.commission?.channel ?? order.customer.channel ?? {
+      const channel = commission?.channel ?? order.customer.channel ?? {
         id: channelId,
-        name: order.commission?.channelNameSnapshot || `渠道 ${channelId}`,
+        name: commission?.channelNameSnapshot || `渠道 ${channelId}`,
         commissionMethod: null,
         defaultCommissionRate: null,
         defaultCommissionAmount: null,
       };
-      const commission =
-        order.commission && !order.commission.deletedAt ? order.commission : null;
       const contractAmount = Number(order.receivableAmount);
       const received = Number(order.paidAmount);
       const payable = Number(commission?.payableAmount ?? 0);

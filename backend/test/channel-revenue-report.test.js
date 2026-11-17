@@ -195,7 +195,7 @@ test('net receipts deduct actual rebates, prorated agent deductions and complete
   });
 });
 
-test('channel attribution uses the signed snapshot and deleted commissions do not deduct money', async () => {
+test('active commissions retain their attribution; removed ones follow the customer or leave channel reports', async () => {
   const { service } = setup([
     order({
       customer: { channelId: partner.id, channel: partner },
@@ -205,14 +205,24 @@ test('channel attribution uses the signed snapshot and deleted commissions do no
       id: 2, customer: { channelId: partner.id, channel: partner },
       commission: commission({ payableAmount: '9600', paidAmount: '0' }),
     }),
+    order({
+      id: 3, customer: { channelId: null, channel: null },
+      fundSettlementMode: 'COMPANY_DIRECT',
+      commission: commission({ payableAmount: '9600', deletedAt: new Date() }),
+    }),
   ]);
-  const [row] = await service.channels();
-  assert.equal(row.channelId, xidian.id);
+  const rows = await service.channels();
+  assert.equal(rows.length, 2);
+  const row = rows.find((r) => r.channelId === xidian.id);
+  const currentChannel = rows.find((r) => r.channelId === partner.id);
   assert.equal(row.commissionRate, 0);
-  assert.equal(row._count, 2);
+  assert.equal(row._count, 1);
   assert.equal(row._sum.payableAmount, 9600);
   assert.equal(row._sum.paidAmount, 9600);
-  assert.equal(row._sum.companyNetReceived, 86400);
+  assert.equal(row._sum.companyNetReceived, 38400);
+  assert.equal(currentChannel._count, 1);
+  assert.equal(currentChannel._sum.payableAmount, 0);
+  assert.equal(currentChannel._sum.companyNetReceived, 48000);
 });
 
 test('year and month filters select undeleted orders by signing time and only completed undeleted refunds', async () => {
