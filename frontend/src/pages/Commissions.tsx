@@ -82,6 +82,7 @@ const CONFIRMABLE_STATUS = ['PENDING_REVIEW', 'PENDING_PAYMENT']
 const FINAL_STATUS = ['PAID', 'CANCELLED', 'SELF_DEDUCTED']
 const REBATE_STATUS_COLOR: Record<string, string> = {
   未到账: 'default',
+  未自扣: 'red',
   部分自扣: 'gold',
   已自扣: 'blue',
   未返佣: 'red',

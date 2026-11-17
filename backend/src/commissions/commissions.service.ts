@@ -776,13 +776,13 @@ export class CommissionsService {
       let rebateStatus = '未到账';
 
       if (confirmedReceived > 0) {
-        if (!commission) {
+        if (!commission || (payableAmount <= 0 && cash.channelSettled <= 0)) {
           rebateStatus = '无返佣';
         } else if (fundSettlementMode === FundSettlementMode.AGENT_NET) {
           const deducted = cash.channelSettled;
           rebateStatus =
             deducted <= 0
-              ? '未到账'
+              ? '未自扣'
               : deducted >= payableAmount
                 ? '已自扣'
                 : '部分自扣';
