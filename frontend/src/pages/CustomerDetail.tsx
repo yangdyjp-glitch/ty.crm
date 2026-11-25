@@ -47,7 +47,8 @@ interface NamedReference {
 interface FollowUp {
   id: number
   operatorName: string
-  followedAt: string
+  followedAt: string | null
+  importedAuthorName?: string | null
   method: string
   content: string
   result: string | null
@@ -78,6 +79,7 @@ interface CustomerChange {
 }
 
 const CHANGE_LABEL: Record<string, string> = {
+  IMPORT_MARKET_LEAD: '导入市场名单',
   CREATE_CUSTOMER: '新建客户', CREATE_DISTINCT_CUSTOMER: '确认同名不同人', ADD_FOLLOW_UP: '新增跟进',
   JOIN_CUSTOMER_SALES: '加入共同销售', ASSIGN_CUSTOMER_SALES: '调整负责销售', UPDATE_CUSTOMER: '修改资料',
   salesOwners: '负责销售', name: '姓名', nickname: '昵称', phone: '电话', wechat: '微信', email: '邮箱',
@@ -120,6 +122,7 @@ interface Attachment {
 }
 
 interface CustomerDetails {
+  marketOwnerName?: string | null
   name: string
   updatedAt: string
   salesOwners: NamedReference[]
@@ -374,6 +377,7 @@ export default function CustomerDetail() {
       >
         <Descriptions size="small" column={3}>
           <Descriptions.Item label="编号">{c.customerNo}</Descriptions.Item>
+          {c.marketOwnerName && <Descriptions.Item label="市场负责人">{c.marketOwnerName}</Descriptions.Item>}
           <Descriptions.Item label="负责销售">{c.salesOwners?.map((owner) => owner.name).join('、') || '未分配'}</Descriptions.Item>
           <Descriptions.Item label="时间">{fmtDate(c.discoveredAt ?? c.createdAt)}</Descriptions.Item>
           <Descriptions.Item label="电话">{c.phone || '—'}</Descriptions.Item>
@@ -387,7 +391,7 @@ export default function CustomerDetail() {
           <Descriptions.Item label="下次跟进">
             {c.nextFollowUpAt ? dayjs(c.nextFollowUpAt).format('YYYY-MM-DD HH:mm') : '—'}
           </Descriptions.Item>
-          <Descriptions.Item label="备注" span={2}>{c.remark || '—'}</Descriptions.Item>
+          <Descriptions.Item label="备注" span={2}><span style={{ whiteSpace: 'pre-line' }}>{c.remark || '—'}</span></Descriptions.Item>
         </Descriptions>
       </Card>
 
@@ -409,7 +413,7 @@ export default function CustomerDetail() {
                   dataSource={c.followUps || []}
                   pagination={false}
                   columns={[
-                    { title: '时间', dataIndex: 'followedAt', width: COL.datetime, render: (t) => dayjs(t).format('MM-DD HH:mm') },
+                    { title: '时间', dataIndex: 'followedAt', width: COL.datetime, render: (t, r) => t ? (r.importedAuthorName ? fmtDate(t) : dayjs(t).format('MM-DD HH:mm')) : '日期未填写' },
                     { title: '操作人', dataIndex: 'operatorName', width: COL.person },
                     { title: '方式', dataIndex: 'method', width: COL.type, render: (m) => FOLLOW_METHOD_LABEL[m] },
                     { title: '内容', dataIndex: 'content', width: COL.note },

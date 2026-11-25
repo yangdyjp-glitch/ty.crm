@@ -223,6 +223,7 @@ model Customer {
 
   // 录入 / 负责人
   enteredById           Int // 录入人(市场)
+  marketOwnerName       String?
   ownerUserId           Int? // 负责销售
   downstreamSalesUserId Int? // 下游销售(转介绍)
   assignmentStatus      AssignmentStatus @default(UNASSIGNED)
@@ -549,8 +550,9 @@ model DownstreamReferral {
 model FollowUpLog {
   id               Int          @id @default(autoincrement())
   customerId       Int
-  followUserId     Int
-  followedAt       DateTime
+  followUserId     Int?
+  importedAuthorName String?
+  followedAt       DateTime?
   method           FollowMethod
   content          String
   customerFeedback String?

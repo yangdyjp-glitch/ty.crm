@@ -125,6 +125,7 @@ interface CustomerErrorBody {
 }
 
 interface ImportSummary {
+  errors: string[]
   success: number
   duplicates: number
   failed: number
@@ -560,12 +561,24 @@ export default function Customers() {
           <Upload
             accept=".xlsx"
             showUploadList={false}
-            customRequest={async ({ file }) => {
+            customRequest={async ({ file, onSuccess, onError }) => {
               const fd = new FormData()
               fd.append('file', file as File)
-              const { data } = await client.post<ImportSummary>('/customers/import', fd)
-              message.success(`导入：成功${data.success}，重复${data.duplicates}，失败${data.failed}`)
-              reload()
+              try {
+                const { data } = await client.post<ImportSummary>('/customers/import', fd)
+                const summary = `导入：成功${data.success}，重复${data.duplicates}，失败${data.failed}`
+                if (data.errors?.length) {
+                  Modal.warning({ title: summary, content: <div style={{ whiteSpace: 'pre-line' }}>{data.errors.join('\n')}</div> })
+                } else {
+                  message.success(summary)
+                }
+                onSuccess?.(data)
+                reload()
+              } catch (error) {
+                const msg = apiErrorMessage(error, '导入失败')
+                message.error(msg)
+                onError?.(new Error(msg))
+              }
             }}
           >
             <Button icon={<UploadOutlined />}>导入</Button>

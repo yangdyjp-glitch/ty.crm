@@ -32,6 +32,7 @@ import {
 import * as ExcelJS from 'exceljs';
 import { CustomerIdentity, normalizeCustomerName, sameCustomerCandidate } from '../common/customer-identity';
 import { syncCustomerChannel } from '../common/customer-channel-sync';
+import { importLayout, MarketLead, readLead } from './customer-import';
 
 const memberInclude = {
   where: { removedAt: null },
@@ -130,18 +131,40 @@ export class CustomersService {
       channelNameSnapshot: channel.name, commissionRateSnapshot: channel.defaultCommissionRate };
   }
 
-  async create(user: AuthUser, dto: CreateCustomerDto) {
+  private async importChannel(tx: Prisma.TransactionClient, name: string) {
+    const channel = await tx.acquisitionChannel.findUnique({ where: { name } });
+    if (channel?.active && !channel.deletedAt) return channel.id;
+    if (!channel && name === '小红书') {
+      return (await tx.acquisitionChannel.create({ data: { name } })).id;
+    }
+    throw new BadRequestException('获取渠道不存在或已停用：' + name);
+  }
+
+  private async importSalesOwner(tx: Prisma.TransactionClient, name: string) {
+    const users = await tx.user.findMany({ where: {
+      deletedAt: null, status: 'active', role: { in: [UserRole.SALES, UserRole.BUSINESS_SUPERVISOR] },
+    }, select: { id: true, name: true, username: true } });
+    const normalize = (value: string) => value.normalize('NFKC').trim();
+    const label = normalize(name);
+    const matches = users.filter(user => normalize(user.username) === label || normalize(user.name) === label ||
+      normalize(user.name).replace(/^[SM]\s*[-－]\s*/i, '') === label);
+    if (matches.length !== 1) throw new BadRequestException('营业负责人' + (matches.length ? '匹配多个账号：' : '未匹配启用的销售账号：') + name);
+    return matches[0].id;
+  }
+
+  async create(user: AuthUser, dto: CreateCustomerDto, market?: MarketLead) {
     const name = dto.name.normalize('NFKC').trim();
     if (!name) throw new BadRequestException('客户姓名不能为空');
     return this.prisma.$transaction(async (tx) => {
       await this.lockWrites(tx);
-      const source = await this.sourceData(tx, dto);
+      const source = await this.sourceData(tx, market
+        ? { ...dto, acquisitionChannelId: await this.importChannel(tx, market.channel) } : dto);
       const dups = await this.findDuplicates(user, { ...dto, ...source }, tx);
       if (dups.length && !dto.distinctReason?.trim()) {
         throw new ConflictException({ code: 'DUPLICATE_CUSTOMER', message: '该客户可能已存在', duplicates: dups });
       }
       const requestedIds = dto.salesUserIds ?? (dto.ownerUserId ? [dto.ownerUserId] : []);
-      const salesIds = await this.validateSales(tx,
+      const salesIds = market ? (market.salesOwner ? [await this.importSalesOwner(tx, market.salesOwner)] : []) : await this.validateSales(tx,
         user.role === UserRole.SALES ? [user.id] : requestedIds.length ? requestedIds
           : user.role === UserRole.BUSINESS_SUPERVISOR ? [user.id] : []);
       const customer = await tx.customer.create({
@@ -159,6 +182,7 @@ export class CustomersService {
         targetStartTime: dto.targetStartTime,
         ...source,
         enteredById: user.id,
+        marketOwnerName: market?.marketOwner,
         ownerUserId: salesIds[0] ?? null,
         assignmentStatus: salesIds.length
           ? AssignmentStatus.ASSIGNED
@@ -166,13 +190,21 @@ export class CustomersService {
         intentionLevel: dto.intentionLevel ?? null,
         remark: dto.remark,
         discoveredAt: dto.discoveredAt ? new Date(dto.discoveredAt) : new Date(),
-        mainStatus: CustomerMainStatus.NEW_LEAD,
+        mainStatus: market?.followUps.length ? CustomerMainStatus.FOLLOWING : CustomerMainStatus.NEW_LEAD,
+        latestFollowUpAt: market?.followUps.reduce<Date | undefined>((latest, log) =>
+          log.date && (!latest || log.date > latest) ? log.date : latest, undefined),
+        followUps: market?.followUps.length ? { create: market.followUps.map(log => ({
+          content: log.team + '跟进：' + log.content,
+          followedAt: log.date ?? null, method: 'OTHER',
+          importedAuthorName: log.author ?? '原表未填写',
+          followUserId: log.team === '营业' ? salesIds[0] ?? null : null,
+        })) } : undefined,
         salesMembers: { create: salesIds.map((userId) => ({ userId, addedById: user.id })) },
       },
       });
       await tx.auditLog.create({ data: {
         operatorId: user.id, relatedType: 'Customer', relatedId: customer.id,
-        action: dups.length ? 'CREATE_DISTINCT_CUSTOMER' : 'CREATE_CUSTOMER',
+        action: market ? 'IMPORT_MARKET_LEAD' : dups.length ? 'CREATE_DISTINCT_CUSTOMER' : 'CREATE_CUSTOMER',
         newValue: JSON.stringify({ name, salesUserIds: salesIds, matchedCustomerIds: dups.map((d) => d.id) }),
         reason: dups.length ? dto.distinctReason!.trim() : null,
       } });
@@ -269,7 +301,7 @@ export class CustomersService {
         channel: true,
         acquisitionChannel: true,
         salesMembers: memberInclude,
-        followUps: { orderBy: { followedAt: 'desc' } },
+        followUps: { orderBy: [{ followedAt: { sort: 'desc', nulls: 'last' } }, { id: 'desc' }] },
         orders: { where: { deletedAt: null }, orderBy: { id: 'desc' }, include: { salesMembers: { include: { user: { select: { id: true, name: true } } } } } },
         referrals: { where: { deletedAt: null }, orderBy: { id: 'desc' } },
       },
@@ -278,12 +310,13 @@ export class CustomersService {
     const changes = await this.prisma.auditLog.findMany({
       where: { relatedType: 'Customer', relatedId: id }, orderBy: { id: 'desc' }, take: 200,
     });
-    const userIds = [...new Set([...c.followUps.map((f) => f.followUserId), ...changes.map((log) => log.operatorId).filter((uid): uid is number => uid != null)])];
+    const userIds = [...new Set([...c.followUps.map((f) => f.followUserId), ...changes.map((log) => log.operatorId)].filter((uid): uid is number => uid != null))];
     const operators = await this.prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, name: true } });
     const names = new Map(operators.map((operator) => [operator.id, operator.name]));
     return { ...c,
       salesOwners: c.salesMembers.map((member) => member.user),
-      followUps: c.followUps.map((follow) => ({ ...follow, operatorName: names.get(follow.followUserId) ?? '未知用户' })),
+      followUps: c.followUps.map((follow) => ({ ...follow, operatorName: follow.importedAuthorName
+        ?? (follow.followUserId == null ? undefined : names.get(follow.followUserId)) ?? '未知用户' })),
       changes: changes.map((change) => ({ ...change, operatorName: change.operatorId ? names.get(change.operatorId) ?? '未知用户' : '系统' })),
       orders: c.orders.map((order) => ({ ...order, salesOwners: order.salesMembers.map((member) => member.user) })),
     };
@@ -518,7 +551,7 @@ export class CustomersService {
     await this.loadScoped(user, id);
     const c = await this.prisma.customer.findUnique({
       where: { id },
-      include: { followUps: { orderBy: { followedAt: 'desc' }, take: 10 } },
+      include: { followUps: { orderBy: [{ followedAt: { sort: 'desc', nulls: 'last' } }, { id: 'desc' }], take: 10 } },
     });
     if (!c || !c.followUps.length) return { summary: '暂无跟进记录。' };
     const lines = c.followUps.map((f) => `· ${f.content}`).join('\n');
@@ -574,43 +607,24 @@ export class CustomersService {
 
   async importExcel(user: AuthUser, buffer: Buffer) {
     const wb = new ExcelJS.Workbook();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await wb.xlsx.load(buffer as any);
-    const ws = wb.worksheets[0];
-    if (!ws) {
-      return { success: 0, duplicates: 0, failed: 0, errors: ['无工作表'] };
+    try {
+      await wb.xlsx.load(Uint8Array.from(buffer).buffer);
+    } catch {
+      throw new BadRequestException('请上传可读取的 Excel .xlsx 文件');
     }
-    const headers: Record<string, number> = {};
-    ws.getRow(1).eachCell((c, col) => {
-      headers[String(c.value).trim()] = col;
-    });
-    const pick = (row: ExcelJS.Row, ...names: string[]) => {
-      for (const n of names) {
-        if (headers[n]) return cellStr(row.getCell(headers[n]).value);
-      }
-      return undefined;
-    };
+    const ws = wb.worksheets[0];
+    if (!ws) throw new BadRequestException('无工作表');
+    const layout = importLayout(ws);
     let success = 0;
     let duplicates = 0;
     let failed = 0;
     const errors: string[] = [];
-    for (let i = 2; i <= ws.rowCount; i++) {
-      const row = ws.getRow(i);
-      const name = pick(row, '姓名', '客户姓名');
-      if (!name) continue;
-      const phone = pick(row, '电话', '手机号');
-      const wechat = pick(row, '微信', '微信号');
-      const email = pick(row, '邮箱');
+    const lastRow = ws.rowCount;
+    for (let i = layout.headerRow + 1; i <= lastRow; i++) {
       try {
-        await this.create(user, {
-            name,
-            phone,
-            wechat,
-            email,
-            sourceCategory: SourceCategory.SELF,
-            discoveredAt: new Date().toISOString(),
-            remark: pick(row, '备注'),
-        });
+        const lead = readLead(ws.getRow(i), layout, !!wb.properties.date1904);
+        if (!lead) continue;
+        await this.create(user, lead.dto, lead.market);
         success++;
       } catch (e) {
         if (e instanceof ConflictException) { duplicates++; continue; }
@@ -620,16 +634,4 @@ export class CustomersService {
     }
     return { success, duplicates, failed, errors: errors.slice(0, 20) };
   }
-}
-
-function cellStr(v: unknown): string | undefined {
-  if (v === null || v === undefined) return undefined;
-  if (typeof v === 'object') {
-    const o = v as { text?: unknown; result?: unknown };
-    if (o.text != null) return String(o.text).trim() || undefined;
-    if (o.result != null) return String(o.result).trim() || undefined;
-    return undefined;
-  }
-  const s = String(v).trim();
-  return s === '' ? undefined : s;
 }
