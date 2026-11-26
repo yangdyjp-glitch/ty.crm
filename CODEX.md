@@ -22,7 +22,8 @@
 - 后端：NestJS 11 + Prisma + PostgreSQL/Supabase，Node 22
 - 前端：React 19 + Ant Design v6 + Vite
 - 鉴权：JWT + 全局 `JwtAuthGuard` + `RolesGuard`
-- 数据库同步：Railway 后端 `preDeployCommand` 会执行 `npx prisma db push --skip-generate`，再运行 `node scripts/backfill-shared-sales.js` 补齐销售关系及历史订单归属。
+- 数据库同步：Railway 后端先同步 Prisma schema，再执行 `backend/scripts/backfill-customer-names.sql` 补齐缺失的姓名，最后运行 `backfill-shared-sales.js` 补齐销售关系及历史订单归属。重复部署不会覆盖已有姓名。
+- 客户称呼（`Customer.name`）用于线索识别和按渠道查重；真实姓名（`realName`）初始默认为称呼，可在有权限的客户档案或签约时修改。订单保存签约时的 `signedCustomerName`，收退款沿用该订单姓名。不要用客户的最新真实姓名重算历史订单。
 
 ## 本地目录
 

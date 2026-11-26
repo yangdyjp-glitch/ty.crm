@@ -37,6 +37,7 @@ type RefundRow = {
   createdAt: string
   completedAt?: string | null
   customer?: { id: number; name: string } | null
+  order?: { signedCustomerName?: string | null } | null
   nominalAmount: number | string
   cashAmount: number | string
   offsetAmount: number | string
@@ -48,6 +49,7 @@ type RefundRow = {
 type OrderOption = {
   id: number
   orderNo: string
+  signedCustomerName?: string | null
   status: string
   receivableAmount: number | string
   customer?: { name: string } | null
@@ -179,7 +181,7 @@ export default function Refunds() {
             onFilter: (value, r) => arrivalMonthValue(r) === String(value),
             render: (t: string | null, r: RefundRow) => r.status === 'REFUNDED' ? (t ? fmtDate(t) : '日期未填') : '—',
           },
-          { title: '客户', width: COL.person, render: (_, r) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
+          { title: '签约姓名', width: COL.person, render: (_, r) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.order?.signedCustomerName ?? r.customer?.name}</a> },
           { title: '名义额', dataIndex: 'nominalAmount', width: COL.money, render: moneyOut, align: 'right' },
           { title: '实退现金', dataIndex: 'cashAmount', width: COL.money, render: moneyOut, align: 'right' },
           { title: '抵减', dataIndex: 'offsetAmount', width: COL.money, render: moneyOut, align: 'right' },
@@ -227,7 +229,7 @@ export default function Refunds() {
             <Select
               showSearch
               optionFilterProp="label"
-              options={orders.map((o) => ({ value: o.id, label: `${o.orderNo} ${o.customer?.name || ''} 应收${fmtMoney(o.receivableAmount)}` }))}
+              options={orders.map((o) => ({ value: o.id, label: `${o.orderNo} ${o.signedCustomerName ?? o.customer?.name ?? ''} 应收${fmtMoney(o.receivableAmount)}` }))}
             />
           </Form.Item>
           <Form.Item name="refundPercent" label="退款比例 %（基于合同）" rules={[{ required: true }]}>

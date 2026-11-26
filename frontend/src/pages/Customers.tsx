@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import {
@@ -52,6 +52,7 @@ interface CustomerRow {
   id: number
   customerNo: string
   name: string
+  realName?: string | null
   sourceCategory: SourceCategory
   mainStatus: string
   intentionLevel?: string | null
@@ -81,6 +82,7 @@ interface ChannelOption extends NamedOption {
 
 interface CustomerFormValues {
   name: string
+  realName?: string
   phone?: string
   wechat?: string
   email?: string
@@ -98,6 +100,7 @@ interface CustomerFormValues {
 interface CustomerUpdatePayload {
   expectedUpdatedAt: string
   name?: string
+  realName?: string
   intentionLevel: string | null
   mainStatus: string
   sourceCategory: SourceCategory
@@ -187,6 +190,7 @@ export default function Customers() {
   const [distinctReason, setDistinctReason] = useState('')
   const [checkingDuplicate, setCheckingDuplicate] = useState(false)
   const [form] = Form.useForm<CustomerFormValues>()
+  const customRealName = useRef(false)
   const [sourceCat, setSourceCat] = useState<SourceCategory>('SELF')
   const [channels, setChannels] = useState<ChannelOption[]>([])
   const [acq, setAcq] = useState<NamedOption[]>([])
@@ -267,6 +271,7 @@ export default function Customers() {
 
   const openCreate = async () => {
     form.resetFields()
+    customRealName.current = false
     setDuplicates([])
     setDuplicateOpen(false)
     setDistinctMode(false)
@@ -370,6 +375,7 @@ export default function Customers() {
     setEditSourceCat(customer.sourceCategory)
     editForm.setFieldsValue({
       name: customer.name,
+      realName: customer.realName ?? customer.name,
       intentionLevel: customer.intentionLevel ?? undefined,
       mainStatus: customer.mainStatus,
       sourceCategory: customer.sourceCategory,
@@ -395,6 +401,7 @@ export default function Customers() {
         discoveredAt: v.discoveredAt,
       }
       if (canEditCustomerName) payload.name = v.name
+      if (v.realName?.trim() !== (editCust.realName ?? editCust.name)) payload.realName = v.realName?.trim()
       await client.patch(`/customers/${editCust.id}`, payload)
       message.success('已修改')
       setEditCust(null)
@@ -459,7 +466,7 @@ export default function Customers() {
   const columns: TableColumnsType<CustomerRow> = [
     { title: '编号', dataIndex: 'customerNo', width: COL.no },
     { title: '时间', dataIndex: 'discoveredAt', width: COL.date, render: (value: unknown, customer) => fmtDate(value ?? customer.createdAt) },
-    { title: '姓名', dataIndex: 'name', width: COL.person, render: (name: string, customer) => <a onClick={() => nav(`/customers/${customer.id}`)}>{name}</a> },
+    { title: '客户称呼', dataIndex: 'name', width: COL.person, render: (name: string, customer) => <a onClick={() => nav(`/customers/${customer.id}`)}>{name}{customer.realName && customer.realName !== name && `（${customer.realName}）`}</a> },
     {
       title: '来源 / 渠道',
       width: COL.source,
@@ -536,7 +543,7 @@ export default function Customers() {
       render: (_value: unknown, customer) => (
         <Space wrap>
           <ActionBtn tone="view" onClick={() => nav(`/customers/${customer.id}`)}>详情</ActionBtn>
-          {canEditCustomerName && <ActionBtn tone="edit" onClick={() => openQuickEdit(customer)}>修改</ActionBtn>}
+          {canCreate && <ActionBtn tone="edit" onClick={() => openQuickEdit(customer)}>修改</ActionBtn>}
           {user?.role === 'ADMIN' && <DeleteBtn onConfirm={() => doDelete(customer.id)} />}
         </Space>
       ),
@@ -547,7 +554,7 @@ export default function Customers() {
     <div>
       <Space style={{ marginBottom: 16 }} wrap>
         <Input.Search
-          placeholder="姓名/电话/微信/编号"
+          placeholder="称呼/真实姓名/电话/微信/编号"
           allowClear
           onSearch={(value) => {
             setLoading(true)
@@ -597,10 +604,14 @@ export default function Customers() {
       />
 
       <Modal title="新增客户" open={modalOpen} onCancel={() => setModalOpen(false)} onOk={() => submitCreate()} confirmLoading={submitting} okText={submitting ? '处理中…' : '确定'} maskClosable={false} cancelButtonProps={{ disabled: submitting }} destroyOnClose>
-        <Form form={form} layout="vertical" initialValues={{ sourceCategory: 'SELF' }}>
-          <Form.Item name="name" label="姓名" rules={[{ required: true, whitespace: true }]}>
-            <Input />
+        <Form form={form} layout="vertical" initialValues={{ sourceCategory: 'SELF' }} onValuesChange={(changed) => {
+          if ('realName' in changed) customRealName.current = !!changed.realName?.trim()
+          if ('name' in changed && !customRealName.current) form.setFieldValue('realName', changed.name)
+        }}>
+          <Form.Item name="name" label="客户称呼" rules={[{ required: true, whitespace: true }]}>
+            <Input placeholder="姓名、小红书昵称或微信称呼" />
           </Form.Item>
+          <Form.Item name="realName" label="真实姓名"><Input placeholder="默认与客户称呼相同" /></Form.Item>
           <Form.Item name="discoveredAt" label="时间">
             <Input type="date" />
           </Form.Item>
@@ -671,13 +682,14 @@ export default function Customers() {
         </Form.Item>}
       </Modal>
 
-      <Modal title={canEditCustomerName ? '快速修改（姓名 / 意向 / 状态 / 来源渠道）' : '快速修改（意向 / 状态 / 来源渠道）'} open={!!editCust} onCancel={() => setEditCust(null)} onOk={submitQuickEdit} confirmLoading={submitting} okText={submitting ? '处理中…' : '确定'} maskClosable={false} cancelButtonProps={{ disabled: submitting }} destroyOnClose>
+      <Modal title="修改客户" open={!!editCust} onCancel={() => setEditCust(null)} onOk={submitQuickEdit} confirmLoading={submitting} okText={submitting ? '处理中…' : '确定'} maskClosable={false} cancelButtonProps={{ disabled: submitting }} destroyOnClose>
         <Form form={editForm} layout="vertical">
-          {canEditCustomerName && (
-            <Form.Item name="name" label="姓名" rules={[{ required: true, whitespace: true, message: '请输入客户姓名' }]}>
-              <Input />
-            </Form.Item>
-          )}
+          <Form.Item name="name" label="客户称呼" rules={[{ required: true, whitespace: true, message: '请输入客户称呼' }]}>
+            <Input disabled={!canEditCustomerName} />
+          </Form.Item>
+          <Form.Item name="realName" label="真实姓名" rules={[{ required: true, whitespace: true, message: '请输入真实姓名' }]}>
+            <Input />
+          </Form.Item>
           <Form.Item name="intentionLevel" label="意向">
             <Select allowClear options={Object.entries(INTENTION_LABEL).map(([k, v]) => ({ value: k, label: v }))} />
           </Form.Item>

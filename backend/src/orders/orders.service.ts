@@ -110,6 +110,12 @@ export class OrdersService {
         include: { salesMembers: { where: { removedAt: null } } },
       });
       if (!currentCustomer) throw new NotFoundException('客户不存在或无权访问');
+      const previousName = currentCustomer.realName ?? currentCustomer.name;
+      const signedName = dto.signedCustomerName === undefined ? previousName : dto.signedCustomerName?.trim();
+      if (!signedName) throw new BadRequestException('请填写签约客户真实姓名');
+      if ((dto.expectedRealName !== undefined || signedName !== previousName) && dto.expectedRealName !== previousName) {
+        throw new ConflictException('客户真实姓名已变化，请重新核对后签约');
+      }
       if (currentCustomer.channelId !== customer.channelId) {
         throw new ConflictException('客户渠道已变化，请重新核对订单');
       }
@@ -122,6 +128,7 @@ export class OrdersService {
       const o = await tx.order.create({
         data: {
           orderNo,
+          signedCustomerName: signedName,
           customerId: dto.customerId,
           productId: dto.productId,
           currency: dto.currency,
@@ -143,6 +150,14 @@ export class OrdersService {
           remark: dto.remark,
         },
       });
+      if (signedName !== previousName) {
+        await tx.customer.update({ where: { id: customer.id }, data: { realName: signedName } });
+        await tx.auditLog.create({ data: {
+          operatorId: user.id, relatedType: 'Customer', relatedId: customer.id,
+          action: 'UPDATE_CUSTOMER', fieldName: 'realName',
+          oldValue: JSON.stringify(previousName), newValue: JSON.stringify(signedName), reason: '签约 ' + orderNo,
+        } });
+      }
       // 首款（必填）→ 一条待确认收款
       await tx.payment.create({
         data: {

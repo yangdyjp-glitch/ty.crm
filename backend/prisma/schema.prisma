@@ -204,6 +204,7 @@ model Customer {
   id              Int     @id @default(autoincrement())
   customerNo      String  @unique
   name            String
+  realName        String?
   normalizedName  String?
   nickname        String?
   phone           String?
@@ -355,6 +356,7 @@ model Order {
   id                 Int                @id @default(autoincrement())
   orderNo            String             @unique
   customerId         Int
+  signedCustomerName String?
   productId          Int
   currency           Currency
   fundSettlementMode FundSettlementMode // 继承渠道、可覆盖

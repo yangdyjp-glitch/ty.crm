@@ -40,6 +40,7 @@ interface CustomerSummary {
 interface OrderSummary {
   id: number
   orderNo: string
+  signedCustomerName?: string | null
   receivableAmount: MoneyValue
   paidAmount: MoneyValue
   unpaidAmount: MoneyValue
@@ -269,7 +270,7 @@ export default function Payments() {
             onFilter: (value, r) => arrivalMonthValue(r) === value,
             render: (t: string, r: PaymentRow) => (r.confirmStatus === 'CONFIRMED' ? (t ? fmtDate(t) : '日期未填') : '—'),
           },
-          { title: '客户', width: COL.person, render: (_, r) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.customer?.name}</a> },
+          { title: '签约姓名', width: COL.person, render: (_, r) => <a onClick={() => nav(`/customers/${r.customer?.id}`)}>{r.order?.signedCustomerName ?? r.customer?.name}</a> },
           {
             title: '渠道',
             width: COL.channel,
@@ -323,7 +324,7 @@ export default function Payments() {
             <Select
               showSearch
               optionFilterProp="label"
-              options={orders.map((o) => ({ value: o.id, label: `${o.orderNo} ${o.customer?.name || ''} 未收${fmtMoney(o.unpaidAmount)}` }))}
+              options={orders.map((o) => ({ value: o.id, label: `${o.orderNo} ${o.signedCustomerName ?? o.customer?.name ?? ''} 未收${fmtMoney(o.unpaidAmount)}` }))}
             />
           </Form.Item>
           <Form.Item name="amount" label="收款金额" rules={[{ required: true }]}>

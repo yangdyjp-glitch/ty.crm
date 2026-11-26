@@ -54,7 +54,7 @@ export function importLayout(sheet: ExcelJS.Worksheet) {
       if (title) columns.set(title, col);
     });
     const market = columns.has('学生姓名/平台昵称');
-    if (market || columns.has('姓名') || columns.has('客户姓名')) return { headerRow, columns, market };
+    if (market || columns.has('客户称呼') || columns.has('姓名') || columns.has('客户姓名')) return { headerRow, columns, market };
   }
   throw new BadRequestException('未识别名单表头，请检查第1行或第3行的姓名列');
 }
@@ -66,7 +66,7 @@ export function readLead(row: ExcelJS.Row, layout: ReturnType<typeof importLayou
     return col ? row.getCell(col) : undefined;
   };
   const text = (...titles: string[]) => titles.map(title => valueText(cell(title)?.value)).find(Boolean);
-  const name = text('学生姓名/平台昵称', '姓名', '客户姓名');
+  const name = text('学生姓名/平台昵称', '客户称呼', '姓名', '客户姓名');
   if (!name) {
     if (layout.market && [...layout.columns.keys()].some(title => title !== '编号' && cell(title)?.value != null && cell(title)?.text.trim())) {
       throw new BadRequestException('缺少学生姓名/平台昵称');
@@ -75,6 +75,7 @@ export function readLead(row: ExcelJS.Row, layout: ReturnType<typeof importLayou
   }
   const dto: CreateCustomerDto = {
     name, phone: text('电话', '手机号'), wechat: text('微信号名称', '微信', '微信号'),
+    realName: text('真实姓名'),
     email: text('邮箱'), sourceCategory: SourceCategory.SELF, remark: text('备注'),
   };
   if (!layout.market) return { dto };

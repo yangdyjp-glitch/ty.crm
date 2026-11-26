@@ -172,6 +172,7 @@ export class CustomersService {
         customerNo: await nextNo(tx.customer, 'customerNo', 'KH'),
         name,
         normalizedName: normalizeCustomerName(name),
+        realName: dto.realName?.trim() || name,
         nickname: dto.nickname,
         phone: dto.phone,
         wechat: dto.wechat,
@@ -260,6 +261,7 @@ export class CustomersService {
     if (q.search) {
       where.OR = [
         { name: { contains: q.search, mode: 'insensitive' } },
+        { realName: { contains: q.search, mode: 'insensitive' } },
         { phone: { contains: q.search } },
         { wechat: { contains: q.search } },
         { email: { contains: q.search, mode: 'insensitive' } },
@@ -347,6 +349,10 @@ export class CustomersService {
       const current = await this.loadForWrite(tx, user, id, dto.expectedUpdatedAt);
       const { expectedUpdatedAt: _version, discoveredAt, ...fields } = dto;
       const data: Prisma.CustomerUncheckedUpdateInput = { ...fields };
+      if (dto.realName !== undefined) {
+        if (!dto.realName?.trim()) throw new BadRequestException('真实姓名不能为空');
+        data.realName = dto.realName.trim();
+      }
       if (dto.name !== undefined) {
         if (!([UserRole.BUSINESS_SUPERVISOR, UserRole.ADMIN] as UserRole[]).includes(user.role)) {
           throw new ForbiddenException('仅主管或管理员可以修改客户姓名');
@@ -576,7 +582,8 @@ export class CustomersService {
     const ws = wb.addWorksheet('客户');
     ws.columns = [
       { header: '客户编号', key: 'customerNo', width: 16 },
-      { header: '姓名', key: 'name', width: 14 },
+      { header: '客户称呼', key: 'name', width: 18 },
+      { header: '真实姓名', key: 'realName', width: 16 },
       { header: '电话', key: 'phone', width: 16 },
       { header: '微信', key: 'wechat', width: 16 },
       { header: '邮箱', key: 'email', width: 20 },
@@ -591,6 +598,7 @@ export class CustomersService {
       ws.addRow({
         customerNo: c.customerNo,
         name: c.name,
+        realName: c.realName ?? c.name,
         phone: c.phone ?? '',
         wechat: c.wechat ?? '',
         email: c.email ?? '',

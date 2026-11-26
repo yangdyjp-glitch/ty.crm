@@ -29,6 +29,7 @@ type MoneyValue = number | string | null | undefined
 interface OrderCustomer {
   id: number
   name: string
+  realName?: string | null
   customerNo: string
   salesOwners?: NamedReference[]
 }
@@ -41,6 +42,7 @@ interface NamedReference {
 interface OrderRow {
   id: number
   orderNo: string
+  signedCustomerName?: string | null
   signedAt?: string | null
   customer: OrderCustomer
   salesOwners?: NamedReference[]
@@ -72,6 +74,7 @@ interface ProductOption extends NamedReference {
 
 interface OrderFormValues {
   customerId: number
+  signedCustomerName: string
   productId: number
   signedAt?: string
   currency: string
@@ -177,6 +180,7 @@ export default function Orders() {
   const [open, setOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [form] = Form.useForm<OrderFormValues>()
+  const [modal, modalContext] = Modal.useModal()
   const [customers, setCustomers] = useState<OrderCustomer[]>([])
   const [products, setProducts] = useState<ProductOption[]>([])
   const fp = Form.useWatch('firstPaymentAmount', form)
@@ -244,8 +248,18 @@ export default function Orders() {
     const v = await form.validateFields()
     setSubmitting(true)
     try {
+      const customer = customers.find((c) => c.id === v.customerId)
+      if (!customer) { message.error('请重新选择客户'); return }
+      const expectedRealName = customer.realName ?? customer.name
+      const signedCustomerName = v.signedCustomerName.trim()
+      if (signedCustomerName !== expectedRealName && !await modal.confirm({
+        title: '确认签约姓名',
+        content: `客户「${customer.name}」的真实姓名将由「${expectedRealName}」改为「${signedCustomerName}」，本单将使用新姓名。`,
+        okText: '确认并签约', cancelText: '返回核对',
+      })) return
       await client.post('/orders', {
         ...v,
+        expectedRealName, signedCustomerName,
         quantity: Number(v.quantity) || 1,
         originalPrice: calcOriginalPrice(v.unitPrice, v.quantity),
       })
@@ -254,6 +268,14 @@ export default function Orders() {
       reload()
     } catch (error: unknown) {
       message.error(apiErrorMessage(error, '创建失败'))
+      if (axios.isAxiosError(error) && error.response?.status === 409) {
+        try {
+          const { data } = await client.get<CustomerListResponse>('/customers', { params: { all: 1 }, noCache: true })
+          setCustomers(data.items)
+          const latest = data.items.find((c) => c.id === v.customerId)
+          form.setFieldsValue({ customerId: latest?.id, signedCustomerName: latest?.realName ?? latest?.name })
+        } catch { setCustomers([]); form.setFieldsValue({ customerId: undefined, signedCustomerName: undefined }) }
+      }
     } finally {
       setSubmitting(false)
     }
@@ -320,7 +342,7 @@ export default function Orders() {
       onFilter: (value, order) => signedMonthValue(order) === value,
       render: fmtDate,
     },
-    { title: '客户', width: ORDER_COL.person, render: (_value: unknown, order) => <a onClick={() => nav(`/customers/${order.customer.id}`)}>{order.customer.name}</a> },
+    { title: '签约姓名', width: ORDER_COL.person, render: (_value: unknown, order) => <a onClick={() => nav(`/customers/${order.customer.id}`)}>{order.signedCustomerName ?? order.customer.name}</a> },
     {
       title: '销售人员',
       width: ORDER_COL.sales,
@@ -384,6 +406,7 @@ export default function Orders() {
 
   return (
     <div>
+      {modalContext}
       <Button type="primary" style={{ marginBottom: 16 }} onClick={openCreate}>签约（新建订单）</Button>
       <Table
         {...scrollTableProps}
@@ -399,8 +422,15 @@ export default function Orders() {
             <Select
               showSearch
               optionFilterProp="label"
-              options={customers.map((c) => ({ value: c.id, label: `${c.name}（${c.customerNo}）` }))}
+              options={customers.map((c) => ({ value: c.id, label: [c.name, c.realName !== c.name && c.realName, c.customerNo].filter(Boolean).join(' · ') }))}
+              onChange={(id) => {
+                const c = customers.find((item) => item.id === id)
+                form.setFieldValue('signedCustomerName', c?.realName ?? c?.name)
+              }}
             />
+          </Form.Item>
+          <Form.Item name="signedCustomerName" label="签约客户真实姓名" rules={[{ required: true, whitespace: true, message: '请输入签约客户真实姓名' }]}>
+            <Input disabled={!selectedCustomerId} />
           </Form.Item>
           <Form.Item label="签约销售">
             {customers.find((customer) => customer.id === selectedCustomerId)?.salesOwners?.map((owner) => <Tag key={owner.id}>{owner.name}</Tag>) || '未分配'}

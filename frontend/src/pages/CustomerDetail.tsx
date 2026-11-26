@@ -13,6 +13,7 @@ import {
   Table,
   Tabs,
   Tag,
+  Typography,
   Spin,
   Upload,
   message,
@@ -82,7 +83,7 @@ const CHANGE_LABEL: Record<string, string> = {
   IMPORT_MARKET_LEAD: '导入市场名单',
   CREATE_CUSTOMER: '新建客户', CREATE_DISTINCT_CUSTOMER: '确认同名不同人', ADD_FOLLOW_UP: '新增跟进',
   JOIN_CUSTOMER_SALES: '加入共同销售', ASSIGN_CUSTOMER_SALES: '调整负责销售', UPDATE_CUSTOMER: '修改资料',
-  salesOwners: '负责销售', name: '姓名', nickname: '昵称', phone: '电话', wechat: '微信', email: '邮箱',
+  salesOwners: '负责销售', name: '客户称呼', realName: '真实姓名', nickname: '昵称', phone: '电话', wechat: '微信', email: '邮箱',
   countryRegion: '国家 / 地区', educationLevel: '学历', targetStage: '目标阶段', targetStartTime: '目标入学时间',
   sourceCategory: '来源', channelId: '渠道编号', acquisitionChannelId: '获取渠道编号', channelNameSnapshot: '渠道名称',
   commissionRateSnapshot: '渠道比例', discoveredAt: '登记时间', intentionLevel: '意向', mainStatus: '状态',
@@ -124,6 +125,7 @@ interface Attachment {
 interface CustomerDetails {
   marketOwnerName?: string | null
   name: string
+  realName?: string | null
   updatedAt: string
   salesOwners: NamedReference[]
   changes: CustomerChange[]
@@ -377,6 +379,25 @@ export default function CustomerDetail() {
       >
         <Descriptions size="small" column={3}>
           <Descriptions.Item label="编号">{c.customerNo}</Descriptions.Item>
+          <Descriptions.Item label="客户称呼">{c.name}</Descriptions.Item>
+          <Descriptions.Item label="真实姓名">
+            <Typography.Text editable={(canFollow || user?.role === 'MARKET') && {
+              tooltip: '修改真实姓名',
+              onChange: async (value) => {
+                const realName = value.trim()
+                if (!realName) { message.warning('真实姓名不能为空'); return }
+                if (realName === (c.realName ?? c.name)) return
+                try {
+                  await client.patch(`/customers/${customerId}`, { realName, expectedUpdatedAt: c.updatedAt })
+                  message.success('已修改真实姓名')
+                  await loadCustomer()
+                } catch (error: unknown) {
+                  message.error(apiErrorMessage(error, '修改失败'))
+                  if (axios.isAxiosError(error) && error.response?.status === 409) retry()
+                }
+              },
+            }}>{c.realName ?? c.name}</Typography.Text>
+          </Descriptions.Item>
           {c.marketOwnerName && <Descriptions.Item label="市场负责人">{c.marketOwnerName}</Descriptions.Item>}
           <Descriptions.Item label="负责销售">{c.salesOwners?.map((owner) => owner.name).join('、') || '未分配'}</Descriptions.Item>
           <Descriptions.Item label="时间">{fmtDate(c.discoveredAt ?? c.createdAt)}</Descriptions.Item>

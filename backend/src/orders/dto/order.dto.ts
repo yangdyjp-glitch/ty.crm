@@ -11,6 +11,8 @@ import { Currency, FundSettlementMode } from '@prisma/client';
 
 export class CreateOrderDto {
   @IsInt() customerId: number;
+  @IsOptional() @IsString() signedCustomerName?: string;
+  @IsOptional() @IsString() expectedRealName?: string;
   @IsInt() productId: number;
   @IsEnum(Currency) currency: Currency;
   @IsOptional() @IsNumber() @Min(0) unitPrice?: number;

@@ -202,4 +202,48 @@ test('shared sales end-to-end with real PostgreSQL', { skip: !url }, async (t) =
       await assert.rejects(customers.joinSales(a, shared.id, identity), rejectsStatus(400));
     } finally { await db.user.update({ where: { id: a.id }, data: { status: 'active' } }); }
   });
+  await t.test('aliases, editable real names and contract names have independent histories', async () => {
+    const lead = await customers.create(a, { name: '小红书昵称', sourceCategory: 'SELF' });
+    assert.equal(lead.realName, lead.name);
+    const dto = { customerId: lead.id, productId: product.id, currency: 'CNY', firstPaymentAmount: 10000 };
+    const first = await orders.create(a, dto);
+    assert.equal(first.signedCustomerName, lead.name);
+    const change = { ...dto, signedCustomerName: '  林同学  ', expectedRealName: lead.name };
+    await assert.rejects(orders.create(c, change), rejectsStatus(404));
+    await assert.rejects(orders.create(a, { ...change, signedCustomerName: ' ' }), rejectsStatus(400));
+    const failing = new OrdersService(db, customers, { onOrderSigned() { throw new Error('rollback-test'); } });
+    await assert.rejects(failing.create(a, change), /rollback-test/);
+    assert.equal((await customers.get(a, lead.id)).realName, lead.name);
+    assert.equal(await db.auditLog.count({ where: { relatedType: 'Customer', relatedId: lead.id, fieldName: 'realName' } }), 0);
+    const second = await orders.create(a, change);
+    const updated = await customers.get(a, lead.id);
+    assert.equal(updated.name, lead.name);
+    assert.equal(updated.realName, '林同学');
+    assert.equal(second.signedCustomerName, updated.realName);
+    assert.ok(updated.changes.some(change => change.fieldName === 'realName' && change.operatorId === a.id));
+    assert.equal(await db.order.count({ where: { customerId: lead.id } }), 2);
+    await assert.rejects(orders.create(a, { ...change, signedCustomerName: lead.name }), rejectsStatus(409));
+    assert.equal(await db.order.count({ where: { customerId: lead.id } }), 2);
+    await customers.update(a, lead.id, { expectedUpdatedAt: updated.updatedAt.toISOString(), realName: '林明' });
+    for (const search of [lead.name, '林明']) {
+      assert.deepEqual((await customers.list(a, { all: '1', search })).items.map(row => row.id), [lead.id]);
+      assert.equal((await customers.list(c, { all: '1', search })).items.length, 0);
+    }
+    assert.equal((await customers.findDuplicates(b, { name: '林明', sourceCategory: 'SELF' })).length, 0);
+    assert.equal((await orders.get(a, first.id)).signedCustomerName, lead.name);
+    assert.equal((await payments.list(a, { orderId: second.id }))[0].order.signedCustomerName, '林同学');
+    assert.equal((await orders.create(a, dto)).signedCustomerName, '林明');
+  });
+  await t.test('backfilling legacy names is repeatable and never rewrites known names or orders', async () => {
+    const backfill = () => require('node:child_process').execFileSync(process.execPath, [
+      require.resolve('prisma/build/index.js'), 'db', 'execute', '--schema', 'prisma/schema.prisma', '--file', 'scripts/backfill-customer-names.sql',
+    ], { env: { ...process.env, DATABASE_URL: url, DIRECT_URL: url }, stdio: 'pipe' });
+    backfill();
+    assert.equal((await customers.get(admin, legacy.id)).realName, legacy.name);
+    assert.equal((await orders.get(admin, oldOrders[0].id)).signedCustomerName, legacy.name);
+    await db.customer.update({ where: { id: legacy.id }, data: { name: '更新的称呼', realName: '更新的真名' } });
+    backfill();
+    assert.equal((await customers.get(admin, legacy.id)).realName, '更新的真名');
+    assert.equal((await orders.get(admin, oldOrders[0].id)).signedCustomerName, legacy.name);
+  });
 });

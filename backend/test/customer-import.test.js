@@ -43,3 +43,10 @@ test('legacy first-row import and unrecognized headers', () => {
   assert.deepEqual([result.dto.name, result.dto.phone, result.dto.wechat, result.dto.remark], ['甲', '123', 'wx', '原备注']);
   assert.throws(() => importLayout(sheet([['标题']])), /未识别名单表头/);
 });
+
+test('separate alias and real name survive spreadsheet import', () => {
+  const ws = sheet([['客户称呼', '真实姓名'], ['平台昵称', '林同学']]);
+  const { dto } = readLead(ws.getRow(2), importLayout(ws), false);
+  assert.equal(dto.name, '平台昵称');
+  assert.equal(dto.realName, '林同学');
+});

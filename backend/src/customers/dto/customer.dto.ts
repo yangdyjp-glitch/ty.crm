@@ -21,6 +21,7 @@ import {
 
 export class CreateCustomerDto {
   @IsString() name: string;
+  @IsOptional() @IsString() realName?: string;
   @IsOptional() @IsString() nickname?: string;
   @IsOptional() @IsString() phone?: string;
   @IsOptional() @IsString() wechat?: string;
@@ -58,6 +59,7 @@ export class CustomerIdentityDto {
 
 export class UpdateCustomerDto extends CustomerVersionDto {
   @IsOptional() @IsString() name?: string;
+  @IsOptional() @IsString() realName?: string;
   @IsOptional() @IsString() nickname?: string;
   @IsOptional() @IsString() phone?: string;
   @IsOptional() @IsString() wechat?: string;

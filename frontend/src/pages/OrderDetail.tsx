@@ -38,6 +38,7 @@ interface RefundRecord {
 
 interface OrderDetails {
   orderNo: string
+  signedCustomerName?: string | null
   currency: string
   status: string
   unitPrice: MoneyValue | null
@@ -222,8 +223,8 @@ export default function OrderDetail() {
       >
         <Form form={form} layout="vertical">
           <Space wrap size="large">
-            <Form.Item label="客户">
-              <Input value={`${o.customer?.name}（${o.customer?.customerNo}）`} disabled style={{ width: 240 }} />
+            <Form.Item label="签约姓名">
+              <Input value={`${o.signedCustomerName ?? o.customer?.name}（${o.customer?.customerNo}）`} disabled style={{ width: 240 }} />
             </Form.Item>
             <Form.Item label="项目">
               <Input value={o.product?.name} disabled style={{ width: 200 }} />
