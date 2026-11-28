@@ -7,10 +7,11 @@ import 'antd/dist/reset.css'
 import './index.css'
 import App from './App'
 import { AuthProvider } from './auth/AuthProvider'
+import { crmBase, inPortal } from './portal'
 
 const FONT = "'NumTNR', var(--font-serif)"
 
-createRoot(document.getElementById('root')!).render(
+const application = (
   <StrictMode>
     <ConfigProvider
       locale={zhCN}
@@ -79,11 +80,21 @@ createRoot(document.getElementById('root')!).render(
         },
       }}
     >
-      <BrowserRouter>
+      <BrowserRouter basename={crmBase || '/'}>
         <AuthProvider>
           <App />
         </AuthProvider>
       </BrowserRouter>
     </ConfigProvider>
-  </StrictMode>,
+  </StrictMode>
 )
+
+const portalOrigin = import.meta.env.VITE_TYAI_ORIGIN
+if (!inPortal && portalOrigin) {
+  const target = new URL('/crm' + window.location.pathname, portalOrigin)
+  target.search = window.location.search
+  target.hash = window.location.hash
+  window.location.replace(target.href)
+} else {
+  createRoot(document.getElementById('root')!).render(application)
+}

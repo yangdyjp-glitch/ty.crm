@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 
 // 开发服务器把 /api 代理到 NestJS 后端，避免 CORS
 export default defineConfig({
+  base: './',
   plugins: [react()],
   server: {
     port: 5173,

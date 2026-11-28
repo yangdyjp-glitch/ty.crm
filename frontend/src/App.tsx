@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Component, lazy, Suspense, type ReactNode } from 'react'
 import { useAuth } from './auth/AuthContext'
+import { inPortal } from './portal'
 
 const Login = lazy(() => import('./pages/Login'))
 const AppLayout = lazy(() => import('./layout/AppLayout'))
@@ -50,7 +51,7 @@ export default function App() {
     <AppErrorBoundary>
       <Suspense fallback={<div style={{ padding: 24, color: '#64748b' }}>页面加载中…</div>}>
         <Routes>
-          <Route path="/login" element={<Login />} />
+          <Route path="/login" element={inPortal ? <Navigate to="/" replace /> : <Login />} />
           <Route
             path="/"
             element={

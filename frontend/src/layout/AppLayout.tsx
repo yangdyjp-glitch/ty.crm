@@ -6,6 +6,7 @@ import { ROLE_LABEL } from '../api/types'
 import ImpersonationBanner from '../components/ImpersonationBanner'
 import NotificationBell from '../components/NotificationBell'
 import PageHeader from '../components/PageHeader'
+import { inPortal } from '../portal'
 
 type Item = { key: string; cn: string; en: string; roles: string[]; admin?: boolean }
 
@@ -86,7 +87,10 @@ export default function AppLayout() {
               <div style={{ color: 'rgba(255,255,255,0.62)', fontSize: 11 }}>{user?.username} · {ROLE_LABEL[role]}</div>
             </div>
           </div>
-          <a onClick={logout} style={{ color: 'rgba(255,255,255,0.72)', fontSize: 12, display: 'inline-block', marginTop: 12 }}>退出登录</a>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 12, marginTop: 12 }}>
+            {inPortal && <><a href="/" style={{ color: '#fff' }}>返回 TYAI</a><a href="/account" style={{ color: '#fff' }}>我的账号</a></>}
+            <a onClick={logout} style={{ color: 'rgba(255,255,255,0.85)' }}>退出登录</a>
+          </div>
         </div>
       </Layout.Sider>
       <Layout>

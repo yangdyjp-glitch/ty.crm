@@ -6,6 +6,7 @@ import { ROLE_LABEL } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { ActionBtn, DeleteBtn } from '../components/Actions'
 import { COL, pageTableProps } from '../components/tableLayout'
+import { crmHome, inPortal } from '../portal'
 
 type UserRow = {
   id: number
@@ -99,7 +100,7 @@ export default function Users() {
         setImpersonatingId(r.id)
         try {
           await impersonate(r.id)
-          window.location.assign('/')
+          window.location.assign(crmHome)
         } catch (error: unknown) {
           message.error(apiErrorMessage(error, '代理登录失败'))
           setImpersonatingId(null)
@@ -110,7 +111,9 @@ export default function Users() {
 
   return (
     <div>
-      <Button type="primary" style={{ marginBottom: 16 }} onClick={() => openForm()}>新增用户</Button>
+      {inPortal
+        ? <Button type="primary" style={{ marginBottom: 16 }} href="/admin">在 TYAI 管理账号和角色</Button>
+        : <Button type="primary" style={{ marginBottom: 16 }} onClick={() => openForm()}>新增用户</Button>}
       <Table<UserRow>
         {...pageTableProps}
         rowKey="id"
@@ -127,13 +130,13 @@ export default function Users() {
             width: COL.actionWide,
             render: (_, r) => (
               <Space wrap>
-                <ActionBtn tone="edit" onClick={() => openForm(r)}>编辑</ActionBtn>
+                {!inPortal && <ActionBtn tone="edit" onClick={() => openForm(r)}>编辑</ActionBtn>}
                 {user?.role === 'ADMIN' && !user.impersonator && r.id !== user.id && r.status === 'active' && (
                   <ActionBtn tone="view" loading={impersonatingId === r.id} disabled={submitting || impersonatingId !== null} onClick={() => doImpersonate(r)}>
                     登录该账户
                   </ActionBtn>
                 )}
-                <DeleteBtn onConfirm={() => del(r.id)} />
+                {!inPortal && <DeleteBtn onConfirm={() => del(r.id)} />}
               </Space>
             ),
           },

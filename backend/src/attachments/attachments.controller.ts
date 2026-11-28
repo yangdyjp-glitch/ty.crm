@@ -20,8 +20,8 @@ export class AttachmentsController {
   constructor(private att: AttachmentsService) {}
 
   @Get()
-  list(@Query('relatedType') t: string, @Query('relatedId') id: string) {
-    return this.att.list(t, id);
+  list(@CurrentUser() user:AuthUser,@Query('relatedType') t: string, @Query('relatedId') id: string) {
+    return this.att.list(user,t, id);
   }
 
   @Post()
@@ -35,8 +35,8 @@ export class AttachmentsController {
   }
 
   @Get(':id/file')
-  async download(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
-    const { abs, name } = await this.att.filePath(id);
+  async download(@CurrentUser() user:AuthUser,@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
+    const { abs, name } = await this.att.filePath(user,id);
     res.download(abs, name);
   }
 }

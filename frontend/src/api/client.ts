@@ -3,9 +3,10 @@ import axios, {
   type AxiosRequestConfig,
   type AxiosResponse,
 } from 'axios';
+import { impersonationKey, inPortal, portalLoginUrl } from '../portal';
 
 // 生产环境用 VITE_API_BASE（指向后端公网地址 + /api）；开发用 vite 代理的 /api
-const baseURL = import.meta.env.VITE_API_BASE || '/api';
+const baseURL = inPortal ? '/crm/api' : import.meta.env.VITE_API_BASE || '/api';
 
 export interface ApiRequestConfig<D = unknown> extends AxiosRequestConfig<D> {
   noCache?: boolean;
@@ -23,7 +24,13 @@ const client = axiosClient as ApiClient;
 const rawGet = axiosClient.get.bind(axiosClient);
 
 axiosClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  const token = inPortal
+    ? window.sessionStorage.getItem(impersonationKey)
+    : localStorage.getItem('token');
+  if (inPortal) {
+    config.headers.delete('Authorization');
+    config.headers.set('X-TYAI-Request', '1');
+  }
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
@@ -31,10 +38,12 @@ axiosClient.interceptors.request.use((config) => {
 axiosClient.interceptors.response.use(
   (r) => r,
   (err) => {
-    if (
-      err.response?.status === 401 &&
-      !window.location.pathname.includes('/login')
-    ) {
+    if (inPortal && err.response?.status === 401) {
+      if (err.config?.url !== '/auth/me') {
+        window.sessionStorage.removeItem(impersonationKey);
+        window.location.replace(portalLoginUrl());
+      }
+    } else if (err.response?.status === 401 && !window.location.pathname.includes('/login')) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';
@@ -56,7 +65,7 @@ client.get = async function cachedGet<T = unknown, D = unknown>(
   config?: ApiRequestConfig<D>,
 ): Promise<AxiosResponse<T, D>> {
   // blob 下载、或显式 noCache 不走缓存
-  if (config?.responseType === 'blob' || config?.noCache) {
+  if (inPortal || config?.responseType === 'blob' || config?.noCache) {
     return rawGet<T, AxiosResponse<T, D>, D>(url, config);
   }
   const key = url + '|' + JSON.stringify(config?.params ?? {});

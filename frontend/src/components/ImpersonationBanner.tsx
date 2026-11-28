@@ -2,6 +2,7 @@ import { Button, message } from 'antd'
 import { useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { apiErrorMessage } from '../api/errors'
+import { crmHome } from '../portal'
 
 export default function ImpersonationBanner() {
   const { user, stopImpersonating } = useAuth()
@@ -13,7 +14,7 @@ export default function ImpersonationBanner() {
     setLoading(true)
     try {
       await stopImpersonating()
-      window.location.assign('/')
+      window.location.assign(crmHome)
     } catch (error: unknown) {
       message.error(apiErrorMessage(error, '退出代理登录失败'))
       setLoading(false)

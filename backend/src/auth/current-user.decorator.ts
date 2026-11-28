@@ -7,6 +7,7 @@ export interface AuthUser {
   name: string;
   role: UserRole;
   impersonatorId?: number;
+  tyaiSid?: string;
   impersonator?: {
     id: number;
     username: string;

@@ -11,6 +11,7 @@ export interface JwtPayload {
   username: string;
   role: UserRole;
   impersonatorId?: number;
+  tyaiSid?: string;
 }
 
 @Injectable()
@@ -27,6 +28,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload): Promise<AuthUser> {
+    if(payload.tyaiSid)throw new UnauthorizedException();
     const [user, impersonator] = await Promise.all([
       this.prisma.user.findUnique({ where: { id: payload.sub } }),
       payload.impersonatorId

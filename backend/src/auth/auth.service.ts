@@ -37,12 +37,13 @@ export class AuthService {
     };
   }
 
-  private signFor(user: Pick<User, 'id' | 'username' | 'role'>, impersonatorId?: number) {
+  private signFor(user: Pick<User, 'id' | 'username' | 'role'>, impersonatorId?: number, tyaiSid?:string) {
     return this.jwt.signAsync({
       sub: user.id,
       username: user.username,
       role: user.role,
       ...(impersonatorId ? { impersonatorId } : {}),
+      ...(tyaiSid ? {tyaiSid} : {}),
     });
   }
 
@@ -81,7 +82,7 @@ export class AuthService {
     await this.prisma.impersonationLog.create({
       data: { actorId: current.id, targetUserId: target.id, action: 'start' },
     });
-    const token = await this.signFor(target, current.id);
+    const token = await this.signFor(target, current.id,current.tyaiSid);
     return { token, user: this.userDto(target, current) };
   }
 
@@ -103,7 +104,7 @@ export class AuthService {
     await this.prisma.impersonationLog.create({
       data: { actorId: admin.id, targetUserId: current.id, action: 'stop' },
     });
-    const token = await this.signFor(admin);
+    const token = current.tyaiSid ? '' : await this.signFor(admin);
     return { token, user: this.userDto(admin) };
   }
 
